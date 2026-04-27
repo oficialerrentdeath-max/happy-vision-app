@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+ENV/
+
+# Streamlit
+.streamlit/
+
+# Base de datos y secretos (IMPORTANTE)
+.env
+happy_vision.db
+*.db-journal
+*.db-wal
+pacientes.csv
+historias.csv
+usuarios.json
+optometrista.json
+
+# Imágenes de firmas y temporales
+firma_*.png
+firma.png
+firma_temp.png
+logo_header_temp.png
+logo_watermark_temp.png
+logo_header_informe_temp.png
+
+# Respaldos y otros
+Backups/
+*.zip
+*.rar
+.idea/
+.vscode/
+node_modules/
+dist/
+build/
+.antigravity/

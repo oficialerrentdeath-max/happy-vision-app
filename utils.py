@@ -153,20 +153,32 @@ def generate_sample_data():
 # PERSISTENCIA
 # ══════════════════════════════════════════════════════════════
 def guardar_datos():
-    """Guarda los DataFrames actuales a CSV y la config a JSON."""
+    """Guarda los DataFrames actuales a CSV y sincroniza con Supabase."""
+    from database import guardar_todos_pacientes, guardar_todas_historias
+    
     if "df_pacientes" in st.session_state:
         st.session_state.df_pacientes.to_csv("pacientes.csv", index=False)
+        # Sincronizar con Supabase
+        guardar_todos_pacientes(st.session_state.df_pacientes)
+
     if "df_historias" in st.session_state:
         st.session_state.df_historias.to_csv("historias.csv", index=False)
+        # Sincronizar historias con Supabase
+        guardar_todas_historias(st.session_state.df_historias)
 
-    with open("optometrista.json", "w", encoding="utf-8") as f:
-        json.dump({
-            "opto_nombre":    st.session_state.get("opto_nombre", ""),
-            "opto_registro":  st.session_state.get("opto_registro", ""),
-            "opto_cargo":     st.session_state.get("opto_cargo", ""),
-            "opto_direccion": st.session_state.get("opto_direccion", ""),
-            "opto_telefono":  st.session_state.get("opto_telefono", ""),
-        }, f)
+    # Nota: optometrista.json ya no es la fuente primaria si usamos Supabase para usuarios,
+    # pero por compatibilidad con código antiguo lo guardamos.
+    try:
+        with open("optometrista.json", "w", encoding="utf-8") as f:
+            json.dump({
+                "opto_nombre":    st.session_state.get("opto_nombre", ""),
+                "opto_registro":  st.session_state.get("opto_registro", ""),
+                "opto_cargo":     st.session_state.get("opto_cargo", ""),
+                "opto_direccion": st.session_state.get("opto_direccion", ""),
+                "opto_telefono":  st.session_state.get("opto_telefono", ""),
+            }, f)
+    except Exception:
+        pass
 
 
 # ══════════════════════════════════════════════════════════════
@@ -212,23 +224,34 @@ def generar_msg_hc(row, paciente_info) -> str:
     )
 
 
+def generar_msg_indicaciones(row, paciente_info) -> str:
+    """Genera el mensaje WhatsApp con indicaciones médicas y tratamiento (colirios, etc.)."""
+    recom = row.get('recomendaciones', '') or row.get('observaciones', '')
+    if not str(recom).strip() or str(recom).strip().lower() in ('nan', 'none', ''):
+        recom = 'Ver indicaciones de su optometrista.'
+    control = row.get('meses_proximo_control', '')
+    control_txt = f"\n📅 *Próximo control:* en {control} mes(es)." if control else ""
+    return (
+        f"*💊 Happy Vision - Indicaciones Médicas*\n\n"
+        f"👤 Paciente: {paciente_info.get('nombre', '')}\n"
+        f"📅 Consulta: {row.get('fecha', '')}\n\n"
+        f"*Indicaciones / Tratamiento:*\n{recom}"
+        f"{control_txt}\n\n"
+        f"Consultas: +593 96 324 1158 | Happy Vision"
+    )
+
+
 # ══════════════════════════════════════════════════════════════
 # PDF
 # ══════════════════════════════════════════════════════════════
 def _s(texto) -> str:
-    """Convierte texto a ASCII seguro para fpdf (Helvetica)."""
-    reemplazos = {
-        'á':'a','à':'a','ä':'a','â':'a','Á':'A','À':'A','Ä':'A','Â':'A',
-        'é':'e','è':'e','ë':'e','ê':'e','É':'E','È':'E','Ë':'E','Ê':'E',
-        'í':'i','ì':'i','ï':'i','î':'i','Í':'I','Ì':'I','Ï':'I','Î':'I',
-        'ó':'o','ò':'o','ö':'o','ô':'o','Ó':'O','Ò':'O','Ö':'O','Ô':'O',
-        'ú':'u','ù':'u','ü':'u','û':'u','Ú':'U','Ù':'U','Ü':'U','Û':'U',
-        'ç':'c','Ç':'C','°':'',
-    }
-    t = str(texto) if texto is not None else ""
-    for orig, repl in reemplazos.items():
-        t = t.replace(orig, repl)
-    return t
+    """Convierte texto a Latin-1 seguro para fpdf (Helvetica), eliminando emojis."""
+    if texto is None:
+        return ""
+    t = str(texto)
+    # Forzar Latin-1 ignorando lo que no se pueda convertir (emojis, etc.)
+    # Latin-1 soporta ñ, tildes y caracteres especiales del español
+    return t.encode("latin-1", errors="ignore").decode("latin-1")
 
 
 def generar_pdf_historia(row: dict, paciente_info: dict, opto: dict) -> bytes:
@@ -484,16 +507,38 @@ def generar_pdf_historia(row: dict, paciente_info: dict, opto: dict) -> bytes:
         pdf.multi_cell(0, 6, obs)
         pdf.ln(2)
 
-    # ─ FIRMA Y PIE DE PÁGINA ──────────────────────────────────────────
-    firma_path = "firma.png"
-    pdf.set_y(237)
+    # ─ FIRMA Y PIE DE PÁGINA (posición dinámica) ──────────────────────
+    firma_path = f"firma_{opto.get('username','')}.png"
+    if opto.get("firma_base64"):
+        import base64
+        firma_path = "firma_temp.png"
+        try:
+            with open(firma_path, "wb") as f_tmp:
+                f_tmp.write(base64.b64decode(opto["firma_base64"]))
+        except Exception:
+            pass
+    elif not os.path.exists(firma_path):
+        firma_path = "firma.png"
+
+    # Espacio mínimo para firma + datos = ~35mm
+    espacio_firma = 35
+    y_firma_min = 257 - espacio_firma  # ~222mm
+    y_actual = pdf.get_y()
+
+    # Si el contenido es muy largo, la firma se coloca justo debajo
+    y_firma = max(y_actual + 6, y_firma_min)
+    # Asegurar que no se salga de la página
+    if y_firma + espacio_firma > 277:
+        y_firma = 277 - espacio_firma
+
     if os.path.exists(firma_path):
         try:
-            pdf.image(firma_path, x=77, y=pdf.get_y(), w=55, h=18)
+            pdf.image(firma_path, x=77, y=y_firma, w=55, h=16)
         except Exception:
             pass
 
-    pdf.set_y(255)
+    y_linea = y_firma + 17
+    pdf.set_y(y_linea)
     pdf.set_draw_color(80, 80, 80)
     pdf.set_line_width(0.4)
     pdf.line(65, pdf.get_y(), 145, pdf.get_y())

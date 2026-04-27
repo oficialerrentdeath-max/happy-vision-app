@@ -15,12 +15,27 @@ import base64
 # ── Utilidades y vistas ────────────────────────────────────────
 from utils import generate_sample_data, guardar_datos
 
-from vistas.dashboard  import render_dashboard
-from vistas.trabajos   import render_trabajos
-from vistas.inventario import render_inventario
-from vistas.clinica    import render_clinica
-from vistas.pacientes  import render_pacientes
-from vistas.crm        import render_crm
+from vistas.clinica   import render_clinica
+from vistas.pacientes import render_pacientes
+from vistas.usuarios  import render_usuarios
+
+
+# ══════════════════════════════════════════════════════════════
+# CARGA DE USUARIOS DESDE ARCHIVO
+# ══════════════════════════════════════════════════════════════
+def _cargar_usuarios() -> dict:
+    """Carga usuarios desde Supabase."""
+    from database import supabase
+    if supabase:
+        try:
+            res = supabase.table("usuarios").select("*").execute()
+            if res.data:
+                return {row["username"]: row for row in res.data}
+        except Exception as e:
+            print(f"Error cargando usuarios desde Supabase en app: {e}")
+    # Fallback si no hay conexión
+    return {"admin": {"password": "1201", "role": "Administrador", "nombre": "Opt. Anthonny Guato",
+                      "cargo": "Optometrista", "registro": "2250-2024-3004584", "telefono": "+593 96 324 1158"}}
 
 
 # ══════════════════════════════════════════════════════════════
@@ -222,19 +237,26 @@ if not os.path.exists(_firma_dst) and os.path.exists(_firma_src):
 # ══════════════════════════════════════════════════════════════
 # SESSION STATE INIT
 # ══════════════════════════════════════════════════════════════
-if "initialized_v3" not in st.session_state:
+if "initialized_v4" not in st.session_state:
     df_t, df_i, df_g, df_p, df_h = generate_sample_data()
 
-    if os.path.exists("pacientes.csv"):
-        try:
-            df_p = pd.read_csv("pacientes.csv", dtype=str)
-        except Exception:
-            pass
-    if os.path.exists("historias.csv"):
-        try:
-            df_h = pd.read_csv("historias.csv", dtype=str)
-        except Exception:
-            pass
+    # ── Cargar pacientes e historias desde SQLite (fuente principal) ──
+    try:
+        from database import cargar_pacientes, cargar_historias
+        _df_pac = cargar_pacientes()
+        if len(_df_pac) > 0:
+            df_p = _df_pac
+        _df_his = cargar_historias()
+        if len(_df_his) > 0:
+            df_h = _df_his
+    except Exception:
+        # Fallback al CSV si SQLite falla
+        if os.path.exists("pacientes.csv"):
+            try: df_p = pd.read_csv("pacientes.csv", dtype=str)
+            except Exception: pass
+        if os.path.exists("historias.csv"):
+            try: df_h = pd.read_csv("historias.csv", dtype=str)
+            except Exception: pass
 
     st.session_state.df_trabajos   = df_t
     st.session_state.df_inventario = df_i
@@ -242,6 +264,7 @@ if "initialized_v3" not in st.session_state:
     st.session_state.df_pacientes  = df_p
     st.session_state.df_historias  = df_h
     st.session_state.page          = "Dashboard"
+
 
     # Perfil del optometrista
     if os.path.exists("optometrista.json"):
@@ -262,15 +285,13 @@ if "initialized_v3" not in st.session_state:
         st.session_state.opto_direccion = "Happy Vision"
         st.session_state.opto_telefono  = "+593 96 324 1158"
 
-    st.session_state.initialized_v3 = True
+    st.session_state.initialized_v4 = True
 
 
 # ══════════════════════════════════════════════════════════════
 # SISTEMA DE LOGIN Y ROLES
 # ══════════════════════════════════════════════════════════════
-USUARIOS = {
-    "admin": {"password": "123", "role": "Administrador", "nombre": "Administrador"},
-}
+USUARIOS = _cargar_usuarios()
 
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
@@ -472,13 +493,19 @@ if not st.session_state.logged_in:
             submit_login = st.form_submit_button("Ingresar al Sistema", type="primary")
             
             if submit_login:
-                if usuario in USUARIOS and USUARIOS[usuario]["password"] == password_inp:
-                    st.session_state.logged_in = True
-                    st.session_state.user_role = USUARIOS[usuario]["role"]
-                    st.session_state.user_name = USUARIOS[usuario]["nombre"]
+                _usuarios_act = _cargar_usuarios()
+                if usuario in _usuarios_act and _usuarios_act[usuario]["password"] == password_inp:
+                    ud = _usuarios_act[usuario]
+                    st.session_state.logged_in   = True
+                    st.session_state.user_role   = ud["role"]
+                    st.session_state.user_name   = ud.get("nombre", usuario)
+                    st.session_state.user_login  = usuario
+                    st.session_state.user_cargo  = ud.get("cargo", "Optometrista")
+                    st.session_state.user_registro = ud.get("registro", "")
+                    st.session_state.user_telefono = ud.get("telefono", "")
                     st.rerun()
                 else:
-                    st.error("❌ Credenciales inválidas.")
+                    st.error("Credenciales invalidas. Verifica tu usuario y contrasena.")
         
         st.markdown('</div>', unsafe_allow_html=True)
         
@@ -509,35 +536,19 @@ with st.sidebar:
     st.markdown("<div class='fancy-divider'></div>", unsafe_allow_html=True)
 
     # ── NAVEGACIÓN DINÁMICA POR ROLES ────────────────────────
-    st.markdown("<p style='color:#475569; font-size:10px; text-transform:uppercase; letter-spacing:1.5px; margin:0 0 10px 0;'>Navegación</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#475569; font-size:10px; text-transform:uppercase; letter-spacing:1.5px; margin:0 0 10px 0;'>Navegacion</p>", unsafe_allow_html=True)
 
     _role = st.session_state.user_role
+    # Navegacion simplificada: solo Pacientes, Clinica y (para admin) Usuarios
+    pages = {
+        "Pacientes": ("👥", "Pacientes"),
+        "Clinica":   ("🩺", "Historias Clinicas"),
+    }
     if _role == "Administrador":
-        pages = {
-            "Dashboard":   ("📊", "Dashboard Financiero"),
-            "Pacientes":   ("👥", "Pacientes"),
-            "Trabajos":    ("📋", "Ingreso de Trabajos"),
-            "Inventario":  ("📦", "Control de Inventario"),
-            "Clinica":     ("🩺", "Historias Clinicas"),
-            "CRM":         ("📡", "Seguimiento CRM"),
-        }
-    elif _role == "Optometrista":
-        pages = {
-            "Pacientes":   ("👥", "Pacientes"),
-            "Clinica":     ("🩺", "Historias Clinicas"),
-            "CRM":         ("📡", "Seguimiento CRM"),
-        }
-    elif _role == "Asistente":
-        pages = {
-            "Pacientes":   ("👥", "Pacientes"),
-            "Trabajos":    ("📋", "Ingreso de Trabajos"),
-            "Inventario":  ("📦", "Control de Inventario"),
-        }
-    else:
-        pages = {}
+        pages["Usuarios"] = ("👤", "Gestion de Usuarios")
 
     if st.session_state.page not in pages:
-        st.session_state.page = list(pages.keys())[0] if pages else "Dashboard"
+        st.session_state.page = "Pacientes"
 
     for key, (icon, label) in pages.items():
         if st.button(f"{icon}  {label}", key=f"nav_{key}", use_container_width=True):
@@ -546,29 +557,16 @@ with st.sidebar:
 
     st.markdown("<div class='fancy-divider'></div>", unsafe_allow_html=True)
 
-    # ── RESUMEN RÁPIDO ────────────────────────────────────────
-    df_t_side  = st.session_state.df_trabajos
-    today_str  = datetime.today().strftime("%Y-%m-%d")
-    hoy_count  = len(df_t_side[df_t_side["fecha"] == today_str])
-    pendientes = len(df_t_side[df_t_side["saldo_pendiente"] > 1])
-    bajo_stock = len(st.session_state.df_inventario[
-        st.session_state.df_inventario["stock"] < st.session_state.df_inventario["stock_min"]
-    ])
-
-    st.markdown("<p style='color:#475569; font-size:10px; text-transform:uppercase; letter-spacing:1.5px; margin:0 0 10px 0;'>Resumen Rápido</p>", unsafe_allow_html=True)
-    c1, c2 = st.columns(2)
-    with c1:
-        st.metric("Hoy",    hoy_count)
-        st.metric("Saldos", f"{pendientes}")
-    with c2:
-        st.metric("Total",     len(df_t_side))
-        st.metric("⚠️ Stock", f"{bajo_stock}")
-
+    # ── INFO DEL USUARIO ──────────────────────────────────────
+    n_pacientes = len(st.session_state.df_pacientes)
+    n_historias = len(st.session_state.df_historias)
     st.markdown(
-        f"<p style='color:#334155; font-size:10px; margin-top:18px; text-align:center;'>"
-        f"Actualizado: {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>",
+        f"<p style='color:#475569; font-size:10px; text-transform:uppercase; letter-spacing:1.5px; margin:0 0 6px 0;'>Resumen</p>",
         unsafe_allow_html=True
     )
+    c1, c2 = st.columns(2)
+    c1.metric("Pacientes", n_pacientes)
+    c2.metric("Historias", n_historias)
 
     st.markdown("<div class='fancy-divider'></div>", unsafe_allow_html=True)
     st.markdown(
@@ -576,10 +574,9 @@ with st.sidebar:
         f"<span style='color:#475569; font-size:10px;'>{st.session_state.user_role}</span></p>",
         unsafe_allow_html=True
     )
-    if st.button("🚪 Cerrar Sesión", use_container_width=True):
-        st.session_state.logged_in = False
-        st.session_state.user_role = ""
-        st.session_state.user_name = ""
+    if st.button("Cerrar Sesion", use_container_width=True):
+        for key in ["logged_in","user_role","user_name","user_login","user_cargo","user_registro","user_telefono"]:
+            st.session_state.pop(key, None)
         st.rerun()
 
 
@@ -588,15 +585,11 @@ with st.sidebar:
 # ══════════════════════════════════════════════════════════════
 page = st.session_state.page
 
-if page == "Dashboard":
-    render_dashboard()
-elif page == "Trabajos":
-    render_trabajos()
-elif page == "Inventario":
-    render_inventario()
+if page == "Pacientes":
+    render_pacientes()
 elif page == "Clinica":
     render_clinica()
-elif page == "Pacientes":
+elif page == "Usuarios":
+    render_usuarios()
+else:
     render_pacientes()
-elif page == "CRM":
-    render_crm()
