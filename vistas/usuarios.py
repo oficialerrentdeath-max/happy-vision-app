@@ -74,12 +74,15 @@ def render_usuarios():
         is_main_admin = username == "admin"
         with st.container():
             c1, c2, c3, c4 = st.columns([2.5, 2, 2, 1.2])
+            is_active = not str(data.get("role", "")).startswith("INACTIVO:")
+            display_role = str(data.get("role", "")).replace("INACTIVO:", "")
+            
             c1.markdown(
                 f"**{data.get('nombre', username)}**  \n"
-                f"<span style='font-size:12.5px;color:#334155;font-weight:500;'>👤 `{username}` · {data.get('role','')}</span>",
+                f"<span style='font-size:12.5px;color:#334155;font-weight:500;'>👤 `{username}` · {display_role}</span>",
                 unsafe_allow_html=True
             )
-            is_active = data.get("activo", True)
+            
             if not is_active:
                 c1.markdown("<span style='background:#fee2e2;color:#b91c1c;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;'>🚫 ACCESO BLOQUEADO</span>", unsafe_allow_html=True)
             else:
@@ -105,8 +108,12 @@ def render_usuarios():
                     st.markdown(f"#### ✏️ Editando: `{username}`")
                     e1, e2 = st.columns(2)
                     en_nombre = e1.text_input("Nombre Completo", value=data.get("nombre", ""))
+                    
+                    # Limpiar rol para el selectbox
+                    raw_role = data.get("role", "Optometrista")
+                    current_clean_role = str(raw_role).replace("INACTIVO:", "")
                     en_role   = e2.selectbox("Rol", ["Optometrista", "Administrador"], 
-                                           index=0 if data.get("role")=="Optometrista" else 1)
+                                           index=0 if current_clean_role=="Optometrista" else 1)
                     
                     e3, e4 = st.columns(2)
                     en_cargo    = e3.text_input("Cargo / Título", value=data.get("cargo", ""))
@@ -115,7 +122,9 @@ def render_usuarios():
                     e5, e6, e7 = st.columns([1, 1, 1])
                     en_telefono = e5.text_input("Teléfono", value=data.get("telefono", ""))
                     en_password = e6.text_input("Nueva Contraseña", type="password", placeholder="Dejar vacío...")
-                    en_activo   = e7.checkbox("Permitir acceso al sistema", value=data.get("activo", True))
+                    
+                    is_currently_active = not str(raw_role).startswith("INACTIVO:")
+                    en_activo   = e7.checkbox("Permitir acceso al sistema", value=is_currently_active)
                     
                     st.caption("Firma (opcional - subir para reemplazar)")
                     en_firma = st.file_uploader("Nueva firma", type=["png", "jpg", "jpeg"], key=f"edit_firma_{username}")
@@ -123,11 +132,12 @@ def render_usuarios():
                     eb1, eb2 = st.columns([1, 1])
                     if eb1.form_submit_button("💾 Guardar Cambios", type="primary", use_container_width=True):
                         data["nombre"]   = en_nombre.strip()
-                        data["role"]     = en_role
+                        # Guardar estado en el mismo campo de rol
+                        data["role"]     = en_role if en_activo else f"INACTIVO:{en_role}"
                         data["cargo"]    = en_cargo.strip()
                         data["registro"] = en_registro.strip()
                         data["telefono"] = en_telefono.strip()
-                        data["activo"]   = en_activo
+                        # data["activo"] ya no es necesario como columna
                         if en_password.strip():
                             data["password"] = en_password.strip()
                         
@@ -197,12 +207,11 @@ def render_usuarios():
 
                 new_user = {
                     "password":  nu_password.strip(),
-                    "role":      nu_role,
+                    "role":      nu_role if nu_activo else f"INACTIVO:{nu_role}",
                     "nombre":    nu_nombre.strip(),
                     "cargo":     nu_cargo.strip() or "Optometrista",
                     "registro":  nu_registro.strip(),
                     "telefono":  nu_telefono.strip(),
-                    "activo":    nu_activo,
                     "firma_base64": firma_b64
                 }
                 
