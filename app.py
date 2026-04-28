@@ -64,8 +64,8 @@ html, body, [class*="css"], .stApp {
 
 /* ── Sidebar ── */
 [data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%) !important;
-    border-right: 1px solid #e2e8f0 !important;
+    background: linear-gradient(180deg, #f0f9ff 0%, #e0f2fe 100%) !important;
+    border-right: 1px solid #bae6fd !important;
 }
 [data-testid="stSidebar"] label,
 [data-testid="stSidebar"] p,
