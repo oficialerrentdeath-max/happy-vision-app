@@ -43,31 +43,34 @@ def render_pacientes():
                     st.warning("⚠️ Nombres y Apellidos son obligatorios.")
                 
                 else:
-                    # 2. Verificar duplicados de forma robusta
-                    df_p = st.session_state.df_pacientes
+                    # 2. Verificar duplicados de forma robusta (Directo en DB para máxima seguridad)
+                    from database import supabase
+                    id_limpia = id_input.strip()
                     
-                    # Normalizar IDs existentes (quitar .0 de floats y espacios)
-                    ids_existentes = df_p["identificacion"].astype(str).str.strip().str.replace(".0", "", regex=False).tolist()
-                    
-                    # Normalizar nombres completos existentes (para advertencia)
-                    nombres_existentes = df_p["nombre"].str.strip().str.lower().tolist()
+                    existe_en_db = False
+                    if id_limpia and supabase:
+                        try:
+                            # Buscamos en la base de datos si ya existe esa cédula
+                            check_db = supabase.table("pacientes").select("id, nombre").eq("identificacion", id_limpia).execute()
+                            if check_db.data:
+                                existe_en_db = True
+                                nombre_existente = check_db.data[0].get("nombre", "Desconocido")
+                        except:
+                            # Si falla la red, usamos la caché local como respaldo
+                            ids_locales = st.session_state.df_pacientes["identificacion"].astype(str).str.strip().tolist()
+                            if id_limpia in ids_locales:
+                                existe_en_db = True
+                                nombre_existente = "Caché local"
 
-                    if id_input and id_input in ids_existentes:
-                        st.error(f"🚫 ERROR: El paciente con cédula '{id_input}' ya existe en el sistema. No se puede duplicar.")
+                    if existe_en_db:
+                        st.error(f"🚫 ERROR CRÍTICO: El paciente con cédula **{id_limpia}** ya está registrado como **{nombre_existente}**. No se permiten duplicados.")
+                        st.stop()
                     
-                    elif nombre_completo_input.lower() in nombres_existentes:
-                        st.warning(f"⚠️ AVISO: Ya existe un paciente llamado '{nombre_completo_input}'. Verifica si es la misma persona antes de continuar.")
-                        # Aquí permitimos continuar si el usuario lo desea (pero con el warning), 
-                        # o podrías bloquearlo también si prefieres. Por ahora bloqueamos si la cédula coincide arriba.
-                        if st.checkbox("Confirmar que es una persona diferente con el mismo nombre"):
-                            continuar = True
-                        else:
-                            continuar = False
-                        
-                        if continuar:
-                            # Proceder a guardar
-                            pass
-                        else:
+                    # 3. Verificar nombres similares (Advertencia)
+                    nombres_existentes = st.session_state.df_pacientes["nombre"].str.strip().str.lower().tolist()
+                    if nombre_completo_input.lower() in nombres_existentes:
+                        st.warning(f"⚠️ AVISO: Ya existe un paciente con el nombre '{nombre_completo_input}'.")
+                        if not st.checkbox("Confirmar que es una persona diferente (mismo nombre, distinta cédula)", key="confirm_homonimo"):
                             st.stop()
                     
                     # 3. Guardar si todo está bien
