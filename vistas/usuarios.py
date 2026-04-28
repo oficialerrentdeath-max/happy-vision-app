@@ -76,7 +76,7 @@ def render_usuarios():
             c1, c2, c3, c4 = st.columns([2, 2, 2, 1])
             c1.markdown(
                 f"**{data.get('nombre', username)}**  \\n"
-                f"<span style='font-size:12px;color:#64748b;'>👤 `{username}` · {data.get('role','')}</span>",
+                f"<span style='font-size:12.5px;color:#334155;font-weight:500;'>👤 `{username}` · {data.get('role','')}</span>",
                 unsafe_allow_html=True
             )
             c2.caption(f"🏷️ {data.get('cargo', '—')}")

@@ -73,6 +73,19 @@ html, body, [class*="css"], .stApp {
 [data-testid="stSidebar"] div {
     color: #cbd5e1 !important;
 }
+[data-testid="stSidebar"] button {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+[data-testid="stSidebar"] button p,
+[data-testid="stSidebar"] button span {
+    color: #ffffff !important;
+    font-weight: 500 !important;
+}
+[data-testid="stSidebar"] button:hover {
+    background-color: rgba(59, 130, 246, 0.2) !important;
+    border-color: #3b82f6 !important;
+}
 [data-testid="stSidebarNav"] { display: none; }
 
 /* ── Logo Block ── */
@@ -125,8 +138,8 @@ html, body, [class*="css"], .stApp {
 }
 .page-header p {
     margin: 8px 0 0 0;
-    color: rgba(255,255,255,0.82);
-    font-size: 0.92rem;
+    color: rgba(255,255,255,0.9);
+    font-size: 0.95rem;
 }
 
 /* ── KPI Cards ── */
@@ -144,6 +157,9 @@ html, body, [class*="css"], .stApp {
     text-align: center;
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
     cursor: default;
+}
+.kpi-card p {
+    color: #e2e8f0 !important;
 }
 .kpi-card:hover {
     transform: translateY(-3px);
@@ -170,7 +186,7 @@ html, body, [class*="css"], .stApp {
     background-clip: text; line-height: 1;
 }
 .kpi-label {
-    font-size: 0.75rem; color: #64748b; margin-top: 6px;
+    font-size: 0.75rem; color: #94a3b8 !important; margin-top: 6px;
     font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;
 }
 
@@ -195,24 +211,25 @@ html, body, [class*="css"], .stApp {
 
 /* ── Section Titles ── */
 .section-title {
-    font-size: 1.1rem; font-weight: 700; color: #e2e8f0;
+    font-size: 1.25rem; font-weight: 800; color: #1e293b; /* Ajustado para modo claro */
     margin: 24px 0 14px 0; padding-bottom: 8px;
-    border-bottom: 2px solid #1e3a5f;
+    border-bottom: 2px solid #cbd5e1;
 }
 
 /* ── Divider ── */
 .fancy-divider {
     height: 1px;
-    background: linear-gradient(90deg, transparent, #334155, transparent);
+    background: linear-gradient(90deg, transparent, #94a3b8, transparent);
     margin: 20px 0;
 }
 
 /* ── Badge Status ── */
 .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-.badge-green  { background: #14532d; color: #86efac; }
-.badge-yellow { background: #713f12; color: #fde68a; }
-.badge-red    { background: #450a0a; color: #fca5a5; }
-.badge-blue   { background: #1e3a5f; color: #93c5fd; }
+.badge-green  { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+.badge-yellow { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
+.badge-red    { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+.badge-blue   { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+
 </style>
 """, unsafe_allow_html=True)
 
