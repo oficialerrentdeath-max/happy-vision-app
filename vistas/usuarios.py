@@ -168,11 +168,11 @@ def render_usuarios():
     # ── CREAR NUEVO USUARIO ────────────────────────────────────────
     st.divider()
     if not st.session_state.get("mostrando_crear_usuario", False):
-        if st.button("➕ Nuevo Optometrista", type="primary", use_container_width=True):
+        if st.button("➕ Nuevo Usuario", type="primary", use_container_width=True):
             st.session_state["mostrando_crear_usuario"] = True
             st.rerun()
     else:
-        st.markdown("<div class='section-title'>➕ Registro de Nuevo Optometrista</div>", unsafe_allow_html=True)
+        st.markdown("<div class='section-title'>➕ Registro de Nuevo Usuario</div>", unsafe_allow_html=True)
         with st.form("form_nuevo_usuario", clear_on_submit=True):
             nc1, nc2 = st.columns(2)
             nu_username = nc1.text_input("Nombre de usuario (login) *", placeholder="ej: anthonny")
