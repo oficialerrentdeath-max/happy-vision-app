@@ -116,33 +116,36 @@ html, body, [class*="css"], .stApp {
 
 /* ── Page Header ── */
 .page-header {
-    background: linear-gradient(135deg, #1d4ed8 0%, #0284c7 50%, #0ea5e9 100%);
-    border-radius: 16px;
-    padding: 28px 36px;
-    margin-bottom: 28px;
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 35px 45px;
+    margin-bottom: 35px;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 8px 32px rgba(14, 165, 233, 0.2);
+    border: 1px solid #e2e8f0;
+    border-left: 12px solid #2563eb;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.05);
 }
-.page-header::before {
+.page-header::after {
     content: "";
     position: absolute;
-    top: -40px; right: -40px;
-    width: 180px; height: 180px;
-    background: rgba(255,255,255,0.05);
+    top: -50px; right: -50px;
+    width: 200px; height: 200px;
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.05), rgba(14, 165, 233, 0.1));
     border-radius: 50%;
 }
 .page-header h1 {
     margin: 0;
-    font-size: 1.9rem;
-    font-weight: 700;
-    color: white;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.5px;
 }
 .page-header p {
-    margin: 8px 0 0 0;
-    color: rgba(255,255,255,0.9);
-    font-size: 0.95rem;
+    margin: 6px 0 0 0;
+    color: #64748b;
+    font-size: 1.05rem;
+    font-weight: 500;
 }
 
 /* ── KPI Cards ── */
