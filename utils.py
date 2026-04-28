@@ -154,7 +154,7 @@ def generate_sample_data():
 # ══════════════════════════════════════════════════════════════
 def guardar_datos():
     """Guarda los DataFrames actuales a CSV y sincroniza con Supabase."""
-    from database import guardar_todos_pacientes, guardar_todas_historias
+    from database import guardar_todos_pacientes, guardar_todas_historias, eliminar_historia
     
     if "df_pacientes" in st.session_state:
         st.session_state.df_pacientes.to_csv("pacientes.csv", index=False)

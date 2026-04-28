@@ -137,3 +137,10 @@ def guardar_todas_historias(df: pd.DataFrame):
             supabase.table("historias_clinicas").upsert(records).execute()
     except Exception as e:
         print(f"Error guardar_todas_historias: {e}")
+def eliminar_historia(h_id):
+    """Elimina permanentemente una historia de Supabase."""
+    try:
+        if not supabase: return
+        supabase.table("historias_clinicas").delete().eq("id", str(h_id)).execute()
+    except Exception as e:
+        print(f"Error eliminar_historia: {e}")

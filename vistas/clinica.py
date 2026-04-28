@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import date
 from utils import wa_link, guardar_datos, generar_pdf_historia, generar_msg_indicaciones
+from database import eliminar_historia
 
 
 def _render_lectura_historia(hrow):
@@ -239,11 +240,15 @@ def render_clinica():
                                             st.rerun()
                                     with hact2:
                                         if st.button(f"🗑️ Eliminar Historia", key=f"del_h_{h_id}", type="secondary", use_container_width=True):
+                                            # 1. Eliminar de la base de datos (Supabase)
+                                            eliminar_historia(h_id)
+                                            
+                                            # 2. Eliminar de la memoria local
                                             st.session_state.df_historias = st.session_state.df_historias[
                                                 st.session_state.df_historias["id"].astype(str) != str(h_id)
                                             ].reset_index(drop=True)
-                                            guardar_datos()
-                                            st.success("Historia eliminada.")
+                                            
+                                            st.success("Historia eliminada permanentemente.")
                                             st.rerun()
                                 else:
                                     # MODO EDICIÓN (Formulario)
