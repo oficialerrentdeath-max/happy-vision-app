@@ -78,6 +78,13 @@ def guardar_todos_pacientes(df: pd.DataFrame):
             supabase.table("pacientes").upsert(records).execute()
     except Exception as e:
         print(f"Error guardar_todos_pacientes: {e}")
+def eliminar_paciente(p_id):
+    """Elimina permanentemente un paciente de Supabase."""
+    try:
+        if not supabase: return
+        supabase.table("pacientes").delete().eq("id", str(p_id)).execute()
+    except Exception as e:
+        print(f"Error eliminar_paciente: {e}")
 
 
 # ══════════════════════════════════════════════════════════════

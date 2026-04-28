@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import date
 from utils import guardar_datos
+from database import eliminar_paciente
 
 
 def render_pacientes():
@@ -137,7 +138,7 @@ def render_pacientes():
             else:
                 display_name = str(prow.get("nombre", ""))
 
-            col_num, col_a, col_b, col_c, col_d, col_e = st.columns([0.5, 3, 2, 2, 1, 2])
+            col_num, col_a, col_b, col_c, col_d, col_e, col_f = st.columns([0.5, 3, 2, 1.8, 0.7, 1.4, 0.6])
             col_num.markdown(
                 f"<div style='text-align:center;'>"
                 f"<span style='color:#93c5fd;font-size:18px;font-weight:800;'>"
@@ -148,8 +149,20 @@ def render_pacientes():
             col_b.caption(f"ID {prow.get('identificacion','')}")
             col_c.caption(f"Tel: {prow.get('telefono','')}")
             col_d.caption(f"{n_hist} HC")
-            if col_e.button("Ver Historial", key=f"verac_{prow['id']}"):
+            if col_e.button("📋 Ver HC", key=f"verac_{prow['id']}", use_container_width=True):
                 st.session_state.page = "Clinica"
                 st.session_state["clinica_buscar"] = str(prow.get("nombre", ""))
                 st.rerun()
+            
+            with col_f:
+                if st.button("🗑️", key=f"del_p_{prow['id']}", help="Eliminar paciente permanentemente"):
+                    if n_hist > 0:
+                        st.error(f"No puedes eliminar a este paciente porque tiene {n_hist} historias clínicas. Debes borrarlas primero.")
+                    else:
+                        eliminar_paciente(prow['id'])
+                        st.session_state.df_pacientes = st.session_state.df_pacientes[
+                            st.session_state.df_pacientes["id"] != prow["id"]
+                        ]
+                        st.success("Paciente eliminado.")
+                        st.rerun()
             st.divider()
