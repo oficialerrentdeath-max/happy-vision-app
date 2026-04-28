@@ -31,13 +31,17 @@ def render_pacientes():
             np_ocu = fc8.text_input("Ocupacion")
             np_dir = fc9.text_input("Direccion")
             if st.form_submit_button("Registrar Paciente", type="primary", use_container_width=True):
-                if np_nombres.strip() and np_apellidos.strip():
+                if not np_nombres.strip() or not np_apellidos.strip():
+                    st.warning("Nombres y Apellidos son obligatorios.")
+                elif np_id.strip() and np_id.strip() in st.session_state.df_pacientes["identificacion"].astype(str).values:
+                    st.error(f"🚫 El paciente con cédula '{np_id}' ya se encuentra registrado en el sistema.")
+                else:
                     hoy = date.today()
                     edad_calc = hoy.year - np_fnac.year - ((hoy.month, hoy.day) < (np_fnac.month, np_fnac.day))
                     nombre_completo = f"{np_apellidos.strip()} {np_nombres.strip()}"
                     nuevo_p = {
                         "id": len(st.session_state.df_pacientes) + 1,
-                        "identificacion": np_id, "nombre": nombre_completo,
+                        "identificacion": np_id.strip(), "nombre": nombre_completo,
                         "nombres": np_nombres.strip(), "apellidos": np_apellidos.strip(),
                         "genero": np_gen, "edad": str(edad_calc),
                         "fecha_nacimiento": np_fnac.strftime("%Y-%m-%d"),
@@ -48,10 +52,8 @@ def render_pacientes():
                         [st.session_state.df_pacientes, pd.DataFrame([nuevo_p])], ignore_index=True
                     )
                     guardar_datos()
-                    st.success(f"Paciente {nombre_completo} registrado correctamente.")
+                    st.success(f"✅ Paciente {nombre_completo} registrado correctamente.")
                     st.rerun()
-                else:
-                    st.warning("Nombres y Apellidos son obligatorios.")
 
     st.markdown("---")
 
