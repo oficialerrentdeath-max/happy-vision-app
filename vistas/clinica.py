@@ -84,10 +84,18 @@ def render_clinica():
             for _, pac in resultados.iterrows():
                 with st.container():
                     st.markdown(f"""
-                    <div style='background:#1e293b; border-radius:10px; padding:14px 18px; margin-bottom:10px; border-left:4px solid #3b82f6;'>
-                    <b style='font-size:16px; color:#e2e8f0;'>{pac.get('nombre','')}</b>
-                    <span style='color:#475569; margin-left:12px; font-size:12px;'>
-                    🆔 {pac.get('identificacion','')} &nbsp;| 📅 {pac.get('edad','')} años &nbsp;| 📞 {pac.get('telefono','')} &nbsp;| {pac.get('genero','')}</span></div>
+                    <div style='background: #f0f9ff; border-radius: 12px; padding: 14px 20px; border: 1px solid #bae6fd; border-left: 6px solid #0284c7; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 12px;'>
+                        <div style='color: #0c4a6e; font-size: 18px; font-weight: 800; margin-bottom: 4px;'>{pac.get('nombre','').upper()}</div>
+                        <div style='color: #0369a1; font-size: 13px; font-weight: 500; display: flex; flex-wrap: wrap; gap: 12px;'>
+                            <span>🆔 <b>{pac.get('identificacion','')}</b></span>
+                            <span style='color: #94a3b8;'>|</span>
+                            <span>📅 <b>{pac.get('edad','')} años</b></span>
+                            <span style='color: #94a3b8;'>|</span>
+                            <span>📞 <b>{pac.get('telefono','')}</b></span>
+                            <span style='color: #94a3b8;'>|</span>
+                            <span>⚧️ <b>{pac.get('genero','')}</b></span>
+                        </div>
+                    </div>
                     """, unsafe_allow_html=True)
 
                     hist_pac = st.session_state.df_historias[
@@ -486,9 +494,10 @@ def render_clinica():
                 hc_badge = f"<span style='background:#1e40af;color:#bfdbfe;border-radius:4px;padding:2px 7px;font-size:11px;margin-right:6px;'>HC: {n_hist}</span>"
                 rc1, rc2, rc3, rc4, rc5 = st.columns([3, 2, 1, 1, 1])
                 rc1.markdown(
-                    f"{hc_badge}**{rp.get('nombre','')}**  \n"
-                    f"<span style='font-size:12px;color:#64748b'>🆔 {rp.get('identificacion','')} · "
-                    f"{rp.get('genero','')} · {rp.get('edad','')} años · 📞 {rp.get('telefono','')}</span>",
+                    f"{hc_badge}<span style='color: #0c4a6e; font-size: 15px; font-weight: 700;'>{rp.get('nombre','')}</span>  \n"
+                    f"<div style='font-size:12px; color:#0369a1; font-weight: 500; margin-top: 2px;'>"
+                    f"🆔 {rp.get('identificacion','')} &nbsp;•&nbsp; "
+                    f"{rp.get('genero','')} &nbsp;•&nbsp; {rp.get('edad','')} años &nbsp;•&nbsp; 📞 {rp.get('telefono','')}</div>",
                     unsafe_allow_html=True
                 )
                 with rc3:
