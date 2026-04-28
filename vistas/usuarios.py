@@ -188,12 +188,12 @@ def render_usuarios():
             nu_role     = ne2.selectbox("Rol en el sistema", ["Optometrista", "Administrador"])
             nu_activo   = ne3.checkbox("Activo (Permitir acceso)", value=True)
 
-        st.caption("Firma para el certificado PDF (opcional)")
-        nu_firma = st.file_uploader(
-            "Subir imagen de firma (PNG recomendado, fondo blanco)",
-            type=["png", "jpg", "jpeg"],
-            key="firma_upload"
-        )
+            st.caption("Firma para el certificado PDF (opcional)")
+            nu_firma = st.file_uploader(
+                "Subir imagen de firma (PNG recomendado, fondo blanco)",
+                type=["png", "jpg", "jpeg"],
+                key="firma_upload"
+            )
 
             colb1, colb2 = st.columns([1, 1])
             submitted = colb1.form_submit_button("✅ Crear Usuario", type="primary", use_container_width=True)
