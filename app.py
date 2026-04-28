@@ -64,51 +64,54 @@ html, body, [class*="css"], .stApp {
 
 /* ── Sidebar ── */
 [data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #0a0f1e 0%, #111827 60%, #0f172a 100%) !important;
-    border-right: 1px solid #1e293b !important;
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%) !important;
+    border-right: 1px solid #e2e8f0 !important;
 }
 [data-testid="stSidebar"] label,
 [data-testid="stSidebar"] p,
 [data-testid="stSidebar"] span,
 [data-testid="stSidebar"] div {
-    color: #cbd5e1 !important;
+    color: #334155 !important;
 }
 [data-testid="stSidebar"] button {
-    background-color: rgba(255, 255, 255, 0.05) !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    background-color: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
 }
 [data-testid="stSidebar"] button p,
 [data-testid="stSidebar"] button span {
-    color: #ffffff !important;
-    font-weight: 500 !important;
+    color: #1e293b !important;
+    font-weight: 600 !important;
 }
 [data-testid="stSidebar"] button:hover {
-    background-color: rgba(59, 130, 246, 0.2) !important;
+    background-color: #f1f5f9 !important;
     border-color: #3b82f6 !important;
 }
 [data-testid="stSidebarNav"] { display: none; }
 
 /* ── Logo Block ── */
 .logo-container {
-    background: linear-gradient(135deg, #0f2044, #1a3a6e);
-    border: 2px dashed #2563eb;
+    background: linear-gradient(135deg, #ffffff, #f0f9ff);
+    border: 1px solid #bae6fd;
     border-radius: 14px;
     padding: 18px 14px;
     text-align: center;
     margin-bottom: 18px;
     cursor: pointer;
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    transition: transform 0.2s ease;
 }
 .logo-container:hover {
     border-color: #3b82f6;
     box-shadow: 0 0 20px rgba(59,130,246,0.3);
 }
 .logo-hint {
-    color: #60a5fa !important;
+    color: #2563eb !important;
     font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 1.5px;
     margin: 0 0 6px 0;
+    font-weight: 700;
 }
 
 /* ── Page Header ── */
@@ -544,7 +547,7 @@ with st.sidebar:
         st.markdown("""
         <div class="logo-container">
             <p class="logo-hint">📌 Esperando el logo...</p>
-            <p style="color:#cbd5e1; font-size:12px; margin-top:8px;">
+            <p style="color:#475569; font-size:12px; margin-top:8px;">
                Guárdalo como <strong>logo.png</strong> en la carpeta del proyecto.
             </p>
         </div>
@@ -587,8 +590,8 @@ with st.sidebar:
 
     st.markdown("<div class='fancy-divider'></div>", unsafe_allow_html=True)
     st.markdown(
-        f"<p style='color:#cbd5e1; font-size:12px; text-align:center;'>👤 Hola, <b>{st.session_state.user_name}</b><br>"
-        f"<span style='color:#475569; font-size:10px;'>{st.session_state.user_role}</span></p>",
+        f"<p style='color:#1e293b; font-size:12px; text-align:center;'>👤 Hola, <b>{st.session_state.user_name}</b><br>"
+        f"<span style='color:#64748b; font-size:11px;'>{st.session_state.user_role}</span></p>",
         unsafe_allow_html=True
     )
     if st.button("Cerrar Sesion", use_container_width=True):
