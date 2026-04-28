@@ -24,13 +24,15 @@ def render_pacientes():
             np_nombres  = fc2.text_input("Nombres *")
             np_apellidos= fc3.text_input("Apellidos *")
             np_gen      = fc4.selectbox("Genero", ["Masculino", "Femenino", "Otro"])
-            fc5, fc6, fc7 = st.columns(3)
-            np_fnac = fc5.date_input("Fecha Nacimiento", value=date(1990,1,1), min_value=date(1900,1,1), max_value=date.today())
-            np_tel  = fc6.text_input("Telefono")
-            np_cor  = fc7.text_input("Correo")
-            fc8, fc9 = st.columns(2)
-            np_ocu = fc8.text_input("Ocupacion")
-            np_dir = fc9.text_input("Direccion")
+            fc5, fc6, fc7 = st.columns([1.5, 1, 1.5])
+            np_fnac = fc5.date_input("Fecha de Nacimiento", value=date(1990,1,1), min_value=date(1900,1,1), max_value=date.today(), help="Si no la conoces, usa el campo de Edad a la derecha.")
+            np_edad_input = fc6.number_input("O Edad (Años)", min_value=0, max_value=120, value=0, help="Ingresa la edad si no conoces la fecha de nacimiento.")
+            np_tel  = fc7.text_input("Telefono")
+            
+            fc8, fc9, fc10 = st.columns([1.5, 1.5, 1])
+            np_cor = fc8.text_input("Correo")
+            np_ocu = fc9.text_input("Ocupacion")
+            np_dir = fc10.text_input("Direccion")
             if st.form_submit_button("Registrar Paciente", type="primary", use_container_width=True):
                 # Limpieza de datos de entrada
                 id_input = str(np_id).strip()
@@ -76,7 +78,14 @@ def render_pacientes():
                     # 3. Guardar si todo está bien
                     df_p = st.session_state.df_pacientes
                     hoy = date.today()
-                    edad_calc = hoy.year - np_fnac.year - ((hoy.month, hoy.day) < (np_fnac.month, np_fnac.day))
+                    
+                    # Priorizar edad manual si se ingresó
+                    if np_edad_input > 0:
+                        edad_calc = np_edad_input
+                        fnac_final = "" # No hay fecha exacta
+                    else:
+                        edad_calc = hoy.year - np_fnac.year - ((hoy.month, hoy.day) < (np_fnac.month, np_fnac.day))
+                        fnac_final = np_fnac.strftime("%Y-%m-%d")
                     
                     nuevo_p = {
                         "id": int(df_p["id"].max() + 1) if not df_p.empty else 1,
@@ -86,7 +95,7 @@ def render_pacientes():
                         "apellidos": ape_input,
                         "genero": np_gen, 
                         "edad": str(edad_calc),
-                        "fecha_nacimiento": np_fnac.strftime("%Y-%m-%d"),
+                        "fecha_nacimiento": fnac_final,
                         "telefono": np_tel.strip(), 
                         "correo": np_cor.strip(),
                         "ocupacion": np_ocu.strip(), 

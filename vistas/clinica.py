@@ -189,30 +189,40 @@ def render_clinica():
                             e_gen = ec4.selectbox("Género", ["Masculino","Femenino","Otro"],
                                 index=["Masculino","Femenino","Otro"].index(pac.get("genero","Masculino"))
                                       if pac.get("genero","Masculino") in ["Masculino","Femenino","Otro"] else 0)
-                            ec5, ec6, ec7 = st.columns(3)
+                            ec5, ec6, ec7 = st.columns([1.5, 1, 1.5])
                             fnac_val  = pac.get("fecha_nacimiento", "")
                             default_d = date(1990,1,1)
                             if fnac_val and str(fnac_val) not in ("", "nan", "None", "NaT"):
                                 try: default_d = date.fromisoformat(str(fnac_val)[:10])
                                 except: pass
                             e_fnac = ec5.date_input("Fecha de Nacimiento", value=default_d, min_value=date(1900,1,1), max_value=date.today())
-                            e_tel  = ec6.text_input("Teléfono", value=str(pac.get("telefono", "")))
-                            e_mail = ec7.text_input("Correo",   value=str(pac.get("correo", "")))
-                            ec8, ec9 = st.columns(2)
-                            e_dir = ec8.text_input("Dirección", value=str(pac.get("direccion", "")))
-                            e_ocu = ec9.text_input("Ocupación", value=str(pac.get("ocupacion", "")))
+                            e_edad_manual = ec6.number_input("O Edad", min_value=0, max_value=120, value=int(pac.get("edad", 0)) if not fnac_val else 0)
+                            e_tel  = ec7.text_input("Teléfono", value=str(pac.get("telefono", "")))
+                            
+                            ec8, ec9, ec10 = st.columns([1.5, 1.5, 1])
+                            e_mail = ec8.text_input("Correo",   value=str(pac.get("correo", "")))
+                            e_dir  = ec9.text_input("Dirección", value=str(pac.get("direccion", "")))
+                            e_ocu  = ec10.text_input("Ocupación", value=str(pac.get("ocupacion", "")))
+                            
                             if st.form_submit_button("💾 Actualizar", type="primary"):
                                 idx_p = st.session_state.df_pacientes[st.session_state.df_pacientes["id"] == pac["id"]].index[0]
                                 hoy   = date.today()
-                                new_edad = hoy.year - e_fnac.year - ((hoy.month, hoy.day) < (e_fnac.month, e_fnac.day))
+                                
+                                if e_edad_manual > 0 and (not fnac_val or e_edad_manual != (hoy.year - default_d.year)):
+                                    final_edad = e_edad_manual
+                                    final_fnac = ""
+                                else:
+                                    final_edad = hoy.year - e_fnac.year - ((hoy.month, hoy.day) < (e_fnac.month, e_fnac.day))
+                                    final_fnac = e_fnac.strftime("%Y-%m-%d")
+
                                 nombre_nuevo = f"{e_ape.strip()} {e_nom.strip()}"
                                 st.session_state.df_pacientes.at[idx_p, "identificacion"]   = str(e_id)
                                 st.session_state.df_pacientes.at[idx_p, "nombre"]           = nombre_nuevo
                                 st.session_state.df_pacientes.at[idx_p, "nombres"]          = e_nom.strip()
                                 st.session_state.df_pacientes.at[idx_p, "apellidos"]        = e_ape.strip()
                                 st.session_state.df_pacientes.at[idx_p, "genero"]           = str(e_gen)
-                                st.session_state.df_pacientes.at[idx_p, "fecha_nacimiento"] = e_fnac.strftime("%Y-%m-%d")
-                                st.session_state.df_pacientes.at[idx_p, "edad"]             = str(new_edad)
+                                st.session_state.df_pacientes.at[idx_p, "fecha_nacimiento"] = final_fnac
+                                st.session_state.df_pacientes.at[idx_p, "edad"]             = str(final_edad)
                                 st.session_state.df_pacientes.at[idx_p, "telefono"]         = str(e_tel)
                                 st.session_state.df_pacientes.at[idx_p, "correo"]           = str(e_mail)
                                 st.session_state.df_pacientes.at[idx_p, "direccion"]        = str(e_dir)
