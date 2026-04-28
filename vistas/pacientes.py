@@ -31,28 +31,67 @@ def render_pacientes():
             np_ocu = fc8.text_input("Ocupacion")
             np_dir = fc9.text_input("Direccion")
             if st.form_submit_button("Registrar Paciente", type="primary", use_container_width=True):
-                if not np_nombres.strip() or not np_apellidos.strip():
-                    st.warning("Nombres y Apellidos son obligatorios.")
-                elif np_id.strip() and np_id.strip() in st.session_state.df_pacientes["identificacion"].astype(str).values:
-                    st.error(f"🚫 El paciente con cédula '{np_id}' ya se encuentra registrado en el sistema.")
+                # Limpieza de datos de entrada
+                id_input = str(np_id).strip()
+                nom_input = np_nombres.strip()
+                ape_input = np_apellidos.strip()
+                nombre_completo_input = f"{ape_input} {nom_input}"
+
+                # 1. Validaciones básicas
+                if not nom_input or not ape_input:
+                    st.warning("⚠️ Nombres y Apellidos son obligatorios.")
+                
                 else:
+                    # 2. Verificar duplicados de forma robusta
+                    df_p = st.session_state.df_pacientes
+                    
+                    # Normalizar IDs existentes (quitar .0 de floats y espacios)
+                    ids_existentes = df_p["identificacion"].astype(str).str.strip().str.replace(".0", "", regex=False).tolist()
+                    
+                    # Normalizar nombres completos existentes (para advertencia)
+                    nombres_existentes = df_p["nombre"].str.strip().str.lower().tolist()
+
+                    if id_input and id_input in ids_existentes:
+                        st.error(f"🚫 ERROR: El paciente con cédula '{id_input}' ya existe en el sistema. No se puede duplicar.")
+                    
+                    elif nombre_completo_input.lower() in nombres_existentes:
+                        st.warning(f"⚠️ AVISO: Ya existe un paciente llamado '{nombre_completo_input}'. Verifica si es la misma persona antes de continuar.")
+                        # Aquí permitimos continuar si el usuario lo desea (pero con el warning), 
+                        # o podrías bloquearlo también si prefieres. Por ahora bloqueamos si la cédula coincide arriba.
+                        if st.checkbox("Confirmar que es una persona diferente con el mismo nombre"):
+                            continuar = True
+                        else:
+                            continuar = False
+                        
+                        if continuar:
+                            # Proceder a guardar
+                            pass
+                        else:
+                            st.stop()
+                    
+                    # 3. Guardar si todo está bien
                     hoy = date.today()
                     edad_calc = hoy.year - np_fnac.year - ((hoy.month, hoy.day) < (np_fnac.month, np_fnac.day))
-                    nombre_completo = f"{np_apellidos.strip()} {np_nombres.strip()}"
+                    
                     nuevo_p = {
-                        "id": len(st.session_state.df_pacientes) + 1,
-                        "identificacion": np_id.strip(), "nombre": nombre_completo,
-                        "nombres": np_nombres.strip(), "apellidos": np_apellidos.strip(),
-                        "genero": np_gen, "edad": str(edad_calc),
+                        "id": int(df_p["id"].max() + 1) if not df_p.empty else 1,
+                        "identificacion": id_input, 
+                        "nombre": nombre_completo_input,
+                        "nombres": nom_input, 
+                        "apellidos": ape_input,
+                        "genero": np_gen, 
+                        "edad": str(edad_calc),
                         "fecha_nacimiento": np_fnac.strftime("%Y-%m-%d"),
-                        "telefono": np_tel, "correo": np_cor,
-                        "ocupacion": np_ocu, "direccion": np_dir,
+                        "telefono": np_tel.strip(), 
+                        "correo": np_cor.strip(),
+                        "ocupacion": np_ocu.strip(), 
+                        "direccion": np_dir.strip(),
                     }
                     st.session_state.df_pacientes = pd.concat(
                         [st.session_state.df_pacientes, pd.DataFrame([nuevo_p])], ignore_index=True
                     )
                     guardar_datos()
-                    st.success(f"✅ Paciente {nombre_completo} registrado correctamente.")
+                    st.success(f"✅ Paciente **{nombre_completo_input}** registrado correctamente.")
                     st.rerun()
 
     st.markdown("---")
