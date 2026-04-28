@@ -66,7 +66,71 @@ def render_usuarios():
     """, unsafe_allow_html=True)
 
     usuarios = _cargar_usuarios()
+    
+    # ── CREAR NUEVO USUARIO ────────────────────────────────────────
+    if not st.session_state.get("mostrando_crear_usuario", False):
+        if st.button("➕ Nuevo Usuario", type="primary", use_container_width=True):
+            st.session_state["mostrando_crear_usuario"] = True
+            st.rerun()
+    else:
+        st.markdown("<div class='section-title'>➕ Registro de Nuevo Usuario</div>", unsafe_allow_html=True)
+        with st.form("form_nuevo_usuario", clear_on_submit=True):
+            nc1, nc2 = st.columns(2)
+            nu_username = nc1.text_input("Nombre de usuario (login) *", placeholder="ej: anthonny")
+            nu_password = nc2.text_input("Contraseña *", type="password", placeholder="••••••••")
 
+            nd1, nd2, nd3 = st.columns(3)
+            nu_nombre   = nd1.text_input("Nombre Completo *", placeholder="Dr. Juan Pérez")
+            nu_cargo    = nd2.text_input("Cargo / Título", placeholder="Optometrista", value="Optometrista")
+            nu_registro = nd3.text_input("N° Registro Profesional", placeholder="OP-1234")
+
+            ne1, ne2, ne3 = st.columns(3)
+            nu_telefono = ne1.text_input("Teléfono", placeholder="+593 98 765 4321")
+            nu_role     = ne2.selectbox("Rol en el sistema", ["Optometrista", "Administrador"])
+            nu_activo   = ne3.checkbox("Activo (Permitir acceso)", value=True)
+
+            st.caption("Firma para el certificado PDF (opcional)")
+            nu_firma = st.file_uploader(
+                "Subir imagen de firma (PNG recomendado, fondo blanco)",
+                type=["png", "jpg", "jpeg"],
+                key="firma_upload"
+            )
+
+            colb1, colb2 = st.columns([1, 1])
+            submitted = colb1.form_submit_button("✅ Crear Usuario", type="primary", use_container_width=True)
+            if colb2.form_submit_button("❌ Cancelar", use_container_width=True):
+                st.session_state["mostrando_crear_usuario"] = False
+                st.rerun()
+
+            if submitted:
+                if not nu_username.strip() or not nu_password.strip() or not nu_nombre.strip():
+                    st.error("⚠️ Usuario, contraseña y nombre son obligatorios.")
+                elif nu_username.strip() in usuarios:
+                    st.error(f"⚠️ El usuario '{nu_username}' ya existe.")
+                else:
+                    firma_b64 = None
+                    if nu_firma is not None:
+                        try:
+                            firma_b64 = base64.b64encode(nu_firma.getvalue()).decode()
+                        except Exception as e:
+                            st.warning(f"No se pudo procesar la firma: {e}")
+
+                    new_user = {
+                        "password":  nu_password.strip(),
+                        "role":      nu_role if nu_activo else f"INACTIVO:{nu_role}",
+                        "nombre":    nu_nombre.strip(),
+                        "cargo":     nu_cargo.strip() or "Optometrista",
+                        "registro":  nu_registro.strip(),
+                        "telefono":  nu_telefono.strip(),
+                        "firma_base64": firma_b64
+                    }
+                    
+                    _guardar_usuario(nu_username.strip(), new_user)
+                    st.session_state["mostrando_crear_usuario"] = False
+                    st.success(f"✅ Usuario **{nu_nombre.strip()}** creado exitosamente.")
+                    st.rerun()
+
+    st.markdown("---")
     # ── LISTA DE USUARIOS ──────────────────────────────────────────
     st.markdown("<div class='section-title'>Usuarios registrados</div>", unsafe_allow_html=True)
 
@@ -165,66 +229,3 @@ def render_usuarios():
                         st.rerun()
             st.divider()
 
-    # ── CREAR NUEVO USUARIO ────────────────────────────────────────
-    st.divider()
-    if not st.session_state.get("mostrando_crear_usuario", False):
-        if st.button("➕ Nuevo Usuario", type="primary", use_container_width=True):
-            st.session_state["mostrando_crear_usuario"] = True
-            st.rerun()
-    else:
-        st.markdown("<div class='section-title'>➕ Registro de Nuevo Usuario</div>", unsafe_allow_html=True)
-        with st.form("form_nuevo_usuario", clear_on_submit=True):
-            nc1, nc2 = st.columns(2)
-            nu_username = nc1.text_input("Nombre de usuario (login) *", placeholder="ej: anthonny")
-            nu_password = nc2.text_input("Contraseña *", type="password", placeholder="••••••••")
-
-            nd1, nd2, nd3 = st.columns(3)
-            nu_nombre   = nd1.text_input("Nombre Completo *", placeholder="Dr. Juan Pérez")
-            nu_cargo    = nd2.text_input("Cargo / Título", placeholder="Optometrista", value="Optometrista")
-            nu_registro = nd3.text_input("N° Registro Profesional", placeholder="OP-1234")
-
-            ne1, ne2, ne3 = st.columns(3)
-            nu_telefono = ne1.text_input("Teléfono", placeholder="+593 98 765 4321")
-            nu_role     = ne2.selectbox("Rol en el sistema", ["Optometrista", "Administrador"])
-            nu_activo   = ne3.checkbox("Activo (Permitir acceso)", value=True)
-
-            st.caption("Firma para el certificado PDF (opcional)")
-            nu_firma = st.file_uploader(
-                "Subir imagen de firma (PNG recomendado, fondo blanco)",
-                type=["png", "jpg", "jpeg"],
-                key="firma_upload"
-            )
-
-            colb1, colb2 = st.columns([1, 1])
-            submitted = colb1.form_submit_button("✅ Crear Usuario", type="primary", use_container_width=True)
-            if colb2.form_submit_button("❌ Cancelar", use_container_width=True):
-                st.session_state["mostrando_crear_usuario"] = False
-                st.rerun()
-
-            if submitted:
-                if not nu_username.strip() or not nu_password.strip() or not nu_nombre.strip():
-                    st.error("⚠️ Usuario, contraseña y nombre son obligatorios.")
-                elif nu_username.strip() in usuarios:
-                    st.error(f"⚠️ El usuario '{nu_username}' ya existe.")
-                else:
-                    firma_b64 = None
-                    if nu_firma is not None:
-                        try:
-                            firma_b64 = base64.b64encode(nu_firma.getvalue()).decode()
-                        except Exception as e:
-                            st.warning(f"No se pudo procesar la firma: {e}")
-
-                    new_user = {
-                        "password":  nu_password.strip(),
-                        "role":      nu_role if nu_activo else f"INACTIVO:{nu_role}",
-                        "nombre":    nu_nombre.strip(),
-                        "cargo":     nu_cargo.strip() or "Optometrista",
-                        "registro":  nu_registro.strip(),
-                        "telefono":  nu_telefono.strip(),
-                        "firma_base64": firma_b64
-                    }
-                    
-                    _guardar_usuario(nu_username.strip(), new_user)
-                    st.session_state["mostrando_crear_usuario"] = False
-                    st.success(f"✅ Usuario **{nu_nombre.strip()}** creado exitosamente.")
-                    st.rerun()
