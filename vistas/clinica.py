@@ -4,6 +4,70 @@ from datetime import date
 from utils import wa_link, guardar_datos, generar_pdf_historia, generar_msg_indicaciones
 
 
+def _render_lectura_historia(hrow):
+    """Muestra la historia clínica en modo lectura con un diseño profesional."""
+    def _p(s, i):
+        pts = str(s).split("|") if s else []
+        return pts[i].strip() if i < len(pts) else "—"
+
+    st.markdown(f"#### 📄 Resumen de Consulta - {hrow.get('fecha','')}")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("**🎯 Motivo:**")
+        st.info(hrow.get('motivo', 'Sin motivo especificado'))
+    with col2:
+        st.markdown("**🏥 Diagnóstico:**")
+        st.success(hrow.get('diagnostico', 'Sin diagnóstico registrado'))
+
+    # Antecedentes
+    a1, a2 = st.columns(2)
+    with a1:
+        st.markdown("**👤 Antecedentes Personales:**")
+        st.write(hrow.get('ant_personales', 'Ninguno'))
+    with a2:
+        st.markdown("**👥 Antecedentes Familiares:**")
+        st.write(hrow.get('ant_familiares', 'Ninguno'))
+        
+    st.divider()
+    
+    # Lensometría y AV SC
+    st.markdown("**🔍 Lensometría (Rx en uso) y Agudeza Visual S/C**")
+    l1, l2 = st.columns(2)
+    with l1:
+        st.markdown("*Ojo Derecho (OD):*")
+        st.code(f"Rx: {_p(hrow.get('lenso_od'),0)} ESF | {_p(hrow.get('lenso_od'),1)} CYL | {_p(hrow.get('lenso_od'),2)}º | ADD: {_p(hrow.get('lenso_od'),3)}\nAV Lejos: {hrow.get('lenso_av_lej_od','—')} | AV Cerca: {hrow.get('lenso_av_cer_od','—')}")
+    with l2:
+        st.markdown("*Ojo Izquierdo (OI):*")
+        st.code(f"Rx: {_p(hrow.get('lenso_oi'),0)} ESF | {_p(hrow.get('lenso_oi'),1)} CYL | {_p(hrow.get('lenso_oi'),2)}º | ADD: {_p(hrow.get('lenso_oi'),3)}\nAV Lejos: {hrow.get('lenso_av_lej_oi','—')} | AV Cerca: {hrow.get('lenso_av_cer_oi','—')}")
+
+    # Refracción y AV CC
+    st.markdown("**✨ Refracción Final (Rx Actual) y Agudeza Visual C/C**")
+    r1, r2 = st.columns(2)
+    with r1:
+        st.markdown("*Ojo Derecho (OD):*")
+        rx_od = hrow.get('rx_od')
+        st.code(f"Rx: {_p(rx_od,0)} ESF | {_p(rx_od,1)} CYL | {_p(rx_od,2)}º | ADD: {_p(rx_od,3)}\nDNP: {_p(rx_od,4)} | ALT: {_p(rx_od,5)} | DP: {_p(rx_od,6)} | A/V: {_p(rx_od,7)}\nAV Lejos: {hrow.get('rx_av_lej_od','—')} | AV Cerca: {hrow.get('rx_av_cer_od','—')}")
+    with r2:
+        st.markdown("*Ojo Izquierdo (OI):*")
+        rx_oi = hrow.get('rx_oi')
+        st.code(f"Rx: {_p(rx_oi,0)} ESF | {_p(rx_oi,1)} CYL | {_p(rx_oi,2)}º | ADD: {_p(rx_oi,3)}\nDNP: {_p(rx_oi,4)} | ALT: {_p(rx_oi,5)} | DP: {_p(rx_oi,6)} | A/V: {_p(rx_oi,7)}\nAV Lejos: {hrow.get('rx_av_lej_oi','—')} | AV Cerca: {hrow.get('rx_av_cer_oi','—')}")
+
+    st.divider()
+    
+    # Otros datos
+    o1, o2, o3 = st.columns(3)
+    o1.markdown(f"**👓 Lentes:** {hrow.get('necesita_lentes','—')}")
+    o2.markdown(f"**🎨 Color:** {hrow.get('test_color','—')}")
+    o3.markdown(f"**📅 Próx. Control:** {hrow.get('meses_proximo_control','—')}")
+    
+    st.markdown("**📝 Observaciones:**")
+    st.write(hrow.get('observaciones', 'Sin observaciones'))
+    
+    st.markdown("**💡 Recomendaciones / Indicaciones:**")
+    st.info(hrow.get('recomendaciones', 'Sin recomendaciones'))
+
+
 def render_clinica():
     st.markdown("""
     <div class="page-header">
@@ -164,28 +228,27 @@ def render_clinica():
                         for _, hrow in hist_pac.iterrows():
                             h_id = hrow.get('id','')
                             with st.expander(f"📅 Consulta: {hrow.get('fecha','')} — {hrow.get('motivo','Sin motivo')}"):
-                                hc1, hc2 = st.columns(2)
-                                with hc1:
-                                    st.markdown("**Antecedentes**")
-                                    st.write(f"Personales: {hrow.get('ant_personales','')}")
-                                    st.write(f"Observaciones: {hrow.get('observaciones','')}")
-                                with hc2:
-                                    st.markdown("**Lensometría (AV SC)**")
-                                    st.code(f"OD: {hrow.get('lenso_od','')}  AV lej: {hrow.get('lenso_av_lej_od','')}  AV cer: {hrow.get('lenso_av_cer_od','')}\nOI: {hrow.get('lenso_oi','')}  AV lej: {hrow.get('lenso_av_lej_oi','')}  AV cer: {hrow.get('lenso_av_cer_oi','')}")
-                                    st.markdown("**Rx Final (AV CC)**")
-                                    st.code(f"OD: {hrow.get('rx_od','')}  AV lej: {hrow.get('rx_av_lej_od','')}  AV cer: {hrow.get('rx_av_cer_od','')}\nOI: {hrow.get('rx_oi','')}  AV lej: {hrow.get('rx_av_lej_oi','')}  AV cer: {hrow.get('rx_av_cer_oi','')}")
-
-                                hact1, hact2 = st.columns(2)
-                                with hact1:
-                                    if st.button(f"✏️ Editar Historia", key=f"edit_h_{h_id}"):
-                                        st.session_state[f"editando_historia_{h_id}"] = True
-                                with hact2:
-                                    if st.button(f"🗑️ Eliminar Historia", key=f"del_h_{h_id}", type="secondary"):
-                                        st.session_state.df_historias = st.session_state.df_historias[
-                                            st.session_state.df_historias["id"].astype(str) != str(h_id)
-                                        ].reset_index(drop=True)
-                                        guardar_datos()
-                                        st.success("Historia eliminada.")
+                                if not st.session_state.get(f"editando_historia_{h_id}", False):
+                                    # MODO LECTURA (Toda la historia)
+                                    _render_lectura_historia(hrow)
+                                    
+                                    hact1, hact2 = st.columns(2)
+                                    with hact1:
+                                        if st.button(f"✏️ Editar Historia", key=f"edit_h_{h_id}", use_container_width=True):
+                                            st.session_state[f"editando_historia_{h_id}"] = True
+                                            st.rerun()
+                                    with hact2:
+                                        if st.button(f"🗑️ Eliminar Historia", key=f"del_h_{h_id}", type="secondary", use_container_width=True):
+                                            st.session_state.df_historias = st.session_state.df_historias[
+                                                st.session_state.df_historias["id"].astype(str) != str(h_id)
+                                            ].reset_index(drop=True)
+                                            guardar_datos()
+                                            st.success("Historia eliminada.")
+                                            st.rerun()
+                                else:
+                                    # MODO EDICIÓN (Formulario)
+                                    if st.button("⬅️ Volver a vista de lectura", key=f"cancel_edit_{h_id}"):
+                                        st.session_state[f"editando_historia_{h_id}"] = False
                                         st.rerun()
 
                                 if st.session_state.get(f"editando_historia_{h_id}", False):
