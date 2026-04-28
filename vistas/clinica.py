@@ -105,37 +105,66 @@ def render_clinica():
             p_apellidos = c3.text_input("Apellidos *")
             p_genero    = c4.selectbox("Género", ["Masculino", "Femenino", "Otro"])
 
-            col_p4, col_p5, col_p6 = st.columns(3)
+            col_p4, col_p5, col_p6 = st.columns([1.5, 1, 1.5])
             p_fnac  = col_p4.date_input("Fecha de Nacimiento", value=date(1990,1,1), min_value=date(1900,1,1), max_value=date.today())
-            p_tel   = col_p5.text_input("Teléfono")
-            p_email = col_p6.text_input("Correo")
-            col_p7, col_p8 = st.columns(2)
-            p_dir   = col_p7.text_input("Dirección")
-            p_ocupa = col_p8.text_input("Ocupación")
+            p_edad_manual = col_p5.number_input("O Edad", min_value=0, max_value=120, value=0)
+            p_tel   = col_p6.text_input("Teléfono")
+            
+            col_p7, col_p8, col_p9 = st.columns([1.5, 1.5, 1])
+            p_email = col_p7.text_input("Correo")
+            p_dir   = col_p8.text_input("Dirección")
+            p_ocupa = col_p9.text_input("Ocupación")
 
             colbtn1, _ = st.columns([2, 1])
-            with colbtn1:
-                guardar_p = st.form_submit_button("✅ Guardar Paciente", type="primary", use_container_width=True)
-            if guardar_p:
-                if p_nombres.strip() and p_apellidos.strip():
-                    hoy = date.today()
-                    p_edad_calc = hoy.year - p_fnac.year - ((hoy.month, hoy.day) < (p_fnac.month, p_fnac.day))
-                    p_nombre_completo = f"{p_apellidos.strip()} {p_nombres.strip()}"
-                    nuevo_p = {
-                        "id": str(len(st.session_state.df_pacientes) + 1),
-                        "identificacion": str(p_id), "nombre": p_nombre_completo,
-                        "nombres": p_nombres.strip(), "apellidos": p_apellidos.strip(),
-                        "genero": p_genero, "direccion": p_dir, "edad": str(p_edad_calc),
-                        "fecha_nacimiento": p_fnac.strftime("%Y-%m-%d"),
-                        "telefono": p_tel, "correo": p_email, "ocupacion": p_ocupa,
-                    }
-                    st.session_state.df_pacientes = pd.concat([st.session_state.df_pacientes, pd.DataFrame([nuevo_p])], ignore_index=True)
-                    guardar_datos()
-                    st.success(f"✅ Paciente **{p_nombre_completo}** registrado.")
-                    st.session_state["mostrar_nuevo_p"] = False
-                    st.rerun()
-                else:
+            if colbtn1.form_submit_button("✅ Guardar Paciente", type="primary", use_container_width=True):
+                # 1. Validaciones básicas
+                id_input = str(p_id).strip()
+                nom_input = p_nombres.strip()
+                ape_input = p_apellidos.strip()
+                nombre_completo_input = f"{ape_input} {nom_input}"
+
+                if not nom_input or not ape_input:
                     st.error("⚠️ Nombres y Apellidos son obligatorios.")
+                else:
+                    # 2. Verificar duplicados (Directo en DB para máxima seguridad)
+                    from database import supabase
+                    existe_en_db = False
+                    nombre_existente = ""
+                    if id_input and supabase:
+                        try:
+                            check_db = supabase.table("pacientes").select("id, nombre").eq("identificacion", id_input).execute()
+                            if check_db.data:
+                                existe_en_db = True
+                                nombre_existente = check_db.data[0].get("nombre", "Desconocido")
+                        except:
+                            if id_input in st.session_state.df_pacientes["identificacion"].astype(str).tolist():
+                                existe_en_db = True
+                    
+                    if existe_en_db:
+                        st.error(f"🚫 ERROR: El paciente con cédula **{id_input}** ya está registrado como **{nombre_existente}**.")
+                    else:
+                        # 3. Guardar si todo está bien
+                        hoy = date.today()
+                        if p_edad_manual > 0:
+                            final_edad = p_edad_manual
+                            final_fnac = ""
+                        else:
+                            final_edad = hoy.year - p_fnac.year - ((hoy.month, hoy.day) < (p_fnac.month, p_fnac.day))
+                            final_fnac = p_fnac.strftime("%Y-%m-%d")
+
+                        nuevo_p = {
+                            "id": int(st.session_state.df_pacientes["id"].max() + 1) if not st.session_state.df_pacientes.empty else 1,
+                            "identificacion": id_input, "nombre": nombre_completo_input,
+                            "nombres": nom_input, "apellidos": ape_input,
+                            "genero": p_genero, "direccion": p_dir, "edad": str(final_edad),
+                            "fecha_nacimiento": final_fnac,
+                            "telefono": p_tel, "correo": p_email, "ocupacion": p_ocupa,
+                        }
+                        st.session_state.df_pacientes = pd.concat([st.session_state.df_pacientes, pd.DataFrame([nuevo_p])], ignore_index=True)
+                        guardar_datos()
+                        st.success(f"✅ Paciente **{nombre_completo_input}** registrado.")
+                        st.session_state["mostrar_nuevo_p"] = False
+                        st.rerun()
 
     # ── RESULTADOS DE BÚSQUEDA ────────────────────────
     if q:
