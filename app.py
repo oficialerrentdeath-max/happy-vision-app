@@ -541,7 +541,7 @@ if not st.session_state.logged_in:
 with st.sidebar:
     if os.path.exists("logo.png") or os.path.exists("logo.jpg"):
         logo_path = "logo.png" if os.path.exists("logo.png") else "logo.jpg"
-        st.markdown("<style>[data-testid='stSidebar'] img { filter: invert(1) brightness(100); mix-blend-mode: screen; padding-bottom: 10px; }</style>", unsafe_allow_html=True)
+        st.markdown("<style>[data-testid='stSidebar'] img { filter: brightness(0); padding-bottom: 10px; }</style>", unsafe_allow_html=True)
         st.image(logo_path, use_container_width=True)
     else:
         st.markdown("""
