@@ -79,6 +79,11 @@ def render_usuarios():
                 f"<span style='font-size:12.5px;color:#334155;font-weight:500;'>👤 `{username}` · {data.get('role','')}</span>",
                 unsafe_allow_html=True
             )
+            is_active = data.get("activo", True)
+            if not is_active:
+                c1.markdown("<span style='background:#fee2e2;color:#b91c1c;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;'>🚫 ACCESO BLOQUEADO</span>", unsafe_allow_html=True)
+            else:
+                c1.markdown("<span style='background:#dcfce7;color:#15803d;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;'>✅ ACTIVO</span>", unsafe_allow_html=True)
             c2.caption(f"🏷️ {data.get('cargo', '—')}")
             c3.caption(f"📋 Reg: {data.get('registro', '—')}")
             
@@ -107,9 +112,10 @@ def render_usuarios():
                     en_cargo    = e3.text_input("Cargo / Título", value=data.get("cargo", ""))
                     en_registro = e4.text_input("N° Registro Profesional", value=data.get("registro", ""))
                     
-                    e5, e6 = st.columns(2)
+                    e5, e6, e7 = st.columns([1, 1, 1])
                     en_telefono = e5.text_input("Teléfono", value=data.get("telefono", ""))
-                    en_password = e6.text_input("Nueva Contraseña (dejar vacío para no cambiar)", type="password")
+                    en_password = e6.text_input("Nueva Contraseña", type="password", placeholder="Dejar vacío...")
+                    en_activo   = e7.checkbox("Permitir acceso al sistema", value=data.get("activo", True))
                     
                     st.caption("Firma (opcional - subir para reemplazar)")
                     en_firma = st.file_uploader("Nueva firma", type=["png", "jpg", "jpeg"], key=f"edit_firma_{username}")
@@ -121,6 +127,7 @@ def render_usuarios():
                         data["cargo"]    = en_cargo.strip()
                         data["registro"] = en_registro.strip()
                         data["telefono"] = en_telefono.strip()
+                        data["activo"]   = en_activo
                         if en_password.strip():
                             data["password"] = en_password.strip()
                         
@@ -161,9 +168,10 @@ def render_usuarios():
         nu_cargo    = nd2.text_input("Cargo / Título", placeholder="Optometrista", value="Optometrista")
         nu_registro = nd3.text_input("N° Registro Profesional", placeholder="OP-1234")
 
-        ne1, ne2 = st.columns(2)
+        ne1, ne2, ne3 = st.columns(3)
         nu_telefono = ne1.text_input("Teléfono", placeholder="+593 98 765 4321")
         nu_role     = ne2.selectbox("Rol en el sistema", ["Optometrista", "Administrador"])
+        nu_activo   = ne3.checkbox("Activo (Permitir acceso)", value=True)
 
         st.caption("Firma para el certificado PDF (opcional)")
         nu_firma = st.file_uploader(
@@ -194,6 +202,7 @@ def render_usuarios():
                     "cargo":     nu_cargo.strip() or "Optometrista",
                     "registro":  nu_registro.strip(),
                     "telefono":  nu_telefono.strip(),
+                    "activo":    nu_activo,
                     "firma_base64": firma_b64
                 }
                 

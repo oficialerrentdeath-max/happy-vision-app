@@ -522,14 +522,18 @@ if not st.session_state.logged_in:
                 _usuarios_act = _cargar_usuarios()
                 if usuario in _usuarios_act and _usuarios_act[usuario]["password"] == password_inp:
                     ud = _usuarios_act[usuario]
-                    st.session_state.logged_in   = True
-                    st.session_state.user_role   = ud["role"]
-                    st.session_state.user_name   = ud.get("nombre", usuario)
-                    st.session_state.user_login  = usuario
-                    st.session_state.user_cargo  = ud.get("cargo", "Optometrista")
-                    st.session_state.user_registro = ud.get("registro", "")
-                    st.session_state.user_telefono = ud.get("telefono", "")
-                    st.rerun()
+                    
+                    if not ud.get("activo", True):
+                        st.error("🚫 Tu cuenta ha sido bloqueada. Contacta al administrador.")
+                    else:
+                        st.session_state.logged_in   = True
+                        st.session_state.user_role   = ud["role"]
+                        st.session_state.user_name   = ud.get("nombre", usuario)
+                        st.session_state.user_login  = usuario
+                        st.session_state.user_cargo  = ud.get("cargo", "Optometrista")
+                        st.session_state.user_registro = ud.get("registro", "")
+                        st.session_state.user_telefono = ud.get("telefono", "")
+                        st.rerun()
                 else:
                     st.error("Credenciales invalidas. Verifica tu usuario y contrasena.")
         
