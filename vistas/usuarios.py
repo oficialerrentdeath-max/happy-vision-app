@@ -71,56 +71,81 @@ def render_usuarios():
     st.markdown("<div class='section-title'>Usuarios registrados</div>", unsafe_allow_html=True)
 
     for username, data in usuarios.items():
-        is_admin = username == "admin"
+        is_main_admin = username == "admin"
         with st.container():
-            c1, c2, c3, c4 = st.columns([2, 2, 2, 1])
+            c1, c2, c3, c4 = st.columns([2.5, 2, 2, 1.2])
             c1.markdown(
-                f"**{data.get('nombre', username)}**  \\n"
+                f"**{data.get('nombre', username)}**  \n"
                 f"<span style='font-size:12.5px;color:#334155;font-weight:500;'>👤 `{username}` · {data.get('role','')}</span>",
                 unsafe_allow_html=True
             )
             c2.caption(f"🏷️ {data.get('cargo', '—')}")
             c3.caption(f"📋 Reg: {data.get('registro', '—')}")
+            
             with c4:
-                if not is_admin:
-                    if st.button("🗑️ Eliminar", key=f"del_usr_{username}", type="secondary"):
-                        _eliminar_usuario(username)
-                        st.success(f"Usuario '{username}' eliminado.")
-                        st.rerun()
-                else:
-                    if st.button("✏️ Editar Admin", key=f"edit_usr_{username}", type="secondary"):
-                        st.session_state[f"editando_admin"] = True
-                
-                if st.session_state.get("editando_admin") and is_admin:
-                    with st.form("edit_admin_form"):
-                        st.markdown("**Editar datos del Administrador**")
-                        ead1, ead2 = st.columns(2)
-                        en_nombre   = ead1.text_input("Nombre Completo", value=data.get("nombre", ""))
-                        en_cargo    = ead2.text_input("Cargo", value=data.get("cargo", ""))
-                        ead3, ead4 = st.columns(2)
-                        en_registro = ead3.text_input("N° Registro Professional", value=data.get("registro", ""))
-                        en_telefono = ead4.text_input("Teléfono", value=data.get("telefono", ""))
+                b1, b2 = st.columns(2)
+                with b1:
+                    if st.button("✏️", key=f"btn_edit_{username}", help="Editar datos"):
+                        st.session_state["edit_usr_target"] = username
+                with b2:
+                    if not is_main_admin:
+                        if st.button("🗑️", key=f"btn_del_{username}", help="Eliminar usuario"):
+                            _eliminar_usuario(username)
+                            st.success(f"Usuario '{username}' eliminado.")
+                            st.rerun()
+
+            # --- FORMULARIO DE EDICIÓN ---
+            if st.session_state.get("edit_usr_target") == username:
+                with st.form(f"form_edit_{username}"):
+                    st.markdown(f"#### ✏️ Editando: `{username}`")
+                    e1, e2 = st.columns(2)
+                    en_nombre = e1.text_input("Nombre Completo", value=data.get("nombre", ""))
+                    en_role   = e2.selectbox("Rol", ["Optometrista", "Administrador"], 
+                                           index=0 if data.get("role")=="Optometrista" else 1)
+                    
+                    e3, e4 = st.columns(2)
+                    en_cargo    = e3.text_input("Cargo / Título", value=data.get("cargo", ""))
+                    en_registro = e4.text_input("N° Registro Profesional", value=data.get("registro", ""))
+                    
+                    e5, e6 = st.columns(2)
+                    en_telefono = e5.text_input("Teléfono", value=data.get("telefono", ""))
+                    en_password = e6.text_input("Nueva Contraseña (dejar vacío para no cambiar)", type="password")
+                    
+                    st.caption("Firma (opcional - subir para reemplazar)")
+                    en_firma = st.file_uploader("Nueva firma", type=["png", "jpg", "jpeg"], key=f"edit_firma_{username}")
+
+                    eb1, eb2 = st.columns([1, 1])
+                    if eb1.form_submit_button("💾 Guardar Cambios", type="primary", use_container_width=True):
+                        data["nombre"]   = en_nombre.strip()
+                        data["role"]     = en_role
+                        data["cargo"]    = en_cargo.strip()
+                        data["registro"] = en_registro.strip()
+                        data["telefono"] = en_telefono.strip()
+                        if en_password.strip():
+                            data["password"] = en_password.strip()
                         
-                        ecol1, ecol2 = st.columns(2)
-                        if ecol1.form_submit_button("Guardar Cambios Admin"):
-                            data["nombre"] = en_nombre.strip()
-                            data["cargo"] = en_cargo.strip()
-                            data["registro"] = en_registro.strip()
-                            data["telefono"] = en_telefono.strip()
-                            _guardar_usuario(username, data)
-                            
-                            if st.session_state.get("user_login") == "admin":
-                                st.session_state.user_name = en_nombre.strip()
-                                st.session_state.user_cargo = en_cargo.strip()
-                                st.session_state.user_registro = en_registro.strip()
-                                st.session_state.user_telefono = en_telefono.strip()
-                                
-                            st.session_state["editando_admin"] = False
-                            st.success("Datos de Administrador actualizados.")
-                            st.rerun()
-                        if ecol2.form_submit_button("Cancelar"):
-                            st.session_state["editando_admin"] = False
-                            st.rerun()
+                        if en_firma is not None:
+                            try:
+                                data["firma_base64"] = base64.b64encode(en_firma.getvalue()).decode()
+                            except: pass
+                        
+                        _guardar_usuario(username, data)
+                        
+                        # Actualizar sesion si el editado es el actual
+                        if st.session_state.get("user_login") == username:
+                            st.session_state.user_name = data["nombre"]
+                            st.session_state.user_role = data["role"]
+                            st.session_state.user_cargo = data["cargo"]
+                            st.session_state.user_registro = data["registro"]
+                            st.session_state.user_telefono = data["telefono"]
+
+                        st.session_state["edit_usr_target"] = None
+                        st.success(f"Usuario '{username}' actualizado.")
+                        st.rerun()
+                        
+                    if eb2.form_submit_button("❌ Cancelar", use_container_width=True):
+                        st.session_state["edit_usr_target"] = None
+                        st.rerun()
             st.divider()
 
     # ── CREAR NUEVO USUARIO ────────────────────────────────────────
