@@ -74,6 +74,7 @@ def render_pacientes():
                             st.stop()
                     
                     # 3. Guardar si todo está bien
+                    df_p = st.session_state.df_pacientes
                     hoy = date.today()
                     edad_calc = hoy.year - np_fnac.year - ((hoy.month, hoy.day) < (np_fnac.month, np_fnac.day))
                     
