@@ -279,10 +279,10 @@ if "initialized_v4" not in st.session_state:
         from database import cargar_pacientes, cargar_historias, supabase
         if supabase:
             _df_pac = cargar_pacientes()
-            if len(_df_pac) > 0:
+            if len(_df_pac) > 0 and len(_df_pac) >= len(df_p):
                 df_p = _df_pac
             _df_his = cargar_historias()
-            if len(_df_his) > 0:
+            if len(_df_his) > 0 and len(_df_his) >= len(df_h):
                 df_h = _df_his
     except Exception as e:
         print(f"Error inicializando Supabase: {e}")

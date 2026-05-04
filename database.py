@@ -78,6 +78,10 @@ def guardar_todos_pacientes(df: pd.DataFrame):
             supabase.table("pacientes").upsert(records).execute()
     except Exception as e:
         print(f"Error guardar_todos_pacientes: {e}")
+        try:
+            import streamlit as st
+            st.error(f"Error guardando pacientes en la base de datos: {e}")
+        except: pass
 def eliminar_paciente(p_id):
     """Elimina permanentemente un paciente de Supabase."""
     try:
@@ -141,9 +145,13 @@ def guardar_todas_historias(df: pd.DataFrame):
         df_str = df.astype(str).replace("nan", "")
         records = df_str.to_dict(orient="records")
         if records:
-            supabase.table("historias_clinicas").upsert(records).execute()
+            res = supabase.table("historias_clinicas").upsert(records).execute()
     except Exception as e:
         print(f"Error guardar_todas_historias: {e}")
+        try:
+            import streamlit as st
+            st.error(f"Error guardando historias en la base de datos: {e}")
+        except: pass
 def eliminar_historia(h_id):
     """Elimina permanentemente una historia de Supabase."""
     try:
