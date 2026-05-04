@@ -321,9 +321,6 @@ if "initialized_v4" not in st.session_state:
     except Exception as e:
         print(f"Error inicializando Supabase: {e}")
 
-    # Indicador de versión para el usuario
-    st.sidebar.info("🚀 Sistema: v5.0 (Sincronizado)")
-
     st.session_state.df_trabajos   = df_t
     st.session_state.df_inventario = df_i
     st.session_state.df_gastos     = df_g
