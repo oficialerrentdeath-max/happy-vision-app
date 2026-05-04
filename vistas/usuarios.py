@@ -89,6 +89,14 @@ def render_usuarios():
             nu_role     = ne2.selectbox("Rol en el sistema", ["Optometrista", "Administrador"])
             nu_activo   = ne3.checkbox("Activo (Permitir acceso)", value=True)
 
+            sucursales_disponibles = ["Matriz", "Sucursal 1", "Sucursal 2"]
+            st.caption("Asignación de Sucursales")
+            nu_sucursales = st.multiselect(
+                "¿A qué sucursales tendrá acceso este usuario?",
+                options=sucursales_disponibles,
+                default=["Matriz"] if nu_role == "Optometrista" else sucursales_disponibles
+            )
+
             st.caption("Firma para el certificado PDF (opcional)")
             nu_firma = st.file_uploader(
                 "Subir imagen de firma (PNG recomendado, fondo blanco)",
@@ -122,6 +130,7 @@ def render_usuarios():
                         "cargo":     nu_cargo.strip() or "Optometrista",
                         "registro":  nu_registro.strip(),
                         "telefono":  nu_telefono.strip(),
+                        "sucursales_asignadas": nu_sucursales,
                         "firma_base64": firma_b64
                     }
                     
@@ -153,6 +162,10 @@ def render_usuarios():
                 c1.markdown("<span style='background:#dcfce7;color:#15803d;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;'>✅ ACTIVO</span>", unsafe_allow_html=True)
             c2.caption(f"🏷️ {data.get('cargo', '—')}")
             c3.caption(f"📋 Reg: {data.get('registro', '—')}")
+            
+            # Mostrar sucursales asignadas
+            sucursales_txt = ", ".join(data.get("sucursales_asignadas", ["Matriz"]))
+            st.caption(f"🏢 **Sucursales:** {sucursales_txt}")
             
             with c4:
                 b1, b2 = st.columns(2)
@@ -190,6 +203,14 @@ def render_usuarios():
                     is_currently_active = not str(raw_role).startswith("INACTIVO:")
                     en_activo   = e7.checkbox("Permitir acceso al sistema", value=is_currently_active)
                     
+                    sucursales_disponibles = ["Matriz", "Sucursal 1", "Sucursal 2"]
+                    current_sucursales = data.get("sucursales_asignadas", ["Matriz"])
+                    en_sucursales = st.multiselect(
+                        "Sucursales asignadas",
+                        options=sucursales_disponibles,
+                        default=[s for s in current_sucursales if s in sucursales_disponibles]
+                    )
+                    
                     st.caption("Firma (opcional - subir para reemplazar)")
                     en_firma = st.file_uploader("Nueva firma", type=["png", "jpg", "jpeg"], key=f"edit_firma_{username}")
 
@@ -201,7 +222,7 @@ def render_usuarios():
                         data["cargo"]    = en_cargo.strip()
                         data["registro"] = en_registro.strip()
                         data["telefono"] = en_telefono.strip()
-                        # data["activo"] ya no es necesario como columna
+                        data["sucursales_asignadas"] = en_sucursales
                         if en_password.strip():
                             data["password"] = en_password.strip()
                         

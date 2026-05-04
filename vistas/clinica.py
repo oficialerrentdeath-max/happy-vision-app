@@ -90,7 +90,12 @@ def render_clinica():
     with nuevo_col:
         mostrar_form_nuevo = st.button("➕ Nuevo Paciente", use_container_width=True, type="secondary")
 
-    df_p_all = st.session_state.df_pacientes.copy()
+    sucursal_actual = st.session_state.get("sucursal_activa", "Matriz")
+    
+    if "sucursal" in st.session_state.df_pacientes.columns:
+        df_p_all = st.session_state.df_pacientes[st.session_state.df_pacientes["sucursal"] == sucursal_actual].copy()
+    else:
+        df_p_all = st.session_state.df_pacientes.copy()
 
     # ── Formulario NUEVO PACIENTE ────────────────────────────
     if mostrar_form_nuevo:
@@ -130,18 +135,21 @@ def render_clinica():
                     from database import supabase
                     existe_en_db = False
                     nombre_existente = ""
+                    sucursal_existente = ""
                     if id_input and supabase:
                         try:
-                            check_db = supabase.table("pacientes").select("id, nombre").eq("identificacion", id_input).execute()
+                            check_db = supabase.table("pacientes").select("id, nombre, sucursal").eq("identificacion", id_input).execute()
                             if check_db.data:
                                 existe_en_db = True
                                 nombre_existente = check_db.data[0].get("nombre", "Desconocido")
+                                sucursal_existente = check_db.data[0].get("sucursal", "otra sucursal")
                         except:
                             if id_input in st.session_state.df_pacientes["identificacion"].astype(str).tolist():
                                 existe_en_db = True
+                                sucursal_existente = "Caché local"
                     
                     if existe_en_db:
-                        st.error(f"🚫 ERROR: El paciente con cédula **{id_input}** ya está registrado como **{nombre_existente}**.")
+                        st.error(f"🚫 ERROR: El paciente con cédula **{id_input}** ya está registrado como **{nombre_existente}** en **{sucursal_existente}**.")
                     else:
                         # 3. Guardar si todo está bien
                         hoy = date.today()
@@ -162,11 +170,18 @@ def render_clinica():
 
                         nuevo_p = {
                             "id": nuevo_id,
-                            "identificacion": id_input, "nombre": nombre_completo_input,
-                            "nombres": nom_input, "apellidos": ape_input,
-                            "genero": p_genero, "direccion": p_dir, "edad": str(final_edad),
+                            "identificacion": id_input,
+                            "nombre": nombre_completo_input,
+                            "nombres": nom_input,
+                            "apellidos": ape_input,
+                            "genero": p_genero,
+                            "edad": str(final_edad),
                             "fecha_nacimiento": final_fnac,
-                            "telefono": p_tel, "correo": p_email, "ocupacion": p_ocupa,
+                            "telefono": p_tel.strip(),
+                            "correo": p_email.strip(),
+                            "direccion": p_dir.strip(),
+                            "ocupacion": p_ocupa.strip(),
+                            "sucursal": sucursal_actual
                         }
                         st.session_state.df_pacientes = pd.concat([st.session_state.df_pacientes, pd.DataFrame([nuevo_p])], ignore_index=True)
                         guardar_datos()
@@ -787,6 +802,7 @@ def render_clinica():
                         "necesita_lentes": c_necesita_lentes,
                         "test_color": c_test_color,
                         "meses_proximo_control": c_proximo_control.strftime("%Y-%m-%d"),
+                        "sucursal": sucursal_actual
                     }
                     st.session_state.df_historias = pd.concat(
                         [st.session_state.df_historias, pd.DataFrame([nueva_h])], ignore_index=True

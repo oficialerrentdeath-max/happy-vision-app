@@ -337,6 +337,23 @@ def generar_pdf_historia(row: dict, paciente_info: dict, opto: dict) -> bytes:
     pdf.set_text_color(80, 80, 80)
     pdf.cell(0, 5, f"Reg.: {_s(opto.get('registro', ''))}  |  Tel.: {_s(opto.get('telefono', ''))}", ln=True, align="C")
 
+    # ─ DIRECCIÓN DE LA SUCURSAL ─────────────────────────
+    pdf.ln(1)
+    sucursal_pdf = row.get("sucursal", "Matriz")
+    if not sucursal_pdf: # Por si viene vacío
+        sucursal_pdf = "Matriz"
+        
+    DIRECCIONES_SUCURSALES = {
+        "Matriz": "Dirección Principal Matriz (Por definir)",
+        "Sucursal 1": "Dirección Sucursal 1 (Por definir)",
+        "Sucursal 2": "Dirección Sucursal 2 (Por definir)"
+    }
+    
+    dir_sucursal = DIRECCIONES_SUCURSALES.get(sucursal_pdf, "Dirección no registrada")
+    
+    pdf.set_font("Helvetica", "I", 8)
+    pdf.set_text_color(150, 150, 150)
+    pdf.cell(0, 4, f"Atendido en: {sucursal_pdf} - {dir_sucursal}", ln=True, align="C")
     buf = io.BytesIO()
     raw = pdf.output(dest='S')
     if isinstance(raw, (bytes, bytearray)):

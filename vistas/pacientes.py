@@ -13,8 +13,21 @@ def render_pacientes():
     </div>
     """, unsafe_allow_html=True)
 
-    df_p_page = st.session_state.df_pacientes.copy()
-    df_h_page = st.session_state.df_historias
+    # FILTRAR POR SUCURSAL ACTIVA
+    sucursal_actual = st.session_state.get("sucursal_activa", "Matriz")
+    
+    # Filtrar solo si no es Administrador Global "Admin"
+    # Si quisieramos que admin viera todo junto, podríamos saltar el filtro, pero para separar 
+    # la info por local es mejor que el admin también trabaje en una sucursal a la vez.
+    if "sucursal" in st.session_state.df_pacientes.columns:
+        df_p_page = st.session_state.df_pacientes[st.session_state.df_pacientes["sucursal"] == sucursal_actual].copy()
+    else:
+        df_p_page = st.session_state.df_pacientes.copy()
+        
+    if "sucursal" in st.session_state.df_historias.columns:
+        df_h_page = st.session_state.df_historias[st.session_state.df_historias["sucursal"] == sucursal_actual].copy()
+    else:
+        df_h_page = st.session_state.df_historias.copy()
 
     # ── FORMULARIO AGREGAR PACIENTE (arriba del listado) ──────────────
     with st.expander("➕ Agregar Nuevo Paciente", expanded=False):
@@ -52,26 +65,28 @@ def render_pacientes():
                     existe_en_db = False
                     if id_limpia and supabase:
                         try:
-                            # Buscamos en la base de datos si ya existe esa cédula
-                            check_db = supabase.table("pacientes").select("id, nombre").eq("identificacion", id_limpia).execute()
+                            # Buscamos en la base de datos si ya existe esa cédula EN CUALQUIER SUCURSAL
+                            check_db = supabase.table("pacientes").select("id, nombre, sucursal").eq("identificacion", id_limpia).execute()
                             if check_db.data:
                                 existe_en_db = True
                                 nombre_existente = check_db.data[0].get("nombre", "Desconocido")
+                                sucursal_existente = check_db.data[0].get("sucursal", "otra sucursal")
                         except:
                             # Si falla la red, usamos la caché local como respaldo
                             ids_locales = st.session_state.df_pacientes["identificacion"].astype(str).str.strip().tolist()
                             if id_limpia in ids_locales:
                                 existe_en_db = True
                                 nombre_existente = "Caché local"
+                                sucursal_existente = "Desconocida"
 
                     if existe_en_db:
-                        st.error(f"🚫 ERROR CRÍTICO: El paciente con cédula **{id_limpia}** ya está registrado como **{nombre_existente}**. No se permiten duplicados.")
+                        st.error(f"🚫 ERROR CRÍTICO: El paciente con cédula **{id_limpia}** ya está registrado como **{nombre_existente}** en la **{sucursal_existente}**. No se permiten duplicados.")
                         st.stop()
                     
                     # 3. Verificar nombres similares (Advertencia)
-                    nombres_existentes = st.session_state.df_pacientes["nombre"].str.strip().str.lower().tolist()
+                    nombres_existentes = df_p_page["nombre"].str.strip().str.lower().tolist()
                     if nombre_completo_input.lower() in nombres_existentes:
-                        st.warning(f"⚠️ AVISO: Ya existe un paciente con el nombre '{nombre_completo_input}'.")
+                        st.warning(f"⚠️ AVISO: Ya existe un paciente con el nombre '{nombre_completo_input}' en esta sucursal.")
                         if not st.checkbox("Confirmar que es una persona diferente (mismo nombre, distinta cédula)", key="confirm_homonimo"):
                             st.stop()
                     
@@ -107,6 +122,7 @@ def render_pacientes():
                         "correo": np_cor.strip(),
                         "ocupacion": np_ocu.strip(), 
                         "direccion": np_dir.strip(),
+                        "sucursal": sucursal_actual
                     }
                     st.session_state.df_pacientes = pd.concat(
                         [st.session_state.df_pacientes, pd.DataFrame([nuevo_p])], ignore_index=True

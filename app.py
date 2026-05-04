@@ -571,15 +571,41 @@ if not st.session_state.logged_in:
                         st.session_state.user_cargo  = ud.get("cargo", "Optometrista")
                         st.session_state.user_registro = ud.get("registro", "")
                         st.session_state.user_telefono = ud.get("telefono", "")
+                        
+                        # Manejo de sucursales
+                        assigned_branches = ud.get("sucursales_asignadas", ["Matriz"])
+                        st.session_state.sucursales_asignadas = assigned_branches
+                        
+                        if len(assigned_branches) == 1:
+                            st.session_state.sucursal_activa = assigned_branches[0]
+                        else:
+                            st.session_state.sucursal_activa = None
+                            
                         st.rerun()
                 else:
                     st.error("Credenciales invalidas. Verifica tu usuario y contrasena.")
         
         st.markdown('</div>', unsafe_allow_html=True)
-        
         st.markdown('<p class="footer-note">© 2024 Happy Vision Integral System</p>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
+    st.stop()
+
+# ══════════════════════════════════════════════════════════════
+# PANTALLA DE SELECCIÓN DE SUCURSAL
+# ══════════════════════════════════════════════════════════════
+if st.session_state.get("logged_in") and not st.session_state.get("sucursal_activa"):
+    st.markdown("<h2 style='text-align: center; margin-top: 10vh;'>🏢 Seleccionar Sucursal de Trabajo</h2>", unsafe_allow_html=True)
+    
+    sucursales = st.session_state.get("sucursales_asignadas", ["Matriz"])
+    
+    _, col_mid, _ = st.columns([1, 1, 1])
+    with col_mid:
+        with st.form("branch_selector"):
+            selected_branch = st.selectbox("¿En qué sucursal estás trabajando hoy?", options=sucursales)
+            if st.form_submit_button("Entrar al Sistema", type="primary", use_container_width=True):
+                st.session_state.sucursal_activa = selected_branch
+                st.rerun()
     st.stop()
 
 
@@ -638,8 +664,9 @@ with st.sidebar:
 
     st.markdown("<div class='fancy-divider'></div>", unsafe_allow_html=True)
     st.markdown(
-        f"<p style='color:#1e293b; font-size:12px; text-align:center;'>👤 Hola, <b>{st.session_state.user_name}</b><br>"
-        f"<span style='color:#64748b; font-size:11px;'>{st.session_state.user_role}</span></p>",
+        f"<p style='color:#1e293b; font-size:12px; text-align:center;'>👋 Hola, <b>{st.session_state.user_name}</b><br>"
+        f"<span style='color:#64748b; font-size:11px;'>{st.session_state.user_role}</span><br>"
+        f"<span style='color:#0ea5e9; font-size:11px; font-weight: bold;'>🏢 {st.session_state.get('sucursal_activa', '')}</span></p>",
         unsafe_allow_html=True
     )
     if st.button("Cerrar Sesion", use_container_width=True):

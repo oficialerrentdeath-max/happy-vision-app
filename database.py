@@ -92,7 +92,7 @@ def eliminar_paciente(p_id):
 
 PACIENTES_COLS = [
     "id", "identificacion", "nombre", "nombres", "apellidos", "genero", 
-    "direccion", "edad", "fecha_nacimiento", "telefono", "correo", "ocupacion"
+    "direccion", "edad", "fecha_nacimiento", "telefono", "correo", "ocupacion", "sucursal"
 ]
 
 HISTORIAS_COLS = [
@@ -104,7 +104,7 @@ HISTORIAS_COLS = [
     "rx_oi", "rx_av_lej_oi", "rx_av_cer_oi",
     "estado_muscular", "seg_externo", "test_colores", "estado_refractivo",
     "diagnostico", "disposicion", "recomendaciones",
-    "meses_proximo_control", "necesita_lentes", "test_color"
+    "meses_proximo_control", "necesita_lentes", "test_color", "sucursal"
 ]
 
 def migrar_estructuras():
@@ -116,7 +116,12 @@ def migrar_estructuras():
             df_p = st.session_state.df_pacientes
             for col in PACIENTES_COLS:
                 if col not in df_p.columns:
-                    df_p[col] = ""
+                    # Asignar 'Matriz' a pacientes antiguos si no tienen sucursal
+                    df_p[col] = "Matriz" if col == "sucursal" else ""
+            
+            # Limpiar sucursales vacías que pudieran haber quedado
+            df_p.loc[df_p['sucursal'] == '', 'sucursal'] = 'Matriz'
+            df_p.loc[df_p['sucursal'].isna(), 'sucursal'] = 'Matriz'
             st.session_state.df_pacientes = df_p[PACIENTES_COLS]
         
         # 2. Migrar Historias
@@ -124,7 +129,12 @@ def migrar_estructuras():
             df_h = st.session_state.df_historias
             for col in HISTORIAS_COLS:
                 if col not in df_h.columns:
-                    df_h[col] = ""
+                    # Asignar 'Matriz' a historias antiguas
+                    df_h[col] = "Matriz" if col == "sucursal" else ""
+            
+            # Limpiar sucursales vacías que pudieran haber quedado
+            df_h.loc[df_h['sucursal'] == '', 'sucursal'] = 'Matriz'
+            df_h.loc[df_h['sucursal'].isna(), 'sucursal'] = 'Matriz'
             st.session_state.df_historias = df_h[HISTORIAS_COLS]
             
         print("Migración de estructuras completada exitosamente.")
