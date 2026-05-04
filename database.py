@@ -147,10 +147,11 @@ def guardar_todas_historias(df: pd.DataFrame):
         if records:
             res = supabase.table("historias_clinicas").upsert(records).execute()
     except Exception as e:
-        print(f"Error guardar_todas_historias: {e}")
+        import traceback
+        err_detail = traceback.format_exc()
         try:
             import streamlit as st
-            st.session_state["db_error"] = f"Error guardando historias en la base de datos: {e}"
+            st.session_state["db_error"] = f"🔥 ERROR CRÍTICO SUPABASE: {str(e)}\n\nDetalle técnico:\n{err_detail}"
         except: pass
 def eliminar_historia(h_id):
     """Elimina permanentemente una historia de Supabase."""
