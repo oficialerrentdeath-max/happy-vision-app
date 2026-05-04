@@ -499,7 +499,7 @@ def generar_pdf_historia(row: dict, paciente_info: dict, opto: dict) -> bytes:
         pdf.ln(1)
 
     # ─ RECOMENDACIONES ────────────────────────────────────────────────
-    rec_raw = row.get("recomendaciones", "") or row.get("disposicion", "")
+    rec_raw = row.get("recomendaciones", "")
     rec = _s(_clean(rec_raw))
     if rec:
         pdf.set_font("Helvetica", "B", 10)
