@@ -322,8 +322,8 @@ def generar_pdf_historia(row: dict, paciente_info: dict, opto: dict) -> bytes:
     pdf.line(18, pdf.get_y(), 192, pdf.get_y())
     pdf.ln(6)
     pdf.set_font("Helvetica", "B", 20)
-    pdf.set_text_color(30, 30, 30)
-    pdf.cell(0, 12, "CERTIFICADO VISUAL", ln=True, align="C")
+    pdf.set_text_color(0, 100, 200)
+    pdf.cell(0, 12, "CERTIFICADO VISUAL v6.0", ln=True, align="C")
     pdf.ln(3)
 
     # ─ DATOS PACIENTE ──────────────────────────────────
@@ -572,7 +572,7 @@ def generar_pdf_historia(row: dict, paciente_info: dict, opto: dict) -> bytes:
     pdf.set_font("Helvetica", "I", 7)
     pdf.set_text_color(180, 180, 180)
     fecha_hoy = datetime.now().strftime("%d/%m/%Y %H:%M")
-    pdf.cell(0, 4, f"v5.0 - Sincronizado | Impreso el: {fecha_hoy} | Happy Vision", align="C")
+    pdf.cell(0, 4, f"v6.0 - ULTRASYNC | Impreso el: {fecha_hoy} | Happy Vision", align="C")
 
     # Retornar bytes de forma compatible
     raw = pdf.output(dest='S')
