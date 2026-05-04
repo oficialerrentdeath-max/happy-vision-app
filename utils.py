@@ -558,22 +558,22 @@ def generar_pdf_historia(row: dict, paciente_info: dict, opto: dict) -> bytes:
             pass
 
     y_linea = y_firma + 17
-    pdf.set_y(y_linea)
-    pdf.set_draw_color(80, 80, 80)
-    pdf.set_line_width(0.4)
-    pdf.line(65, pdf.get_y(), 145, pdf.get_y())
-    pdf.ln(2)
-    pdf.set_font("Helvetica", "B", 10)
-    pdf.set_text_color(30, 30, 30)
-    pdf.cell(0, 5, _s(opto.get("nombre", "")), ln=True, align="C")
-    pdf.cell(0, 5, _s(opto.get("cargo", "OPTOMETRA")).upper(), ln=True, align="C")
-    pdf.set_font("Helvetica", "", 9)
-    pdf.set_text_color(80, 80, 80)
-    pdf.cell(0, 5, f"Reg.: {_s(opto.get('registro', ''))}  |  Tel.: {_s(opto.get('telefono', ''))}", ln=True, align="C")
+    pdf.set_draw_color(200, 200, 200)
+    pdf.line(60, y_linea, 150, y_linea)
+    
+    pdf.set_y(y_linea + 1)
+    pdf.set_font("Helvetica", "B", 9)
+    pdf.cell(0, 4, _s(opto.get("nombre", "Optometrista Responsable")), ln=True, align="C")
+    pdf.set_font("Helvetica", "", 8)
+    pdf.cell(0, 4, f"{_s(opto.get('cargo',''))} | Registro: {opto.get('registro','')}", ln=True, align="C")
+    
+    # SELLO DE VERSION Y FECHA DE IMPRESION
+    pdf.set_y(285)
+    pdf.set_font("Helvetica", "I", 7)
+    pdf.set_text_color(180, 180, 180)
+    fecha_hoy = datetime.now().strftime("%d/%m/%Y %H:%M")
+    pdf.cell(0, 4, f"v5.0 - Sincronizado | Impreso el: {fecha_hoy} | Happy Vision", align="C")
 
-    buf = io.BytesIO()
+    # Retornar bytes de forma compatible
     raw = pdf.output(dest='S')
-    if isinstance(raw, (bytes, bytearray)):
-        return bytes(raw)
-    buf.write(raw.encode("latin-1") if isinstance(raw, str) else bytes(raw))
-    return buf.getvalue()
+    return raw.encode('latin-1') if isinstance(raw, str) else bytes(raw)
