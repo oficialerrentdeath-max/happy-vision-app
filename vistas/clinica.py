@@ -152,8 +152,16 @@ def render_clinica():
                             final_edad = hoy.year - p_fnac.year - ((hoy.month, hoy.day) < (p_fnac.month, p_fnac.day))
                             final_fnac = p_fnac.strftime("%Y-%m-%d")
 
+                        # Calcular ID de forma segura
+                        df_p_current = st.session_state.df_pacientes
+                        if not df_p_current.empty and "id" in df_p_current.columns:
+                            max_id = pd.to_numeric(df_p_current["id"], errors="coerce").max()
+                            nuevo_id = int(max_id + 1) if pd.notna(max_id) else 1
+                        else:
+                            nuevo_id = 1
+
                         nuevo_p = {
-                            "id": int(st.session_state.df_pacientes["id"].max() + 1) if not st.session_state.df_pacientes.empty else 1,
+                            "id": nuevo_id,
                             "identificacion": id_input, "nombre": nombre_completo_input,
                             "nombres": nom_input, "apellidos": ape_input,
                             "genero": p_genero, "direccion": p_dir, "edad": str(final_edad),
@@ -762,8 +770,16 @@ def render_clinica():
                 p_match = st.session_state.df_pacientes[st.session_state.df_pacientes["nombre"] == c_pac_sel]
                 if len(p_match) > 0:
                     p_id_match = p_match.iloc[0]["id"]
+                    # Calcular nuevo ID de historia de forma segura
+                    df_h_current = st.session_state.df_historias
+                    if not df_h_current.empty and "id" in df_h_current.columns:
+                        max_h_id = pd.to_numeric(df_h_current["id"], errors="coerce").max()
+                        nueva_h_id = int(max_h_id + 1) if pd.notna(max_h_id) else 1
+                    else:
+                        nueva_h_id = 1
+
                     nueva_h = {
-                        "id": len(st.session_state.df_historias) + 1,
+                        "id": nueva_h_id,
                         "paciente_id": p_id_match, "paciente_nombre": c_pac_sel,
                         "fecha": c_fecha.strftime("%Y-%m-%d"),
                         "ant_personales": c_ant_per, "ant_familiares": c_ant_fam, "motivo": c_motivo,

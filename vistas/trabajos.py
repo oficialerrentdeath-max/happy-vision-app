@@ -73,8 +73,16 @@ def render_trabajos():
                 elif abono > precio_total:
                     st.error("⚠️ El abono no puede superar el precio total.")
                 else:
+                    # Calcular nuevo ID de trabajo de forma segura
+                    df_t_current = st.session_state.df_trabajos
+                    if not df_t_current.empty and "id" in df_t_current.columns:
+                        max_t_id = pd.to_numeric(df_t_current["id"], errors="coerce").max()
+                        nuevo_t_id = int(max_t_id + 1) if pd.notna(max_t_id) else 1
+                    else:
+                        nuevo_t_id = 1
+
                     new_row = {
-                        "id":              len(st.session_state.df_trabajos) + 1,
+                        "id":              nuevo_t_id,
                         "fecha":           fecha.strftime("%Y-%m-%d"),
                         "paciente":        paciente.strip(),
                         "tipo_lente":      tipo_lente,
