@@ -290,11 +290,24 @@ if "initialized_v4" not in st.session_state:
         from database import cargar_pacientes, cargar_historias, supabase
         if supabase:
             _df_pac = cargar_pacientes()
-            if len(_df_pac) > 0 and len(_df_pac) >= len(df_p):
-                df_p = _df_pac
+            if len(_df_pac) > 0:
+                # Solo sobrescribir si Supabase tiene más o igual datos y el local no tiene columnas nuevas
+                if len(_df_pac) > len(df_p) or ("nombres" in _df_pac.columns and len(_df_pac) == len(df_p)):
+                    df_p = _df_pac
+
             _df_his = cargar_historias()
-            if len(_df_his) > 0 and len(_df_his) >= len(df_h):
-                df_h = _df_his
+            if len(_df_his) > 0:
+                # Verificar si Supabase tiene la columna nueva llena. Si el CSV local la tiene y Supabase no, priorizar CSV.
+                supa_has_data = "meses_proximo_control" in _df_his.columns and not _df_his["meses_proximo_control"].replace("", pd.NA).isna().all()
+                local_has_data = "meses_proximo_control" in df_h.columns and not df_h["meses_proximo_control"].replace("", pd.NA).isna().all()
+                
+                if len(_df_his) > len(df_h):
+                    df_h = _df_his
+                elif len(_df_his) == len(df_h):
+                    if local_has_data and not supa_has_data:
+                        pass # Mantener CSV local porque tiene la fecha de control que Supabase perdió
+                    else:
+                        df_h = _df_his
     except Exception as e:
         print(f"Error inicializando Supabase: {e}")
 
