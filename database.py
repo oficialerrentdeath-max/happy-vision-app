@@ -166,10 +166,15 @@ def guardar_historia(row: dict):
 def guardar_todas_historias(df: pd.DataFrame):
     try:
         if not supabase: return
-        df_str = df.astype(str).replace("nan", "")
-        records = df_str.to_dict(orient="records")
+        # Asegurar limpieza total de NaNs y conversión a strings
+        df_limpio = df.copy().fillna("")
+        records = []
+        for _, row in df_limpio.iterrows():
+            rec = {str(k): (str(v) if not pd.isna(v) and str(v).lower() != "nan" else "") for k, v in row.to_dict().items()}
+            records.append(rec)
+            
         if records:
-            res = supabase.table("historias_clinicas").upsert(records).execute()
+            supabase.table("historias_clinicas").upsert(records).execute()
     except Exception as e:
         import traceback
         err_detail = traceback.format_exc()
