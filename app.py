@@ -21,6 +21,15 @@ from vistas.usuarios  import render_usuarios
 
 
 # ══════════════════════════════════════════════════════════════
+# MOSTRAR ERRORES GLOBALES DE BASE DE DATOS
+# ══════════════════════════════════════════════════════════════
+def mostrar_error_db():
+    if "db_error" in st.session_state:
+        st.error("🚨 **ALERTA CRÍTICA DE BASE DE DATOS** 🚨\n\n" + st.session_state.db_error)
+        del st.session_state["db_error"]
+
+
+# ══════════════════════════════════════════════════════════════
 # CARGA DE USUARIOS DESDE ARCHIVO
 # ══════════════════════════════════════════════════════════════
 def _cargar_usuarios() -> dict:
@@ -50,6 +59,8 @@ st.set_page_config(
         "About": "Happy Vision · Sistema de Gestión Integral v2.0",
     }
 )
+
+mostrar_error_db()
 
 # ══════════════════════════════════════════════════════════════
 # ESTILOS CSS PERSONALIZADOS
