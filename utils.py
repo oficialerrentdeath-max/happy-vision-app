@@ -488,25 +488,27 @@ def generar_pdf_historia(row: dict, paciente_info: dict, opto: dict) -> bytes:
 
     pdf.ln(2)
 
-    # ─ DISPOSICION / OBSERVACIONES ───────────────────────────────────
-    disp_raw = row.get("disposicion", "") or row.get("recomendaciones", "")
-    disp = _s(_clean(disp_raw))
-    if disp:
-        pdf.set_font("Helvetica", "B", 10)
-        pdf.cell(30, 7, "DISPOSICION:", ln=False)
-        pdf.set_font("Helvetica", "", 10)
-        pdf.multi_cell(0, 6, disp)
-        pdf.ln(2)
-
+    # ─ OBSERVACIONES ──────────────────────────────────────────────────
     obs_raw = row.get("observaciones", "")
     obs = _s(_clean(obs_raw))
     if obs:
         pdf.set_font("Helvetica", "B", 10)
+        pdf.cell(42, 7, "OBSERVACIONES:", ln=False)
+        pdf.set_font("Helvetica", "", 10)
+        pdf.multi_cell(0, 7, obs)
+        pdf.ln(1)
+
+    # ─ RECOMENDACIONES ────────────────────────────────────────────────
+    rec_raw = row.get("recomendaciones", "") or row.get("disposicion", "")
+    rec = _s(_clean(rec_raw))
+    if rec:
+        pdf.set_font("Helvetica", "B", 10)
         pdf.cell(42, 7, "RECOMENDACIONES:", ln=False)
         pdf.set_font("Helvetica", "", 10)
-        pdf.multi_cell(0, 6, obs)
-        pdf.ln(2)
+        pdf.multi_cell(0, 7, rec)
+        pdf.ln(1)
 
+    # ─ PROXIMO CONTROL ───────────────────────────────────────────────
     proximo_control_raw = row.get("meses_proximo_control", "")
     proximo_control = _s(_clean(proximo_control_raw))
     
@@ -515,7 +517,7 @@ def generar_pdf_historia(row: dict, paciente_info: dict, opto: dict) -> bytes:
     
     if proximo_control:
         pdf.set_font("Helvetica", "B", 10)
-        pdf.set_text_color(0, 100, 200) # Azulito
+        pdf.set_text_color(0, 100, 200) # Azulito destacado
         pdf.multi_cell(0, 7, proximo_control)
     else:
         pdf.set_font("Helvetica", "I", 10)
