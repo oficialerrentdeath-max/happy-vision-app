@@ -87,8 +87,15 @@ def render_pacientes():
                         edad_calc = hoy.year - np_fnac.year - ((hoy.month, hoy.day) < (np_fnac.month, np_fnac.day))
                         fnac_final = np_fnac.strftime("%Y-%m-%d")
                     
+                    # Calcular el nuevo ID de forma segura
+                    if not df_p.empty and "id" in df_p.columns:
+                        max_id = pd.to_numeric(df_p["id"], errors="coerce").max()
+                        nuevo_id = int(max_id + 1) if pd.notna(max_id) else 1
+                    else:
+                        nuevo_id = 1
+
                     nuevo_p = {
-                        "id": int(df_p["id"].max() + 1) if not df_p.empty else 1,
+                        "id": nuevo_id,
                         "identificacion": id_input, 
                         "nombre": nombre_completo_input,
                         "nombres": nom_input, 
