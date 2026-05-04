@@ -507,6 +507,17 @@ def generar_pdf_historia(row: dict, paciente_info: dict, opto: dict) -> bytes:
         pdf.multi_cell(0, 6, obs)
         pdf.ln(2)
 
+    proximo_control_raw = row.get("meses_proximo_control", "")
+    proximo_control = _s(_clean(proximo_control_raw))
+    if proximo_control:
+        pdf.set_font("Helvetica", "B", 10)
+        pdf.cell(42, 7, "PROXIMO CONTROL:", ln=False)
+        pdf.set_font("Helvetica", "B", 10)
+        pdf.set_text_color(0, 100, 200) # Un color azulito para destacar
+        pdf.multi_cell(0, 7, proximo_control)
+        pdf.set_text_color(30, 30, 30) # Volver al color base
+        pdf.ln(2)
+
     # ─ FIRMA Y PIE DE PÁGINA (posición dinámica) ──────────────────────
     firma_path = f"firma_{opto.get('username','')}.png"
     if opto.get("firma_base64"):
