@@ -518,11 +518,11 @@ def generar_pdf_historia(row: dict, paciente_info: dict, opto: dict) -> bytes:
     if proximo_control:
         pdf.set_font("Helvetica", "B", 10)
         pdf.set_text_color(0, 100, 200) # Azulito destacado
-        pdf.multi_cell(0, 7, proximo_control)
+        pdf.multi_cell(0, 7, f"CONTROL EN: {proximo_control}")
     else:
         pdf.set_font("Helvetica", "I", 10)
-        pdf.set_text_color(150, 150, 150) # Gris
-        pdf.multi_cell(0, 7, "No registrada en esta historia")
+        pdf.set_text_color(255, 0, 0) # Rojo para alerta
+        pdf.multi_cell(0, 7, "PROXIMO CONTROL: (No registrado - Edite la historia)")
         
     pdf.set_text_color(30, 30, 30) # Volver al color base
     pdf.ln(2)
