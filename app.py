@@ -308,6 +308,16 @@ if "initialized_v4" not in st.session_state:
                         pass # Mantener CSV local porque tiene la fecha de control que Supabase perdió
                     else:
                         df_h = _df_his
+
+        # Sincronizar estructuras (Migración)
+        from database import migrar_estructuras
+        st.session_state.df_pacientes = df_p
+        st.session_state.df_historias  = df_h
+        migrar_estructuras()
+        
+        # Guardar cambios de migración
+        guardar_datos()
+
     except Exception as e:
         print(f"Error inicializando Supabase: {e}")
 

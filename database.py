@@ -90,40 +90,65 @@ def eliminar_paciente(p_id):
     except Exception as e:
         print(f"Error eliminar_paciente: {e}")
 
+PACIENTES_COLS = [
+    "id", "identificacion", "nombre", "nombres", "apellidos", "genero", 
+    "direccion", "edad", "fecha_nacimiento", "telefono", "correo", "ocupacion"
+]
 
-# ══════════════════════════════════════════════════════════════
-# HISTORIAS CLÍNICAS
-# ══════════════════════════════════════════════════════════════
 HISTORIAS_COLS = [
     "id", "paciente_id", "paciente_nombre", "fecha",
-    "ant_personales", "ant_familiares", "motivo",
-    "diabetes", "hipertension", "patologia_otra", "observaciones",
-    "lenso_od", "lenso_av_lej_od", "lenso_av_cer_od",
+    "ant_personales", "ant_familiares", "motivo", "diabetes", "hipertension", 
+    "patologia_otra", "observaciones", "lenso_od", "lenso_av_lej_od", "lenso_av_cer_od",
     "lenso_oi", "lenso_av_lej_oi", "lenso_av_cer_oi",
     "rx_od", "rx_av_lej_od", "rx_av_cer_od",
     "rx_oi", "rx_av_lej_oi", "rx_av_cer_oi",
     "estado_muscular", "seg_externo", "test_colores", "estado_refractivo",
     "diagnostico", "disposicion", "recomendaciones",
-    "meses_proximo_control", "necesita_lentes", "test_color",
+    "meses_proximo_control", "necesita_lentes", "test_color"
 ]
+
+def migrar_estructuras():
+    """Asegura que los DataFrames locales y remotos tengan todas las columnas necesarias."""
+    try:
+        import streamlit as st
+        # 1. Migrar Pacientes
+        if "df_pacientes" in st.session_state:
+            df_p = st.session_state.df_pacientes
+            for col in PACIENTES_COLS:
+                if col not in df_p.columns:
+                    df_p[col] = ""
+            st.session_state.df_pacientes = df_p[PACIENTES_COLS]
+        
+        # 2. Migrar Historias
+        if "df_historias" in st.session_state:
+            df_h = st.session_state.df_historias
+            for col in HISTORIAS_COLS:
+                if col not in df_h.columns:
+                    df_h[col] = ""
+            st.session_state.df_historias = df_h[HISTORIAS_COLS]
+            
+        print("Migración de estructuras completada exitosamente.")
+    except Exception as e:
+        print(f"Error en migración: {e}")
+
+# ══════════════════════════════════════════════════════════════
+# HISTORIAS CLÍNICAS
+# ══════════════════════════════════════════════════════════════
 
 def cargar_historias() -> pd.DataFrame:
     """Carga todas las historias clínicas desde Supabase."""
     try:
-        if not supabase: return _empty_historias_df()
+        if not supabase: return pd.DataFrame(columns=HISTORIAS_COLS)
         response = supabase.table("historias_clinicas").select("*").execute()
-        data = response.data
-        if data:
-            df = pd.DataFrame(data).fillna("")
-            # Asegurar que las columnas existan aunque falten en DB
-            for col in HISTORIAS_COLS:
-                if col not in df.columns:
-                    df[col] = ""
-            return df[HISTORIAS_COLS]
-        return _empty_historias_df()
+        df = pd.DataFrame(response.data)
+        # Asegurar columnas tras la carga
+        for col in HISTORIAS_COLS:
+            if col not in df.columns:
+                df[col] = ""
+        return df[HISTORIAS_COLS] if not df.empty else pd.DataFrame(columns=HISTORIAS_COLS)
     except Exception as e:
         print(f"Error cargar_historias: {e}")
-        return _empty_historias_df()
+        return pd.DataFrame(columns=HISTORIAS_COLS)
 
 def _empty_historias_df() -> pd.DataFrame:
     return pd.DataFrame(columns=HISTORIAS_COLS)
@@ -139,7 +164,6 @@ def guardar_historia(row: dict):
         print(f"Error guardar_historia: {e}")
 
 def guardar_todas_historias(df: pd.DataFrame):
-    """Sincroniza el DataFrame completo de historias a Supabase."""
     try:
         if not supabase: return
         df_str = df.astype(str).replace("nan", "")
