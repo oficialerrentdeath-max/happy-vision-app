@@ -344,7 +344,7 @@ def generar_pdf_historia(row: dict, paciente_info: dict, opto: dict) -> bytes:
         sucursal_pdf = "Matriz"
         
     DIRECCIONES_SUCURSALES = {
-        "Matriz": "Dirección Principal Matriz (Por definir)",
+        "Matriz": "Isabel la Católica y Avenida Madrid",
         "Sucursal 1": "Dirección Sucursal 1 (Por definir)",
         "Sucursal 2": "Dirección Sucursal 2 (Por definir)"
     }
