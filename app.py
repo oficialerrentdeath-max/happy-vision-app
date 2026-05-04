@@ -595,17 +595,40 @@ if not st.session_state.logged_in:
 # PANTALLA DE SELECCIÓN DE SUCURSAL
 # ══════════════════════════════════════════════════════════════
 if st.session_state.get("logged_in") and not st.session_state.get("sucursal_activa"):
-    st.markdown("<h2 style='text-align: center; margin-top: 10vh;'>🏢 Seleccionar Sucursal de Trabajo</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; margin-top: 10vh; color: #1e293b; font-weight: 800;'>🏢 Selecciona tu Entorno de Trabajo</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #64748b; margin-bottom: 5vh;'>Haz clic en el cuadro de la óptica a la que deseas acceder</p>", unsafe_allow_html=True)
     
     sucursales = st.session_state.get("sucursales_asignadas", ["Matriz"])
     
-    _, col_mid, _ = st.columns([1, 1, 1])
-    with col_mid:
-        with st.form("branch_selector"):
-            selected_branch = st.selectbox("¿En qué sucursal estás trabajando hoy?", options=sucursales)
-            if st.form_submit_button("Entrar al Sistema", type="primary", use_container_width=True):
-                st.session_state.sucursal_activa = selected_branch
+    # Asegurarnos de que las columnas queden centradas si son pocas
+    if len(sucursales) == 1:
+        cols = st.columns([1, 2, 1])
+        work_cols = [cols[1]]
+    elif len(sucursales) == 2:
+        cols = st.columns([1, 2, 2, 1])
+        work_cols = [cols[1], cols[2]]
+    elif len(sucursales) == 3:
+        cols = st.columns([1, 2, 2, 2, 1])
+        work_cols = [cols[1], cols[2], cols[3]]
+    else:
+        work_cols = st.columns(len(sucursales))
+        
+    for i, sucursal in enumerate(sucursales):
+        with work_cols[i]:
+            st.markdown(f"""
+            <div style="background: white; border: 2px solid #e2e8f0; border-radius: 16px; padding: 30px 10px; text-align: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 15px;">
+                <div style="font-size: 3.5rem; margin-bottom: 10px;">
+                    {'🏛️' if sucursal == 'Matriz' else '🏬' if '1' in sucursal else '🏪'}
+                </div>
+                <h3 style="color: #0f172a; margin: 0; font-size: 1.4rem;">{sucursal}</h3>
+                <p style="color: #64748b; font-size: 0.85rem; margin-top: 5px;">Base de datos aislada</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            if st.button(f"Entrar a {sucursal}", key=f"btn_suc_{sucursal}", use_container_width=True, type="primary"):
+                st.session_state.sucursal_activa = sucursal
                 st.rerun()
+                
     st.stop()
 
 
