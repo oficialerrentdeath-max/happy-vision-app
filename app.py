@@ -266,23 +266,26 @@ if not os.path.exists(_firma_dst) and os.path.exists(_firma_src):
 if "initialized_v4" not in st.session_state:
     df_t, df_i, df_g, df_p, df_h = generate_sample_data()
 
-    # ── Cargar pacientes e historias desde SQLite (fuente principal) ──
+    # 1. Cargar desde CSV local por defecto (fallback)
+    if os.path.exists("pacientes.csv"):
+        try: df_p = pd.read_csv("pacientes.csv", dtype=str)
+        except Exception: pass
+    if os.path.exists("historias.csv"):
+        try: df_h = pd.read_csv("historias.csv", dtype=str)
+        except Exception: pass
+
+    # 2. Cargar desde Supabase (sobrescribe lo local si está configurado y hay datos)
     try:
-        from database import cargar_pacientes, cargar_historias
-        _df_pac = cargar_pacientes()
-        if len(_df_pac) > 0:
-            df_p = _df_pac
-        _df_his = cargar_historias()
-        if len(_df_his) > 0:
-            df_h = _df_his
-    except Exception:
-        # Fallback al CSV si SQLite falla
-        if os.path.exists("pacientes.csv"):
-            try: df_p = pd.read_csv("pacientes.csv", dtype=str)
-            except Exception: pass
-        if os.path.exists("historias.csv"):
-            try: df_h = pd.read_csv("historias.csv", dtype=str)
-            except Exception: pass
+        from database import cargar_pacientes, cargar_historias, supabase
+        if supabase:
+            _df_pac = cargar_pacientes()
+            if len(_df_pac) > 0:
+                df_p = _df_pac
+            _df_his = cargar_historias()
+            if len(_df_his) > 0:
+                df_h = _df_his
+    except Exception as e:
+        print(f"Error inicializando Supabase: {e}")
 
     st.session_state.df_trabajos   = df_t
     st.session_state.df_inventario = df_i
