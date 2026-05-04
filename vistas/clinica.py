@@ -516,20 +516,20 @@ def render_clinica():
                                     try:
                                         pdf_bytes = generar_pdf_historia(hrow.to_dict(), pac.to_dict(), opto_info)
                                         # Vista Previa del certificado
-                                        with st.expander("Vista Previa del Certificado", expanded=False):
+                                        with st.expander("📄 Ver Certificado Visual / Reporte", expanded=True):
                                             _b64str = _b64.b64encode(pdf_bytes).decode("utf-8")
                                             st.markdown(
-                                                f'<iframe src="data:application/pdf;base64,{_b64str}" '
-                                                f'width="100%" height="500px" style="border:none;"></iframe>',
+                                                f'<embed src="data:application/pdf;base64,{_b64str}" '
+                                                f'width="100%" height="600px" type="application/pdf">',
                                                 unsafe_allow_html=True
                                             )
                                             st.download_button(
-                                                label="Descargar PDF",
+                                                label="📥 Descargar Certificado (PDF)",
                                                 data=pdf_bytes,
-                                                file_name=f"CertificadoVisual_{pac.get('nombre','').replace(' ','_')}_{hrow.get('fecha','')}.pdf",
+                                                file_name=f"Certificado_{pac.get('nombre','').replace(' ','_')}.pdf",
                                                 mime="application/pdf",
                                                 use_container_width=True,
-                                                key=f"pdf_dl_{hrow['id']}",
+                                                key=f"pdf_dl_{hrow['id']}"
                                             )
                                         st.download_button(
                                             label="Descargar PDF",
