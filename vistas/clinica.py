@@ -514,19 +514,31 @@ def render_clinica():
                                         "telefono": _ud.get("telefono") or st.session_state.get("user_telefono") or _global_opto.get("opto_telefono", ""),
                                     }
                                     try:
-                                        pdf_bytes = generar_pdf_historia(hrow.to_dict(), pac.to_dict(), opto_info)
-                                        st.markdown("---")
-                                        st.markdown("### 📄 Certificado Visual v6.0")
-                                        st.download_button(
-                                            label="🚀 DESCARGAR CERTIFICADO VISUAL (PDF)",
-                                            data=pdf_bytes,
-                                            file_name=f"Certificado_v6_{pac.get('nombre','').replace(' ','_')}.pdf",
-                                            mime="application/pdf",
-                                            use_container_width=True,
-                                            type="primary",
-                                            key=f"pdf_v6_{hrow['id']}"
-                                        )
-                                        st.caption("Si el PDF no abre al descargar, intenta desde una ventana de incógnito.")
+                                        # INSPECTOR DE DATOS (DEBUG)
+                                        _debug_row = hrow.to_dict()
+                                        st.code(f"DEBUG: Llaves encontradas: {list(_debug_row.keys())}", language="python")
+                                        if "meses_proximo_control" in _debug_row:
+                                            st.success(f"✅ Dato detectado en UI: {_debug_row['meses_proximo_control']}")
+                                        else:
+                                            st.error("❌ Dato 'meses_proximo_control' NO encontrado en la fila.")
+
+                                        pdf_bytes = generar_pdf_historia(_debug_row, pac.to_dict(), opto_info)
+                                        # Vista Previa del certificado
+                                        with st.expander("📄 Ver Certificado Visual / Reporte", expanded=True):
+                                            _b64str = _b64.b64encode(pdf_bytes).decode("utf-8")
+                                            st.markdown(
+                                                f'<embed src="data:application/pdf;base64,{_b64str}" '
+                                                f'width="100%" height="600px" type="application/pdf">',
+                                                unsafe_allow_html=True
+                                            )
+                                            st.download_button(
+                                                label="📥 Descargar Certificado (PDF)",
+                                                data=pdf_bytes,
+                                                file_name=f"Certificado_{pac.get('nombre','').replace(' ','_')}.pdf",
+                                                mime="application/pdf",
+                                                use_container_width=True,
+                                                key=f"pdf_dl_{hrow['id']}"
+                                            )
                                     except Exception as e:
                                         st.error(f"Error PDF: {e}")
 
