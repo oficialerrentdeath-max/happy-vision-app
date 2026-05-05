@@ -72,8 +72,8 @@ def _render_lectura_historia(hrow):
 def render_clinica():
     st.markdown("""
     <div class="page-header">
-        <h1>🩺 Historias Clínicas</h1>
-        <p>Registro y seguimiento de evaluaciones optométricas de cada paciente</p>
+        <h1>👥 Pacientes</h1>
+        <p>Directorio de pacientes, historial clínico y gestión de consultas</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -639,45 +639,56 @@ def render_clinica():
                                     st.error(f"⚠️ Error generando PDF: {e}")
 
     elif not q:
-        st.info("🔍 Escribe el nombre o cédula en el buscador. Si es nuevo, usa ➕ Nuevo Paciente.")
-        if len(df_p_all) > 0:
-            st.markdown("<div class='section-title'>Todos los Pacientes (orden alfabético)</div>", unsafe_allow_html=True)
-            # Orden alfabético por apellidos; si no existe columna apellidos, usar nombre
+        if len(df_p_all) == 0:
+            st.info("No hay pacientes registrados. Usa ➕ Nuevo Paciente para agregar el primero.")
+        else:
+            st.markdown(
+                f"<p style='color:#475569; font-size:13px; margin:0 0 12px 0;'>📋 <b>{len(df_p_all)}</b> paciente(s) registrado(s) en esta sucursal — ordenados alfabéticamente</p>",
+                unsafe_allow_html=True
+            )
+            # Orden alfabético por apellidos
             if "apellidos" in df_p_all.columns:
                 df_ord = df_p_all.sort_values(
-                    by=["apellidos", "nombres"], key=lambda c: c.str.upper().str.strip(), ascending=True
+                    by=["apellidos", "nombres"], key=lambda c: c.astype(str).str.upper().str.strip(), ascending=True
                 )
             else:
                 df_ord = df_p_all.sort_values(
-                    by="nombre", key=lambda c: c.str.upper().str.strip(), ascending=True
+                    by="nombre", key=lambda c: c.astype(str).str.upper().str.strip(), ascending=True
                 )
+
             for _, rp in df_ord.iterrows():
-                # Contar historial del paciente
                 n_hist = len(st.session_state.df_historias[
                     st.session_state.df_historias["paciente_id"].astype(str) == str(rp["id"])
                 ])
-                hc_badge = f"<span style='background:#1e40af;color:#bfdbfe;border-radius:4px;padding:2px 7px;font-size:11px;margin-right:6px;'>HC: {n_hist}</span>"
-                rc1, rc2, rc3, rc4, rc5 = st.columns([3, 2, 1, 1, 1])
-                rc1.markdown(
-                    f"{hc_badge}<span style='color: #0c4a6e; font-size: 15px; font-weight: 700;'>{rp.get('nombre','')}</span>  \n"
-                    f"<div style='font-size:12px; color:#0369a1; font-weight: 500; margin-top: 2px;'>"
-                    f"🆔 {rp.get('identificacion','')} &nbsp;•&nbsp; "
-                    f"{rp.get('genero','')} &nbsp;•&nbsp; {rp.get('edad','')} años &nbsp;•&nbsp; 📞 {rp.get('telefono','')}</div>",
+
+                _apellidos = str(rp.get("apellidos", "")).strip()
+                _nombres   = str(rp.get("nombres", "")).strip()
+                display_name = f"{_apellidos} {_nombres}" if _apellidos and _nombres else str(rp.get("nombre", ""))
+
+                col_num, col_a, col_b, col_c, col_d, col_e, col_f = st.columns([0.5, 3, 2, 1.8, 0.7, 1.4, 0.6])
+                
+                col_num.markdown(
+                    f"<div style='text-align:center;'>"
+                    f"<span style='color:#93c5fd;font-size:18px;font-weight:800;'>{rp.get('id','')}</span></div>",
                     unsafe_allow_html=True
                 )
-                with rc3:
-                    if st.button("📋 Consulta", key=f"rap_cons_{rp['id']}", use_container_width=True):
-                        st.session_state["nueva_consulta_paciente"] = rp.get("nombre","")
-                        st.rerun()
-                with rc4:
-                    if st.button("✏️ Editar", key=f"rap_edit_{rp['id']}", use_container_width=True):
-                        st.session_state["editar_paciente_id"] = rp["id"]
-                        st.session_state["clinica_buscar"] = rp.get("nombre","")
-                        st.rerun()
-                with rc5:
-                    if st.button("🔍 Ver", key=f"rap_ver_{rp['id']}", use_container_width=True):
-                        st.session_state["clinica_buscar"] = rp.get("nombre","")
-                        st.rerun()
+                col_a.markdown(
+                    f"**{display_name}**  \n"
+                    f"<span style='font-size:12px;color:#64748b;'>🆔 {rp.get('identificacion','')} &nbsp;·&nbsp; {rp.get('genero','')} &nbsp;·&nbsp; {rp.get('edad','')} años</span>",
+                    unsafe_allow_html=True
+                )
+                col_b.caption(f"📞 {rp.get('telefono','')}")
+                col_c.caption(f"🏥 {rp.get('ocupacion','')}")
+                col_d.markdown(
+                    f"<span style='background:#1e40af;color:#bfdbfe;border-radius:5px;padding:3px 8px;font-size:11px;font-weight:700;'>HC: {n_hist}</span>",
+                    unsafe_allow_html=True
+                )
+                if col_e.button("📋 Consulta", key=f"rap_cons_{rp['id']}", use_container_width=True):
+                    st.session_state["nueva_consulta_paciente"] = rp.get("nombre","")
+                    st.rerun()
+                if col_f.button("🔍", key=f"rap_ver_{rp['id']}", use_container_width=True, help="Ver historias"):
+                    st.session_state["clinica_buscar"] = rp.get("nombre","")
+                    st.rerun()
                 st.divider()
 
     # ── FORMULARIO DE NUEVA CONSULTA ─────────────────────────────────
