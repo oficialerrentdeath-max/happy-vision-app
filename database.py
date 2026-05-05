@@ -216,10 +216,12 @@ def cargar_sucursales() -> pd.DataFrame:
 def guardar_sucursal(row: dict):
     """Guarda o actualiza una sucursal."""
     try:
-        if not supabase: return
+        if not supabase: return False, "Sin conexión a Supabase"
         supabase.table("sucursales").upsert(row).execute()
+        return True, "Guardado exitosamente"
     except Exception as e:
         print(f"Error guardar_sucursal: {e}")
+        return False, str(e)
 
 def eliminar_sucursal(s_id):
     """Elimina una sucursal."""

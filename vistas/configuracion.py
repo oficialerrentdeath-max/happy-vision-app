@@ -23,14 +23,17 @@ def render_configuracion():
                 
                 if st.form_submit_button("💾 Guardar Sede", type="primary"):
                     if n_nombre and n_direccion:
-                        guardar_sucursal({
+                        success, msg = guardar_sucursal({
                             "nombre": n_nombre,
                             "direccion": n_direccion,
                             "telefono": n_telefono,
                             "ciudad": n_ciudad
                         })
-                        st.success("✅ Sede guardada exitosamente.")
-                        st.rerun()
+                        if success:
+                            st.success(f"✅ Sede '{n_nombre}' creada. Base de datos activada.")
+                            st.rerun()
+                        else:
+                            st.error(f"❌ Error al guardar: {msg}")
                     else:
                         st.error("Nombre y Dirección son obligatorios.")
 
@@ -55,15 +58,18 @@ def render_configuracion():
                                 e_telefono = st.text_input("Teléfono", value=row.get('telefono', ''))
                                 
                                 if st.form_submit_button("Actualizar"):
-                                    guardar_sucursal({
+                                    success, msg = guardar_sucursal({
                                         "id": row['id'],
                                         "nombre": e_nombre,
                                         "direccion": e_direccion,
                                         "telefono": e_telefono,
                                         "ciudad": e_ciudad
                                     })
-                                    st.success("Actualizado")
-                                    st.rerun()
+                                    if success:
+                                        st.success("✅ Actualizado con éxito")
+                                        st.rerun()
+                                    else:
+                                        st.error(f"❌ Error: {msg}")
                     with c3:
                         if st.button("🗑️ Eliminar", key=f"del_suc_{row['id']}", use_container_width=True):
                             eliminar_sucursal(row['id'])
