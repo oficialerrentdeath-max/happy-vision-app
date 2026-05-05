@@ -89,7 +89,10 @@ def render_usuarios():
             nu_role     = ne2.selectbox("Rol en el sistema", ["Optometrista", "Administrador"])
             nu_activo   = ne3.checkbox("Activo (Permitir acceso)", value=True)
 
-            sucursales_disponibles = ["Matriz", "Sucursal 1", "Sucursal 2"]
+            from database import cargar_sucursales
+            df_suc_db = cargar_sucursales()
+            sucursales_disponibles = df_suc_db["nombre"].tolist() if not df_suc_db.empty else ["Matriz"]
+            
             st.caption("Asignación de Sucursales")
             nu_sucursales = st.multiselect(
                 "¿A qué sucursales tendrá acceso este usuario?",

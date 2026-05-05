@@ -337,19 +337,22 @@ def generar_pdf_historia(row: dict, paciente_info: dict, opto: dict) -> bytes:
     pdf.set_text_color(80, 80, 80)
     pdf.cell(0, 5, f"Reg.: {_s(opto.get('registro', ''))}  |  Tel.: {_s(opto.get('telefono', ''))}", ln=True, align="C")
 
-    # ─ DIRECCIÓN DE LA SUCURSAL ─────────────────────────
+    # ─ DIRECCIÓN DE LA SUCURSAL DINÁMICA ────────────────
     pdf.ln(1)
     sucursal_pdf = row.get("sucursal", "Matriz")
-    if not sucursal_pdf: # Por si viene vacío
+    if not sucursal_pdf:
         sucursal_pdf = "Matriz"
         
-    DIRECCIONES_SUCURSALES = {
-        "Matriz": "Isabel la Católica y Avenida Madrid",
-        "Sucursal 1": "Dirección Sucursal 1 (Por definir)",
-        "Sucursal 2": "Dirección Sucursal 2 (Por definir)"
-    }
+    # Cargar direcciones desde DB
+    from database import cargar_sucursales
+    df_s = cargar_sucursales()
+    dir_sucursal = "Dirección no registrada"
     
-    dir_sucursal = DIRECCIONES_SUCURSALES.get(sucursal_pdf, "Dirección no registrada")
+    if not df_s.empty:
+        match_suc = df_s[df_s["nombre"] == sucursal_pdf]
+        if not match_suc.empty:
+            dir_sucursal = match_suc.iloc[0]["direccion"]
+    
     
     pdf.set_font("Helvetica", "I", 8)
     pdf.set_text_color(150, 150, 150)

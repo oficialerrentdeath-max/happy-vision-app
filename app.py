@@ -18,6 +18,8 @@ from utils import generate_sample_data, guardar_datos
 from vistas.clinica   import render_clinica
 from vistas.pacientes import render_pacientes
 from vistas.usuarios  import render_usuarios
+from vistas.configuracion import render_configuracion
+from database import cargar_sucursales
 
 
 # ══════════════════════════════════════════════════════════════
@@ -576,7 +578,11 @@ if not st.session_state.logged_in:
                         assigned_branches = ud.get("sucursales_asignadas")
                         
                         if "Administrador" in raw_role:
-                            assigned_branches = ["Matriz", "Sucursal 1", "Sucursal 2"]
+                            df_s = cargar_sucursales()
+                            if not df_s.empty:
+                                assigned_branches = df_s["nombre"].tolist()
+                            else:
+                                assigned_branches = ["Matriz"]
                         
                         if not assigned_branches:
                             assigned_branches = ["Matriz"]
@@ -604,9 +610,13 @@ if not st.session_state.logged_in:
 # PANTALLA DE SELECCIÓN DE SUCURSAL
 # ══════════════════════════════════════════════════════════════
 if st.session_state.get("logged_in"):
-    # Forzar que el Administrador siempre vea todas las sedes
+    # Forzar que el Administrador siempre vea todas las sedes reales
     if "Administrador" in st.session_state.get("user_role", ""):
-        st.session_state.sucursales_asignadas = ["Matriz", "Sucursal 1", "Sucursal 2"]
+        df_s = cargar_sucursales()
+        if not df_s.empty:
+            st.session_state.sucursales_asignadas = df_s["nombre"].tolist()
+        else:
+            st.session_state.sucursales_asignadas = ["Matriz"]
 
 if st.session_state.get("logged_in") and not st.session_state.get("sucursal_activa"):
     st.markdown("<h2 style='text-align: center; margin-top: 10vh; color: #1e293b; font-weight: 800;'>🏢 Selecciona tu Entorno de Trabajo</h2>", unsafe_allow_html=True)
@@ -677,6 +687,7 @@ with st.sidebar:
     }
     if _role == "Administrador":
         pages["Usuarios"] = ("👤", "Gestion de Usuarios")
+        pages["Configuracion"] = ("⚙️", "Configuracion")
 
     if st.session_state.page not in pages:
         st.session_state.page = "Pacientes"
@@ -741,5 +752,7 @@ elif page == "Clinica":
     render_clinica()
 elif page == "Usuarios":
     render_usuarios()
+elif page == "Configuracion":
+    render_configuracion()
 else:
     render_pacientes()

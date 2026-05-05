@@ -199,3 +199,32 @@ def eliminar_historia(h_id):
         supabase.table("historias_clinicas").delete().eq("id", str(h_id)).execute()
     except Exception as e:
         print(f"Error eliminar_historia: {e}")
+
+# ══════════════════════════════════════════════════════════════
+# SUCURSALES
+# ══════════════════════════════════════════════════════════════
+def cargar_sucursales() -> pd.DataFrame:
+    """Carga todas las sucursales desde Supabase."""
+    try:
+        if not supabase: return pd.DataFrame(columns=["nombre", "direccion", "telefono", "ciudad"])
+        response = supabase.table("sucursales").select("*").order("nombre").execute()
+        return pd.DataFrame(response.data) if response.data else pd.DataFrame(columns=["nombre", "direccion", "telefono", "ciudad"])
+    except Exception as e:
+        print(f"Error cargar_sucursales: {e}")
+        return pd.DataFrame(columns=["nombre", "direccion", "telefono", "ciudad"])
+
+def guardar_sucursal(row: dict):
+    """Guarda o actualiza una sucursal."""
+    try:
+        if not supabase: return
+        supabase.table("sucursales").upsert(row).execute()
+    except Exception as e:
+        print(f"Error guardar_sucursal: {e}")
+
+def eliminar_sucursal(s_id):
+    """Elimina una sucursal."""
+    try:
+        if not supabase: return
+        supabase.table("sucursales").delete().eq("id", s_id).execute()
+    except Exception as e:
+        print(f"Error eliminar_sucursal: {e}")
