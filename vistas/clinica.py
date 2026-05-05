@@ -534,10 +534,11 @@ def render_clinica():
                                         with st.expander("📄 Ver Certificado Visual / Reporte", expanded=False):
                                             _b64str = _b64.b64encode(pdf_bytes).decode("utf-8")
                                             st.markdown(
-                                                f'<embed src="data:application/pdf;base64,{_b64str}" '
-                                                f'width="100%" height="600px" type="application/pdf">',
+                                                f'<iframe src="data:application/pdf;base64,{_b64str}" '
+                                                f'width="100%" height="600px" style="border:none; border-radius:8px;"></iframe>',
                                                 unsafe_allow_html=True
                                             )
+                                            st.caption("💡 Si no ves la vista previa arriba, usa el botón de abajo para descargar el archivo.")
                                             st.download_button(
                                                 label="📥 Descargar Certificado (PDF)",
                                                 data=pdf_bytes,
