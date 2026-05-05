@@ -25,12 +25,14 @@ def render_dashboard():
     m1.metric("Ventas de Hoy", f"${ventas_hoy:.2f}", delta=f"-${resumen['Gastos']:.2f} gastos")
     
     # Órdenes en Laboratorio
-    en_lab = len(df_ordenes[df_ordenes["estado"] == "En Laboratorio"])
-    m2.metric("En Laboratorio", en_lab, help="Trabajos que están actualmente en proceso")
+    en_lab = 0
+    listos = 0
+    if not df_ordenes.empty and "estado" in df_ordenes.columns:
+        en_lab = len(df_ordenes[df_ordenes["estado"] == "En Laboratorio"])
+        listos = len(df_ordenes[df_ordenes["estado"] == "Listo para Entrega"])
     
-    # Pendientes de Entrega
-    listos = len(df_ordenes[df_ordenes["estado"] == "Listo para Entrega"])
-    m3.metric("Listos p/ Entrega", listos, delta=f"{listos} clientes esperando", delta_color="normal")
+    m2.metric("En Laboratorio", en_lab, help="Trabajos que están actualmente en proceso")
+    m3.metric("Listos p/ Entrega", listos, delta=f"{listos} clientes esperando" if listos > 0 else None)
     
     # Alertas de Inventario
     bajo_stock = len(df_inv[df_inv["stock"] <= df_inv["stock_minimo"]]) if not df_inv.empty else 0
@@ -66,9 +68,12 @@ def render_dashboard():
         st.markdown("---")
         # Mostrar órdenes más antiguas sin entregar
         st.markdown("**⏳ Trabajos Pendientes**")
-        df_viejas = df_ordenes[df_ordenes["estado"] == "Pendiente"].head(3)
-        for _, row in df_viejas.iterrows():
-            st.warning(f"ID #{row['id']} - {row['paciente_nombre']}")
+        if not df_ordenes.empty and "estado" in df_ordenes.columns:
+            df_viejas = df_ordenes[df_ordenes["estado"] == "Pendiente"].head(3)
+            for _, row in df_viejas.iterrows():
+                st.warning(f"ID #{row['id']} - {row['paciente_nombre']}")
+        else:
+            st.caption("No hay trabajos pendientes.")
 
     # Acceso Rápido
     st.markdown("### ⚡ Acciones Rápidas")
