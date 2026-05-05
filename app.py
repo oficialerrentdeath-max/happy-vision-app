@@ -700,6 +700,12 @@ with st.sidebar:
         f"<span style='color:#0ea5e9; font-size:11px; font-weight: bold;'>🏢 {st.session_state.get('sucursal_activa', '')}</span></p>",
         unsafe_allow_html=True
     )
+    
+    if len(st.session_state.get("sucursales_asignadas", [])) > 1:
+        if st.button("🏠 Cambiar Sucursal", use_container_width=True):
+            st.session_state.sucursal_activa = None
+            st.rerun()
+            
     if st.button("Cerrar Sesion", use_container_width=True):
         for key in ["logged_in","user_role","user_name","user_login","user_cargo","user_registro","user_telefono"]:
             st.session_state.pop(key, None)
