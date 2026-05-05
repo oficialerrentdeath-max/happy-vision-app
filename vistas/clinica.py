@@ -185,6 +185,16 @@ def render_clinica():
                         }
                         st.session_state.df_pacientes = pd.concat([st.session_state.df_pacientes, pd.DataFrame([nuevo_p])], ignore_index=True)
                         guardar_datos()
+                        # AUDITORÍA: Nuevo Paciente
+                        from database import registrar_auditoria
+                        registrar_auditoria(
+                            accion="Registrar Nuevo Paciente",
+                            entidad="Paciente",
+                            detalle=f"Paciente: {nombre_completo_input} | ID: {nuevo_id} | Cédula: {id_input}",
+                            usuario=st.session_state.get("user_login", ""),
+                            nombre_usuario=st.session_state.get("user_name", ""),
+                            sucursal=sucursal_actual
+                        )
                         st.success(f"✅ Paciente **{nombre_completo_input}** registrado.")
                         st.session_state["mostrar_nuevo_p"] = False
                         st.rerun()
@@ -570,6 +580,17 @@ def render_clinica():
                                     tel_pac = _normalizar_tel(pac.get("telefono", ""))
                                     nombre_pac = pac.get('nombre', '')
                                     
+                                    def _log_pdf_descarga():
+                                        from database import registrar_auditoria
+                                        registrar_auditoria(
+                                            accion="Descargar PDF",
+                                            entidad="Certificado Visual",
+                                            detalle=f"Paciente: {nombre_pac} | Historia ID: {hrow['id']}",
+                                            usuario=st.session_state.get("user_login", ""),
+                                            nombre_usuario=st.session_state.get("user_name", ""),
+                                            sucursal=st.session_state.get("sucursal_activa", "")
+                                        )
+
                                     with bacc1:
                                         st.download_button(
                                             label="📥 Descargar Certificado (PDF)",
@@ -577,7 +598,8 @@ def render_clinica():
                                             file_name=f"Certificado_{nombre_pac.replace(' ','_')}.pdf",
                                             mime="application/pdf",
                                             use_container_width=True,
-                                            key=f"pdf_dl_main_{hrow['id']}"
+                                            key=f"pdf_dl_main_{hrow['id']}",
+                                            on_click=_log_pdf_descarga
                                         )
 
                                     with bacc2:
@@ -601,7 +623,18 @@ def render_clinica():
                                                 f"📍 *Happy Vision* | 📞 +593 96 324 1158"
                                             )
                                             wa_pdf_url = f"https://wa.me/{tel_pac}?text={urllib.parse.quote(msg_pdf)}"
-                                            st.markdown(f'<a href="{wa_pdf_url}" target="_blank"><button style="width:100%; background:#25D366; color:white; border:none; border-radius:8px; padding:8px; cursor:pointer; font-weight:bold; font-size:12px; margin-top:5px;">📲 WhatsApp (Enviar Certificado)</button></a>', unsafe_allow_html=True)
+                                            if st.button("📲 WhatsApp (Certificado)", key=f"btn_wa_pdf_{hrow['id']}", use_container_width=True):
+                                                from database import registrar_auditoria
+                                                registrar_auditoria(
+                                                    accion="Enviar WhatsApp",
+                                                    entidad="Certificado PDF",
+                                                    detalle=f"Paciente: {nombre_pac} | Tel: {tel_pac}",
+                                                    usuario=st.session_state.get("user_login", ""),
+                                                    nombre_usuario=st.session_state.get("user_name", ""),
+                                                    sucursal=st.session_state.get("sucursal_activa", "")
+                                                )
+                                                st.markdown(f'<a href="{wa_pdf_url}" target="_blank" id="wa_link_{hrow["id"]}"><script>document.getElementById("wa_link_{hrow["id"]}").click();</script></a>', unsafe_allow_html=True)
+                                                st.info(f"👉 [Click aquí para abrir WhatsApp]({wa_pdf_url})")
                                         else:
                                             st.caption("⚠️ Sin teléfono")
 
@@ -651,7 +684,18 @@ def render_clinica():
                                                     f"📍 *Happy Vision* | 📞 +593 96 324 1158"
                                                 )
                                                 wa_url = f"https://wa.me/{tel_pac}?text={urllib.parse.quote(full_wa_msg)}"
-                                                st.markdown(f'<a href="{wa_url}" target="_blank"><button style="width:100%; background:#25D366; color:white; border:none; border-radius:8px; padding:12px; cursor:pointer; font-weight:bold; font-size:13px;">📲 Enviar Indicaciones por WhatsApp</button></a>', unsafe_allow_html=True)
+                                                if st.button("📲 Enviar por WhatsApp", key=f"btn_wa_ind_{hrow['id']}", use_container_width=True, type="primary"):
+                                                    from database import registrar_auditoria
+                                                    registrar_auditoria(
+                                                        accion="Enviar WhatsApp",
+                                                        entidad="Indicaciones Médicas",
+                                                        detalle=f"Paciente: {nombre_pac} | Tel: {tel_pac}",
+                                                        usuario=st.session_state.get("user_login", ""),
+                                                        nombre_usuario=st.session_state.get("user_name", ""),
+                                                        sucursal=st.session_state.get("sucursal_activa", "")
+                                                    )
+                                                    st.markdown(f'<a href="{wa_url}" target="_blank" id="wa_ind_link_{hrow["id"]}"><script>document.getElementById("wa_ind_link_{hrow["id"]}").click();</script></a>', unsafe_allow_html=True)
+                                                    st.info(f"👉 [Click aquí para abrir WhatsApp]({wa_url})")
                                             else:
                                                 st.caption("⚠️ Sin teléfono registrado")
                                 except Exception as e:
@@ -900,6 +944,16 @@ def render_clinica():
                         [st.session_state.df_historias, pd.DataFrame([nueva_h])], ignore_index=True
                     )
                     guardar_datos()
+                    # AUDITORÍA: Nueva Historia
+                    from database import registrar_auditoria
+                    registrar_auditoria(
+                        accion="Crear Historia Clínica",
+                        entidad="Historia Clínica",
+                        detalle=f"Paciente: {c_pac_sel} | ID Historia: {nueva_h_id} | Fecha: {nueva_h['fecha']}",
+                        usuario=st.session_state.get("user_login", ""),
+                        nombre_usuario=st.session_state.get("user_name", ""),
+                        sucursal=sucursal_actual
+                    )
                     st.session_state["nueva_consulta_paciente"] = None
                     st.success(f"Consulta guardada para {c_pac_sel}")
                     st.rerun()

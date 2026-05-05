@@ -569,11 +569,22 @@ if not st.session_state.logged_in:
                         st.session_state.logged_in   = True
                         st.session_state.user_role   = raw_role.replace("INACTIVO:", "")
                         st.session_state.user_name   = ud.get("nombre", usuario)
-                        st.session_state.user_login  = usuario
-                        st.session_state.user_cargo  = ud.get("cargo", "Optometrista")
+                        st.session_state.user_login    = usuario
+                        st.session_state.user_cargo    = ud.get("cargo", "Optometrista")
                         st.session_state.user_registro = ud.get("registro", "")
                         st.session_state.user_telefono = ud.get("telefono", "")
                         st.session_state.user_firma    = ud.get("firma_base64", "")
+                        
+                        # AUDITORÍA: Inicio de sesión
+                        from database import registrar_auditoria
+                        registrar_auditoria(
+                            accion="Inicio de Sesión",
+                            entidad="Seguridad",
+                            detalle=f"Usuario '{usuario}' ingresó al sistema.",
+                            usuario=usuario,
+                            nombre_usuario=ud.get("nombre", usuario),
+                            sucursal="N/A (Previo a selección)"
+                        )
                         
                         # Manejo de sucursales (Administradores siempre tienen todas)
                         assigned_branches = ud.get("sucursales_asignadas")
