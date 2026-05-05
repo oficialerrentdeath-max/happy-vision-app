@@ -558,37 +558,35 @@ def render_clinica():
                                     st.error(f"Error PDF: {e}")
 
                                 with bacc3:
-                                    st.markdown("<p style='font-size:13px; font-weight:700; margin-bottom:5px;'>📲 Enviar Indicaciones</p>", unsafe_allow_html=True)
-                                    
-                                    # Sugerencias rápidas para el mensaje
-                                    sug_text = ""
-                                    c_s1, c_s2 = st.columns(2)
-                                    if c_s1.button("👓 Lentes", key=f"s1_{hrow['id']}", use_container_width=True):
-                                        sug_text = "Se recomienda el uso permanente de sus lentes."
-                                    if c_s2.button("💧 Gotas", key=f"s2_{hrow['id']}", use_container_width=True):
-                                        sug_text = "Aplicar lubricante ocular 1 gota cada 4 horas."
-                                    
-                                    c_s3, c_s4 = st.columns(2)
-                                    if c_s3.button("🖥️ 20-20", key=f"s3_{hrow['id']}", use_container_width=True):
-                                        sug_text = "Por cada 20 min de pantalla, mirar lejos 20 seg."
-                                    if c_s4.button("📅 6 meses", key=f"s4_{hrow['id']}", use_container_width=True):
-                                        sug_text = "Control visual obligatorio en 6 meses."
+                                    with st.popover("💊 Enviar Indicacion", use_container_width=True):
+                                        st.markdown("<p style='font-size:13px; font-weight:700; margin-bottom:5px;'>📲 Enviar Indicaciones</p>", unsafe_allow_html=True)
+                                        
+                                        # Sugerencias rápidas para el mensaje
+                                        sug_text = ""
+                                        c_s1, c_s2 = st.columns(2)
+                                        if c_s1.button("👓 Lentes", key=f"s1_{hrow['id']}", use_container_width=True):
+                                            sug_text = "Se recomienda el uso permanente de sus lentes."
+                                        if c_s2.button("💧 Gotas", key=f"s2_{hrow['id']}", use_container_width=True):
+                                            sug_text = "Aplicar lubricante ocular 1 gota cada 4 horas."
+                                        
+                                        c_s3, c_s4 = st.columns(2)
+                                        if c_s3.button("🖥️ 20-20", key=f"s3_{hrow['id']}", use_container_width=True):
+                                            sug_text = "Por cada 20 min de pantalla, mirar lejos 20 seg."
+                                        if c_s4.button("📅 6 meses", key=f"s4_{hrow['id']}", use_container_width=True):
+                                            sug_text = "Control visual obligatorio en 6 meses."
 
-                                    # Input para el mensaje de WhatsApp (se auto-llena con las recomendaciones guardadas o la sugerencia)
-                                    msg_base = sug_text if sug_text else hrow.get("recomendaciones", "")
-                                    wa_msg_input = st.text_area("Mensaje WA", value=msg_base, key=f"wa_area_{hrow['id']}", height=70, label_visibility="collapsed")
-                                    
-                                    tel_pac = str(pac.get("telefono", "")).replace(" ","").replace("+","")
-                                    if tel_pac:
-                                        import urllib.parse
-                                        full_wa_msg = f"Hola {pac.get('nombre','')}, tus indicaciones de Happy Vision son: {wa_msg_input}"
-                                        wa_url = f"https://wa.me/{tel_pac}?text={urllib.parse.quote(full_wa_msg)}"
-                                        st.markdown(f'<a href="{wa_url}" target="_blank"><button style="width:100%; background:#25D366; color:white; border:none; border-radius:8px; padding:10px; cursor:pointer; font-weight:bold; font-size:12px;">📲 Enviar por WhatsApp</button></a>', unsafe_allow_html=True)
-                                    else:
-                                        st.caption("⚠️ Sin teléfono")
-
-                                with bacc3:
-                                    with st.popover("💊 Enviar Indicacion"):
+                                        # Input para el mensaje de WhatsApp
+                                        msg_base = sug_text if sug_text else hrow.get("recomendaciones", "")
+                                        wa_msg_input = st.text_area("Mensaje WA", value=msg_base, key=f"wa_area_{hrow['id']}", height=100, label_visibility="collapsed")
+                                        
+                                        tel_pac = str(pac.get("telefono", "")).replace(" ","").replace("+","")
+                                        if tel_pac:
+                                            import urllib.parse
+                                            full_wa_msg = f"Hola {pac.get('nombre','')}, tus indicaciones de Happy Vision son: {wa_msg_input}"
+                                            wa_url = f"https://wa.me/{tel_pac}?text={urllib.parse.quote(full_wa_msg)}"
+                                            st.markdown(f'<a href="{wa_url}" target="_blank"><button style="width:100%; background:#25D366; color:white; border:none; border-radius:8px; padding:10px; cursor:pointer; font-weight:bold; font-size:12px;">📲 Enviar por WhatsApp</button></a>', unsafe_allow_html=True)
+                                        else:
+                                            st.caption("⚠️ Sin teléfono")
                                         st.markdown("**Enviar indicación/medicación al paciente**")
                                         ind_texto = st.text_area("Indicación:", key=f"ind_{hrow['id']}", height=120,
                                             placeholder="Ej: Aplicar 1 gota de Systane Ultra cada 8 horas.")
