@@ -563,7 +563,15 @@ def render_clinica():
                                         
                                         # Botón WhatsApp para adjuntar y enviar el certificado PDF
                                         if tel_pac:
-                                            msg_pdf = f"Hola {nombre_pac}, adjunto tu certificado visual de Happy Vision. 👁️"
+                                            fecha_hc = hrow.get('fecha', '')
+                                            msg_pdf = (
+                                                f"👁️ *Happy Vision — Certificado Visual*\n\n"
+                                                f"Estimado/a *{nombre_pac}*, esperamos que su consulta del *{fecha_hc}* haya sido de su completa satisfacción.\n\n"
+                                                f"Adjunto encontrará su *Certificado Visual* con el resumen de su evaluación optométrica. Le recomendamos guardarlo para sus registros personales.\n\n"
+                                                f"Recuerde seguir las indicaciones de su optometrista y programar su próximo control a tiempo. Cuidar su visión es cuidar su calidad de vida. 💙\n\n"
+                                                f"Ante cualquier consulta, estamos a su disposición.\n"
+                                                f"📍 *Happy Vision* | 📞 +593 96 324 1158"
+                                            )
                                             wa_pdf_url = f"https://wa.me/{tel_pac}?text={urllib.parse.quote(msg_pdf)}"
                                             st.markdown(f'<a href="{wa_pdf_url}" target="_blank"><button style="width:100%; background:#25D366; color:white; border:none; border-radius:8px; padding:8px; cursor:pointer; font-weight:bold; font-size:12px; margin-top:5px;">📲 WhatsApp (Enviar Certificado)</button></a>', unsafe_allow_html=True)
                                         else:
