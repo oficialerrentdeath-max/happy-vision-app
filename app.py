@@ -603,6 +603,11 @@ if not st.session_state.logged_in:
 # ══════════════════════════════════════════════════════════════
 # PANTALLA DE SELECCIÓN DE SUCURSAL
 # ══════════════════════════════════════════════════════════════
+if st.session_state.get("logged_in"):
+    # Forzar que el Administrador siempre vea todas las sedes
+    if "Administrador" in st.session_state.get("user_role", ""):
+        st.session_state.sucursales_asignadas = ["Matriz", "Sucursal 1", "Sucursal 2"]
+
 if st.session_state.get("logged_in") and not st.session_state.get("sucursal_activa"):
     st.markdown("<h2 style='text-align: center; margin-top: 10vh; color: #1e293b; font-weight: 800;'>🏢 Selecciona tu Entorno de Trabajo</h2>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: #64748b; margin-bottom: 5vh;'>Haz clic en el cuadro de la óptica a la que deseas acceder</p>", unsafe_allow_html=True)
