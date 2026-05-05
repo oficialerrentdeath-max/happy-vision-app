@@ -45,8 +45,26 @@ def render_configuracion():
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    c1, c2 = st.columns([4, 1])
+                    c1, c2, c3 = st.columns([3, 1, 1])
                     with c2:
+                        with st.popover("✏️ Editar"):
+                            with st.form(f"edit_suc_{row['id']}"):
+                                e_nombre = st.text_input("Nombre", value=row['nombre'])
+                                e_ciudad = st.text_input("Ciudad", value=row.get('ciudad', 'Quito'))
+                                e_direccion = st.text_input("Dirección", value=row['direccion'])
+                                e_telefono = st.text_input("Teléfono", value=row.get('telefono', ''))
+                                
+                                if st.form_submit_button("Actualizar"):
+                                    guardar_sucursal({
+                                        "id": row['id'],
+                                        "nombre": e_nombre,
+                                        "direccion": e_direccion,
+                                        "telefono": e_telefono,
+                                        "ciudad": e_ciudad
+                                    })
+                                    st.success("Actualizado")
+                                    st.rerun()
+                    with c3:
                         if st.button("🗑️ Eliminar", key=f"del_suc_{row['id']}", use_container_width=True):
                             eliminar_sucursal(row['id'])
                             st.success("Sede eliminada.")
