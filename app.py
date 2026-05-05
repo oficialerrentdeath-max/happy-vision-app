@@ -22,6 +22,7 @@ from vistas.configuracion import render_configuracion
 from vistas.inventario import render_inventario
 from vistas.laboratorio import render_laboratorio
 from vistas.contabilidad import render_contabilidad
+from vistas.dashboard import render_dashboard
 from database import cargar_sucursales
 
 
@@ -697,6 +698,7 @@ with st.sidebar:
     _role = st.session_state.user_role
     # Navegacion simplificada
     pages = {
+        "Inicio":      ("🏠", "Inicio"),
         "Pacientes":   ("👥", "Pacientes"),
         "Laboratorio": ("🧪", "Laboratorio"),
     }
@@ -707,7 +709,7 @@ with st.sidebar:
         pages["Configuracion"] = ("⚙️", "Configuracion")
 
     if st.session_state.page not in pages:
-        st.session_state.page = "Pacientes"
+        st.session_state.page = "Inicio"
 
     for key, (icon, label) in pages.items():
         if st.button(f"{icon}  {label}", key=f"nav_{key}", use_container_width=True):
@@ -763,7 +765,9 @@ with st.sidebar:
 # ══════════════════════════════════════════════════════════════
 page = st.session_state.page
 
-if page == "Pacientes":
+if page == "Inicio":
+    render_dashboard()
+elif page == "Pacientes":
     render_clinica()
 elif page == "Laboratorio":
     render_laboratorio()

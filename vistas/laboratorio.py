@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import urllib.parse
 from database import cargar_ordenes_trabajo, actualizar_estado_orden
 
 def render_laboratorio():
@@ -72,17 +73,31 @@ def render_laboratorio():
                 """, unsafe_allow_html=True)
                 
                 # Acciones
-                ca1, ca2, ca3 = st.columns([2, 2, 1])
+                ca1, ca2, ca3, ca4 = st.columns([2, 2, 1, 1])
                 with ca1:
                     nuevo_e = st.selectbox("Cambiar Estado", ESTADOS, index=ESTADOS.index(row['estado']), key=f"est_{row['id']}")
                     if nuevo_e != row['estado']:
+                        from database import actualizar_estado_orden
                         actualizar_estado_orden(row['id'], nuevo_e, st.session_state.user_login, sucursal_activa)
                         st.success(f"Estado actualizado a {nuevo_e}")
                         st.rerun()
                 with ca2:
-                    if st.button("📄 Ver Detalles / Receta", key=f"receta_{row['id']}", use_container_width=True):
+                    if st.button("📄 Ver Receta", key=f"receta_{row['id']}", use_container_width=True):
                         st.json(row['detalles_receta'])
                 with ca3:
-                    st.button("📥 Ticket", key=f"ticket_{row['id']}", use_container_width=True)
+                    from utils.pdf import generar_pdf_ticket
+                    ticket_bytes = generar_pdf_ticket(row.to_dict())
+                    st.download_button("📥 Ticket", data=ticket_bytes, file_name=f"Ticket_{row['id']}.pdf", mime="application/pdf", key=f"tk_{row['id']}", use_container_width=True)
+                with ca4:
+                    # Botón WhatsApp Aviso
+                    if row['estado'] == "Listo para Entrega":
+                        # Intentar obtener teléfono del paciente (esto requeriría una consulta rápida a la tabla pacientes)
+                        from database import supabase
+                        res_p = supabase.table("pacientes").select("telefono").eq("id", row['paciente_id']).execute()
+                        if res_p.data:
+                            tel = res_p.data[0]['telefono']
+                            msg = f"¡Hola {row['paciente_nombre']}! 👋 Te saluda Happy Vision. Tu orden #{row['id']} ya está lista en nuestra sucursal. Puedes pasar a retirarla cuando gustes. ¡Te esperamos!"
+                            wa_url = f"https://wa.me/{tel}?text={urllib.parse.quote(msg)}"
+                            st.markdown(f'<a href="{wa_url}" target="_blank"><button style="width:100%; background:#25D366; color:white; border:none; border-radius:8px; padding:6px; cursor:pointer; font-weight:bold; font-size:10px;">📲 Avisar</button></a>', unsafe_allow_html=True)
                 
                 st.divider()

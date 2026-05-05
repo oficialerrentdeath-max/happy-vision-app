@@ -373,3 +373,82 @@ def generar_pdf_historia(row: dict, paciente_info: dict, opto: dict) -> bytes:
         return bytes(raw)
     buf.write(raw.encode("latin-1") if isinstance(raw, str) else bytes(raw))
     return buf.getvalue()
+
+# ══════════════════════════════════════════════════════════════
+# TICKET DE VENTA / ÓRDEN DE TRABAJO
+# ══════════════════════════════════════════════════════════════
+def generar_pdf_ticket(orden: dict, sucursal_info: dict = None) -> bytes:
+    """Genera un comprobante de pago / ticket de venta para el cliente."""
+    pdf = FPDF(orientation="P", unit="mm", format="A5") # Formato A5 para tickets
+    pdf.add_page()
+    pdf.set_margins(10, 10, 10)
+    
+    # Logo si existe
+    logo_path = "logo.png" if os.path.exists("logo.png") else None
+    if logo_path:
+        pdf.image(logo_path, x=58, y=5, w=30)
+        pdf.ln(25)
+    else:
+        pdf.set_font("Helvetica", "B", 16)
+        pdf.cell(0, 10, "HAPPY VISION", ln=True, align="C")
+        pdf.ln(5)
+
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.cell(0, 10, _s(f"ORDEN DE TRABAJO #{orden['id']}"), ln=True, align="C")
+    pdf.set_font("Helvetica", "", 9)
+    pdf.cell(0, 5, _s(f"Fecha: {pd.to_datetime(orden['creado_el']).strftime('%Y-%m-%d %H:%M')}"), ln=True, align="C")
+    pdf.ln(5)
+
+    # Datos del Cliente
+    pdf.set_fill_color(240, 240, 240)
+    pdf.set_font("Helvetica", "B", 10)
+    pdf.cell(0, 8, " DATOS DEL CLIENTE", ln=True, fill=True)
+    pdf.set_font("Helvetica", "", 10)
+    pdf.ln(2)
+    pdf.cell(0, 6, _s(f"Nombre: {orden['paciente_nombre']}"), ln=True)
+    pdf.ln(4)
+
+    # Detalle del Trabajo
+    pdf.set_font("Helvetica", "B", 10)
+    pdf.cell(0, 8, " DETALLE DEL PEDIDO", ln=True, fill=True)
+    pdf.set_font("Helvetica", "", 10)
+    pdf.ln(2)
+    pdf.cell(0, 6, _s(f"Producto/Montura: {orden['montura_detalle']}"), ln=True)
+    
+    # Receta resumida
+    rx = orden.get("detalles_receta", {})
+    pdf.set_font("Helvetica", "I", 9)
+    pdf.cell(0, 5, _s(f"OD: {rx.get('od','')} | OI: {rx.get('oi','')}"), ln=True)
+    pdf.ln(4)
+
+    # Valores
+    pdf.set_font("Helvetica", "B", 10)
+    pdf.cell(0, 8, " RESUMEN DE PAGO", ln=True, fill=True)
+    pdf.ln(2)
+    
+    pdf.set_font("Helvetica", "", 11)
+    pdf.cell(80, 8, "VALOR TOTAL:", 0)
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.cell(0, 8, f"${float(orden['total_venta']):.2f}", ln=True, align="R")
+    
+    pdf.set_font("Helvetica", "", 11)
+    pdf.cell(80, 8, "ABONO REALIZADO:", 0)
+    pdf.set_text_color(0, 150, 0)
+    pdf.cell(0, 8, f"-${float(orden['abono']):.2f}", ln=True, align="R")
+    
+    pdf.set_text_color(200, 0, 0)
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.cell(80, 10, "SALDO PENDIENTE:", 0)
+    pdf.cell(0, 10, f"${float(orden['saldo']):.2f}", ln=True, align="R")
+    
+    pdf.set_text_color(0, 0, 0)
+    pdf.ln(10)
+    
+    # Pie de página
+    pdf.set_font("Helvetica", "I", 8)
+    pdf.multi_cell(0, 4, _s("Nota: Los trabajos de laboratorio tienen un tiempo estimado de entrega de 3 a 5 días laborables. Favor presentar este ticket para retirar su pedido."), align="C")
+    pdf.ln(5)
+    pdf.set_font("Helvetica", "B", 8)
+    pdf.cell(0, 5, _s(f"📍 Sucursal: {orden['sucursal']} | Happy Vision"), ln=True, align="C")
+
+    return pdf.output(dest="S").encode("latin-1")

@@ -1,155 +1,84 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
-from datetime import datetime
-
+from database import cargar_ordenes_trabajo, cargar_inventario, obtener_resumen_dia
 
 def render_dashboard():
     st.markdown("""
-    <div class="page-header">
-        <h1>📊 Dashboard Financiero</h1>
-        <p>Análisis de rentabilidad, utilidad neta y flujo de caja · Happy Vision</p>
-    </div>
+        <div class="page-header">
+            <h1 style='margin:0; color:#1e293b;'>🏠 Dashboard de Control</h1>
+            <p style='margin:5px 0 0 0; color:#64748b;'>Resumen ejecutivo de Happy Vision</p>
+        </div>
     """, unsafe_allow_html=True)
 
-    df_t = st.session_state.df_trabajos.copy()
-    df_g = st.session_state.df_gastos.copy()
+    sucursal = st.session_state.get("sucursal_activa", "Matriz")
+    
+    # 1. MÉTRICAS PRINCIPALES
+    resumen = obtener_resumen_dia(sucursal, st.session_state.get("fecha_hoy", pd.Timestamp.now().strftime("%Y-%m-%d")))
+    df_ordenes = cargar_ordenes_trabajo(sucursal)
+    df_inv = cargar_inventario(sucursal)
+    
+    m1, m2, m3, m4 = st.columns(4)
+    
+    # Ventas de hoy (Efectivo + Otros)
+    ventas_hoy = resumen["Efectivo"] + resumen["Tarjeta"] + resumen["Transferencia"]
+    m1.metric("Ventas de Hoy", f"${ventas_hoy:.2f}", delta=f"-${resumen['Gastos']:.2f} gastos")
+    
+    # Órdenes en Laboratorio
+    en_lab = len(df_ordenes[df_ordenes["estado"] == "En Laboratorio"])
+    m2.metric("En Laboratorio", en_lab, help="Trabajos que están actualmente en proceso")
+    
+    # Pendientes de Entrega
+    listos = len(df_ordenes[df_ordenes["estado"] == "Listo para Entrega"])
+    m3.metric("Listos p/ Entrega", listos, delta=f"{listos} clientes esperando", delta_color="normal")
+    
+    # Alertas de Inventario
+    bajo_stock = len(df_inv[df_inv["stock"] <= df_inv["stock_minimo"]]) if not df_inv.empty else 0
+    m4.metric("Bajo Stock", bajo_stock, delta="Revisar" if bajo_stock > 0 else "OK", delta_color="inverse" if bajo_stock > 0 else "normal")
 
-    df_t["fecha_dt"] = pd.to_datetime(df_t["fecha"])
-    df_t["mes"]      = df_t["fecha_dt"].dt.to_period("M").astype(str)
+    st.divider()
 
-    meses_disp = sorted(df_t["mes"].unique().tolist(), reverse=True)
-
-    col_f1, col_f2 = st.columns([2, 6])
-    with col_f1:
-        mes_sel = st.selectbox("📅 Período de análisis", ["Todos los períodos"] + meses_disp, key="dash_mes")
-
-    if mes_sel != "Todos los períodos":
-        df_m  = df_t[df_t["mes"] == mes_sel].copy()
-        df_gm = df_g[df_g["fecha"] == mes_sel].copy()
-    else:
-        df_m  = df_t.copy()
-        df_gm = df_g.copy()
-
-    costo_pct = {"Indulentes": 0.35, "Pecsa/ImportVision": 0.40, "Stock propio": 0.20}
-    df_m["costo_lab"] = df_m.apply(
-        lambda r: r["precio_total"] * costo_pct.get(r["laboratorio"], 0.35), axis=1
-    )
-
-    ingreso_bruto   = df_m["precio_total"].sum()
-    abonos_recibidos = df_m["abono"].sum()
-    saldo_total     = df_m["saldo_pendiente"].sum()
-    costo_labs      = df_m["costo_lab"].sum()
-    gastos_op       = df_gm["monto"].sum()
-    utilidad_neta   = ingreso_bruto - costo_labs - gastos_op
-    margen          = (utilidad_neta / ingreso_bruto * 100) if ingreso_bruto > 0 else 0
-    ticket_promedio = ingreso_bruto / len(df_m) if len(df_m) > 0 else 0
-
-    # ── KPI CARDS ──────────────────────────────────────────────
-    st.markdown("<div class='section-title'>💰 Indicadores Clave del Período</div>", unsafe_allow_html=True)
-    st.markdown(f"""
-    <div class="kpi-grid">
-        <div class="kpi-card"><div class="kpi-icon">💵</div><div class="kpi-value">${ingreso_bruto:,.0f}</div><div class="kpi-label">Ingreso Bruto</div></div>
-        <div class="kpi-card"><div class="kpi-icon">✅</div><div class="kpi-value-green">${abonos_recibidos:,.0f}</div><div class="kpi-label">Total Cobrado</div></div>
-        <div class="kpi-card"><div class="kpi-icon">⏳</div><div class="kpi-value-red">${saldo_total:,.0f}</div><div class="kpi-label">Por Cobrar</div></div>
-        <div class="kpi-card"><div class="kpi-icon">🏭</div><div class="kpi-value-red">${costo_labs:,.0f}</div><div class="kpi-label">Costo Laboratorios</div></div>
-        <div class="kpi-card"><div class="kpi-icon">🏢</div><div class="kpi-value-red">${gastos_op:,.0f}</div><div class="kpi-label">Gastos Operativos</div></div>
-        <div class="kpi-card"><div class="kpi-icon">📈</div><div class="kpi-value-green">${utilidad_neta:,.0f}</div><div class="kpi-label">Utilidad Neta</div></div>
-        <div class="kpi-card"><div class="kpi-icon">🎯</div><div class="kpi-value">{margen:.1f}%</div><div class="kpi-label">Margen Real</div></div>
-        <div class="kpi-card"><div class="kpi-icon">🧾</div><div class="kpi-value">${ticket_promedio:,.0f}</div><div class="kpi-label">Ticket Promedio</div></div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # ── GRÁFICOS ROW 1 ─────────────────────────────────────────
-    col_g1, col_g2 = st.columns(2)
-    with col_g1:
-        st.markdown("<div class='section-title'>📈 Evolución de Ingresos Mensuales</div>", unsafe_allow_html=True)
-        df_monthly = df_t.groupby("mes").agg(
-            ingreso=("precio_total","sum"), cobrado=("abono","sum"), trabajos=("id","count"),
-        ).reset_index().sort_values("mes")
-        df_monthly["costo"]    = df_monthly["ingreso"] * 0.37
-        df_monthly["utilidad"] = df_monthly["ingreso"] - df_monthly["costo"]
-
-        fig_line = go.Figure()
-        fig_line.add_trace(go.Scatter(x=df_monthly["mes"], y=df_monthly["ingreso"],
-            mode="lines+markers", name="Ingreso Bruto", line=dict(color="#38bdf8", width=3),
-            marker=dict(size=8), fill="tozeroy", fillcolor="rgba(56,189,248,0.07)"))
-        fig_line.add_trace(go.Scatter(x=df_monthly["mes"], y=df_monthly["cobrado"],
-            mode="lines+markers", name="Cobrado Real", line=dict(color="#22c55e", width=2, dash="dot"), marker=dict(size=7)))
-        fig_line.add_trace(go.Scatter(x=df_monthly["mes"], y=df_monthly["utilidad"],
-            mode="lines+markers", name="Utilidad Est.", line=dict(color="#a78bfa", width=2, dash="dash"), marker=dict(size=7)))
-        fig_line.update_layout(template="plotly_dark", plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-            legend=dict(orientation="h", y=1.12, font=dict(size=11)), margin=dict(l=0,r=0,t=10,b=0), height=300,
-            xaxis=dict(gridcolor="#1e293b"), yaxis=dict(gridcolor="#1e293b"))
-        st.plotly_chart(fig_line, use_container_width=True)
-
-    with col_g2:
-        st.markdown("<div class='section-title'>🍩 Distribución de Ingresos por Tipo de Lente</div>", unsafe_allow_html=True)
-        df_tipo = df_m.groupby("tipo_lente")["precio_total"].sum().reset_index()
-        fig_pie = px.pie(df_tipo, values="precio_total", names="tipo_lente", hole=0.55,
-            color_discrete_sequence=["#3b82f6","#06b6d4","#8b5cf6","#ec4899","#f59e0b"])
-        fig_pie.update_traces(textinfo="label+percent", textfont_size=12)
-        fig_pie.update_layout(template="plotly_dark", plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-            margin=dict(l=0,r=0,t=10,b=0), showlegend=False, height=300,
-            annotations=[dict(text=f"${ingreso_bruto:,.0f}", x=0.5, y=0.5, font_size=15, showarrow=False, font_color="#e2e8f0")])
-        st.plotly_chart(fig_pie, use_container_width=True)
-
-    # ── GRÁFICOS ROW 2 ─────────────────────────────────────────
-    col_g3, col_g4 = st.columns(2)
-    with col_g3:
-        st.markdown("<div class='section-title'>🏭 Ingreso vs. Costo por Laboratorio</div>", unsafe_allow_html=True)
-        df_lab = df_m.groupby("laboratorio").agg(ingreso=("precio_total","sum"), costo=("costo_lab","sum")).reset_index()
-        df_lab["margen"] = df_lab["ingreso"] - df_lab["costo"]
-        fig_bar = go.Figure()
-        fig_bar.add_trace(go.Bar(name="Ingreso", x=df_lab["laboratorio"], y=df_lab["ingreso"], marker_color="#3b82f6",
-            text=df_lab["ingreso"].apply(lambda v: f"${v:,.0f}"), textposition="outside"))
-        fig_bar.add_trace(go.Bar(name="Costo Lab", x=df_lab["laboratorio"], y=df_lab["costo"], marker_color="#ef4444",
-            text=df_lab["costo"].apply(lambda v: f"${v:,.0f}"), textposition="outside"))
-        fig_bar.add_trace(go.Bar(name="Margen", x=df_lab["laboratorio"], y=df_lab["margen"], marker_color="#22c55e",
-            text=df_lab["margen"].apply(lambda v: f"${v:,.0f}"), textposition="outside"))
-        fig_bar.update_layout(barmode="group", template="plotly_dark", plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-            margin=dict(l=0,r=0,t=10,b=0), height=300, legend=dict(orientation="h", y=1.12, font=dict(size=11)),
-            xaxis=dict(gridcolor="#1e293b"), yaxis=dict(gridcolor="#1e293b"))
-        st.plotly_chart(fig_bar, use_container_width=True)
-
-    with col_g4:
-        st.markdown("<div class='section-title'>💸 Desglose de la Utilidad Neta</div>", unsafe_allow_html=True)
-        fig_w = go.Figure(go.Waterfall(
-            orientation="v",
-            measure=["absolute","relative","relative","total"],
-            x=["Ingreso Bruto", "− Costo Labs", "− Gastos Op.", "= Utilidad Neta"],
-            y=[ingreso_bruto, -costo_labs, -gastos_op, None],
-            connector=dict(line=dict(color="#334155", width=1)),
-            decreasing=dict(marker_color="#ef4444"),
-            increasing=dict(marker_color="#22c55e"),
-            totals=dict(marker_color="#22c55e"),
-            text=[f"${ingreso_bruto:,.0f}", f"-${costo_labs:,.0f}", f"-${gastos_op:,.0f}", f"${utilidad_neta:,.0f}"],
-            textposition="outside",
-        ))
-        fig_w.update_layout(template="plotly_dark", plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-            margin=dict(l=0,r=0,t=10,b=0), height=300, showlegend=False,
-            xaxis=dict(gridcolor="#1e293b"), yaxis=dict(gridcolor="#1e293b"))
-        st.plotly_chart(fig_w, use_container_width=True)
-
-    # ── TABLAS INFERIORES ─────────────────────────────────────
-    col_t1, col_t2 = st.columns(2)
-    with col_t1:
-        st.markdown("<div class='section-title'>⏳ Saldos Pendientes por Cobrar</div>", unsafe_allow_html=True)
-        df_pend = df_m[df_m["saldo_pendiente"] > 1].sort_values("saldo_pendiente", ascending=False).head(10)
-        if len(df_pend) > 0:
-            st.dataframe(df_pend[["fecha","paciente","tipo_lente","precio_total","abono","saldo_pendiente"]].rename(columns={
-                "fecha":"Fecha","paciente":"Paciente","tipo_lente":"Tipo",
-                "precio_total":"Total $","abono":"Abonado $","saldo_pendiente":"Saldo $",
-            }), use_container_width=True, hide_index=True)
+    col_l, col_r = st.columns([2, 1])
+    
+    with col_l:
+        st.markdown("### 📈 Flujo de Órdenes Recientes")
+        if not df_ordenes.empty:
+            # Gráfico de órdenes por estado
+            df_counts = df_ordenes["estado"].value_counts().reset_index()
+            df_counts.columns = ["Estado", "Cantidad"]
+            fig = px.bar(df_counts, x="Estado", y="Cantidad", color="Estado", 
+                         color_discrete_sequence=px.colors.qualitative.Pastel)
+            fig.update_layout(showlegend=False, height=300, margin=dict(t=10, b=10, l=10, r=10))
+            st.plotly_chart(fig, use_container_width=True)
         else:
-            st.success("✅ Sin saldos pendientes en este período.")
+            st.info("Sin datos de órdenes aún.")
 
-    with col_t2:
-        st.markdown("<div class='section-title'>📋 Gastos Operativos del Período</div>", unsafe_allow_html=True)
-        if len(df_gm) > 0:
-            df_gm_show = df_gm.groupby("concepto").agg(monto=("monto","sum")).reset_index().sort_values("monto", ascending=False)
-            st.dataframe(df_gm_show.rename(columns={"concepto":"Concepto","monto":"Monto $"}),
-                use_container_width=True, hide_index=True)
+    with col_r:
+        st.markdown("### ⚠️ Alertas Críticas")
+        # Mostrar productos con bajo stock
+        if bajo_stock > 0:
+            df_alertas = df_inv[df_inv["stock"] <= df_inv["stock_minimo"]].head(5)
+            for _, row in df_alertas.iterrows():
+                st.error(f"**{row['nombre']}**\n\nQuedan solo **{row['stock']}** unidades.")
         else:
-            st.info("Sin gastos registrados para este período.")
+            st.success("✅ Inventario saludable.")
+            
+        st.markdown("---")
+        # Mostrar órdenes más antiguas sin entregar
+        st.markdown("**⏳ Trabajos Pendientes**")
+        df_viejas = df_ordenes[df_ordenes["estado"] == "Pendiente"].head(3)
+        for _, row in df_viejas.iterrows():
+            st.warning(f"ID #{row['id']} - {row['paciente_nombre']}")
+
+    # Acceso Rápido
+    st.markdown("### ⚡ Acciones Rápidas")
+    cq1, cq2, cq3 = st.columns(3)
+    if cq1.button("👥 Ver Pacientes", use_container_width=True):
+        st.session_state.page = "Pacientes"
+        st.rerun()
+    if cq2.button("🧪 Gestionar Laboratorio", use_container_width=True):
+        st.session_state.page = "Laboratorio"
+        st.rerun()
+    if cq3.button("💰 Abrir/Cerrar Caja", use_container_width=True):
+        st.session_state.page = "Contabilidad"
+        st.rerun()
