@@ -286,6 +286,16 @@ def render_clinica():
                                 st.session_state.df_pacientes.at[idx_p, "direccion"]        = str(e_dir)
                                 st.session_state.df_pacientes.at[idx_p, "ocupacion"]        = e_ocu
                                 guardar_datos()
+                                # AUDITORÍA: Edición de paciente
+                                from database import registrar_auditoria
+                                registrar_auditoria(
+                                    accion="Editar Paciente",
+                                    entidad="Paciente",
+                                    detalle=f"Paciente: {nombre_nuevo} | Cédula: {str(e_id)}",
+                                    usuario=st.session_state.get("user_login", ""),
+                                    nombre_usuario=st.session_state.get("user_name", ""),
+                                    sucursal=st.session_state.get("sucursal_activa", "")
+                                )
                                 st.success("✅ Datos actualizados.")
                                 st.session_state["editar_paciente_id"] = None
                                 st.rerun()
@@ -308,14 +318,20 @@ def render_clinica():
                                             st.rerun()
                                     with hact2:
                                         if st.button(f"🗑️ Eliminar Historia", key=f"del_h_{h_id}", type="secondary", use_container_width=True):
-                                            # 1. Eliminar de la base de datos (Supabase)
                                             eliminar_historia(h_id)
-                                            
-                                            # 2. Eliminar de la memoria local
                                             st.session_state.df_historias = st.session_state.df_historias[
                                                 st.session_state.df_historias["id"].astype(str) != str(h_id)
                                             ].reset_index(drop=True)
-                                            
+                                            # AUDITORÍA: Eliminación de historia
+                                            from database import registrar_auditoria
+                                            registrar_auditoria(
+                                                accion="Eliminar Historia Clínica",
+                                                entidad="Historia Clínica",
+                                                detalle=f"Historia ID: {h_id} | Paciente: {hrow.get('paciente_nombre','')} | Fecha consulta: {hrow.get('fecha','')}",
+                                                usuario=st.session_state.get("user_login", ""),
+                                                nombre_usuario=st.session_state.get("user_name", ""),
+                                                sucursal=st.session_state.get("sucursal_activa", "")
+                                            )
                                             st.success("Historia eliminada permanentemente.")
                                             st.rerun()
                                 else:
@@ -696,8 +712,16 @@ def render_clinica():
                     if n_hist > 0:
                         st.error(f"❌ No puedes eliminar a **{display_name}** porque tiene {n_hist} historia(s) clínica(s). Elimínalas primero.")
                     else:
-                        from database import eliminar_paciente
+                        from database import eliminar_paciente, registrar_auditoria
                         eliminar_paciente(rp["id"])
+                        registrar_auditoria(
+                            accion="Eliminar Paciente",
+                            entidad="Paciente",
+                            detalle=f"Paciente: {display_name} | Cédula: {rp.get('identificacion','')} | ID: {rp['id']}",
+                            usuario=st.session_state.get("user_login", ""),
+                            nombre_usuario=st.session_state.get("user_name", ""),
+                            sucursal=st.session_state.get("sucursal_activa", "")
+                        )
                         st.session_state.df_pacientes = st.session_state.df_pacientes[
                             st.session_state.df_pacientes["id"] != rp["id"]
                         ]

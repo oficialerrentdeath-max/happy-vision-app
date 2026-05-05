@@ -31,6 +31,43 @@ if SUPABASE_URL and SUPABASE_KEY:
 
 
 # ══════════════════════════════════════════════════════════════
+# AUDITORÍA — Registro inmutable de cambios críticos
+# ══════════════════════════════════════════════════════════════
+def registrar_auditoria(accion: str, entidad: str = "", detalle: str = "",
+                        usuario: str = "", nombre_usuario: str = "", sucursal: str = ""):
+    """Registra un evento crítico en la tabla auditoria de Supabase.
+    Nunca lanza excepciones para no interrumpir el flujo principal.
+    """
+    if not supabase:
+        return
+    try:
+        from datetime import datetime, timezone
+        supabase.table("auditoria").insert({
+            "fecha_hora":    datetime.now(timezone.utc).isoformat(),
+            "usuario":       usuario or "desconocido",
+            "nombre_usuario": nombre_usuario or usuario,
+            "accion":        accion,
+            "entidad":       entidad,
+            "detalle":       detalle,
+            "sucursal":      sucursal,
+        }).execute()
+    except Exception as e:
+        print(f"[Auditoría] Error registrando evento: {e}")
+
+
+def cargar_auditoria(limit: int = 500) -> pd.DataFrame:
+    """Carga los registros de auditoría más recientes para el Admin."""
+    try:
+        if not supabase:
+            return pd.DataFrame()
+        res = supabase.table("auditoria").select("*").order("fecha_hora", desc=True).limit(limit).execute()
+        return pd.DataFrame(res.data) if res.data else pd.DataFrame()
+    except Exception as e:
+        print(f"Error cargar_auditoria: {e}")
+        return pd.DataFrame()
+
+
+# ══════════════════════════════════════════════════════════════
 # PACIENTES
 # ══════════════════════════════════════════════════════════════
 def cargar_pacientes() -> pd.DataFrame:

@@ -138,6 +138,16 @@ def render_usuarios():
                     }
                     
                     _guardar_usuario(nu_username.strip(), new_user)
+                    # AUDITORÍA: Creación de usuario
+                    from database import registrar_auditoria
+                    registrar_auditoria(
+                        accion="Crear Usuario",
+                        entidad="Usuario",
+                        detalle=f"Nuevo usuario: {nu_username.strip()} | Nombre: {nu_nombre.strip()} | Rol: {nu_role}",
+                        usuario=st.session_state.get("user_login", ""),
+                        nombre_usuario=st.session_state.get("user_name", ""),
+                        sucursal=st.session_state.get("sucursal_activa", "")
+                    )
                     st.session_state["mostrando_crear_usuario"] = False
                     st.success(f"✅ Usuario **{nu_nombre.strip()}** creado exitosamente.")
                     st.rerun()
@@ -180,6 +190,16 @@ def render_usuarios():
                     if not is_main_admin and not is_myself:
                         if st.button("🗑️", key=f"btn_del_{username}", help="Eliminar usuario"):
                             _eliminar_usuario(username)
+                            # AUDITORÍA: Eliminación de usuario
+                            from database import registrar_auditoria
+                            registrar_auditoria(
+                                accion="Eliminar Usuario",
+                                entidad="Usuario",
+                                detalle=f"Usuario eliminado: {username} | Nombre: {data.get('nombre','')}",
+                                usuario=st.session_state.get("user_login", ""),
+                                nombre_usuario=st.session_state.get("user_name", ""),
+                                sucursal=st.session_state.get("sucursal_activa", "")
+                            )
                             st.success(f"Usuario '{username}' eliminado.")
                             st.rerun()
                     elif is_myself:
@@ -249,7 +269,16 @@ def render_usuarios():
                             username = new_user
                         
                         _guardar_usuario(username, data)
-                        
+                        # AUDITORÍA: Edición de usuario
+                        from database import registrar_auditoria
+                        registrar_auditoria(
+                            accion="Editar Usuario",
+                            entidad="Usuario",
+                            detalle=f"Usuario editado: {username} | Nombre: {data.get('nombre','')} | Rol: {data.get('role','')}",
+                            usuario=st.session_state.get("user_login", ""),
+                            nombre_usuario=st.session_state.get("user_name", ""),
+                            sucursal=st.session_state.get("sucursal_activa", "")
+                        )
                         # Actualizar sesion si el editado es el usuario activo
                         if st.session_state.get("user_login") == username:
                             st.session_state.user_name     = data["nombre"]
