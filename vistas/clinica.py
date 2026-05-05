@@ -484,24 +484,50 @@ def render_clinica():
                                                 st.rerun()
 
 
-                                st.markdown("**💡 Recomendaciones / Lo que se llevó el paciente:**")
+                                st.markdown("**💡 Recomendaciones / Indicaciones Rápidas:**")
+                                # Botones de sugerencias
+                                cols_sug = st.columns(4)
+                                if cols_sug[0].button("👓 Uso Lentes", key=f"sug1_{hrow['id']}", use_container_width=True):
+                                    st.session_state[f"rec_{hrow['id']}"] += " • Se recomienda el uso permanente de sus lentes. "
+                                if cols_sug[1].button("💧 Lubricante", key=f"sug2_{hrow['id']}", use_container_width=True):
+                                    st.session_state[f"rec_{hrow['id']}"] += " • Aplicar lubricante ocular 1 gota cada 4 horas. "
+                                if cols_sug[2].button("🖥️ Regla 20-20", key=f"sug3_{hrow['id']}", use_container_width=True):
+                                    st.session_state[f"rec_{hrow['id']}"] += " • Realizar pausa activa: por cada 20 min de pantalla, mirar lejos 20 seg. "
+                                if cols_sug[3].button("📅 Control", key=f"sug4_{hrow['id']}", use_container_width=True):
+                                    st.session_state[f"rec_{hrow['id']}"] += " • Control visual en 6 meses. "
+
                                 rec_val     = hrow.get("recomendaciones", "")
                                 rec_editado = st.text_area("Recomendaciones", value=str(rec_val) if rec_val else "",
-                                    key=f"rec_{hrow['id']}", label_visibility="collapsed", height=80)
-                                if st.button("💾 Guardar recomendación", key=f"save_rec_{hrow['id']}"):
+                                    key=f"rec_{hrow['id']}", label_visibility="collapsed", height=100)
+                                
+                                b_rec1, b_rec2 = st.columns([1, 1])
+                                if b_rec1.button("💾 Guardar y Actualizar", key=f"save_rec_{hrow['id']}", use_container_width=True, type="primary"):
                                     idx_h = st.session_state.df_historias[
                                         st.session_state.df_historias["id"] == hrow["id"]
                                     ].index[0]
                                     st.session_state.df_historias.at[idx_h, "recomendaciones"] = rec_editado
                                     guardar_datos()
-                                    st.success("✅ Recomendación guardada.")
+                                    st.toast("✅ Recomendación guardada.")
                                     st.rerun()
+                                
+                                # Botón de WhatsApp
+                                tel_pac = str(pac.get("telefono", "")).replace(" ","").replace("+","")
+                                if tel_pac:
+                                    msg_wa = f"Hola {pac.get('nombre','')}, tus indicaciones de Happy Vision son: {rec_editado}"
+                                    import urllib.parse
+                                    wa_url = f"https://wa.me/{tel_pac}?text={urllib.parse.quote(msg_wa)}"
+                                    b_rec2.markdown(f'<a href="{wa_url}" target="_blank"><button style="width:100%; background:#25D366; color:white; border:none; border-radius:8px; padding:10px; cursor:pointer; font-weight:bold;">📲 Enviar por WhatsApp</button></a>', unsafe_allow_html=True)
 
                                 st.markdown("---")
                                 bacc1, bacc2, bacc3 = st.columns(3)
 
                                 with bacc1:
-                                    # Opto info desde el usuario logueado
+                                    # ... (lógica de opto_info omitida por brevedad en este chunk pero se mantiene) ...
+                                    # [Nota: El código de opto_info está antes en el archivo, aquí solo pongo el final de la columna]
+                                    pass
+
+                                # Generar PDF para botones
+                                try:
                                     import json as _json
                                     import base64 as _b64
                                     _ulogin = st.session_state.get("user_login", "")
@@ -509,8 +535,9 @@ def render_clinica():
                                     try:
                                         with open("usuarios.json", "r", encoding="utf-8") as _f:
                                             _usuarios_data = _json.load(_f)
-                                    except Exception:
-                                        pass
+                                    except: pass
+                                    _ud = _usuarios_data.get(_ulogin, {})
+                                    
                                     # Fallback global desde optometrista.json
                                     _os = __import__("os")
                                     _global_opto = {}
@@ -520,7 +547,6 @@ def render_clinica():
                                                 _global_opto = _json.load(_f)
                                         except Exception: pass
 
-                                    _ud = _usuarios_data.get(_ulogin, {})
                                     opto_info = {
                                         "username": _ulogin,
                                         "nombre":   _ud.get("nombre") or st.session_state.get("user_name") or _global_opto.get("opto_nombre", ""),
@@ -528,27 +554,29 @@ def render_clinica():
                                         "registro": _ud.get("registro") or st.session_state.get("user_registro") or _global_opto.get("opto_registro", ""),
                                         "telefono": _ud.get("telefono") or st.session_state.get("user_telefono") or _global_opto.get("opto_telefono", ""),
                                     }
-                                    try:
-                                        pdf_bytes = generar_pdf_historia(hrow.to_dict(), pac.to_dict(), opto_info)
-                                        # Vista Previa del certificado
-                                        with st.expander("📄 Ver Certificado Visual / Reporte", expanded=False):
+                                    
+                                    pdf_bytes = generar_pdf_historia(hrow.to_dict(), pac.to_dict(), opto_info)
+                                    
+                                    with bacc1:
+                                        st.download_button(
+                                            label="📥 Descargar Certificado (PDF)",
+                                            data=pdf_bytes,
+                                            file_name=f"Certificado_{pac.get('nombre','').replace(' ','_')}.pdf",
+                                            mime="application/pdf",
+                                            use_container_width=True,
+                                            key=f"pdf_dl_main_{hrow['id']}"
+                                        )
+
+                                    with bacc2:
+                                        with st.expander("👁️ Vista Previa"):
                                             _b64str = _b64.b64encode(pdf_bytes).decode("utf-8")
                                             st.markdown(
                                                 f'<iframe src="data:application/pdf;base64,{_b64str}" '
-                                                f'width="100%" height="600px" style="border:none; border-radius:8px;"></iframe>',
+                                                f'width="100%" height="500px" style="border:none;"></iframe>',
                                                 unsafe_allow_html=True
                                             )
-                                            st.caption("💡 Si no ves la vista previa arriba, usa el botón de abajo para descargar el archivo.")
-                                            st.download_button(
-                                                label="📥 Descargar Certificado (PDF)",
-                                                data=pdf_bytes,
-                                                file_name=f"Certificado_{pac.get('nombre','').replace(' ','_')}.pdf",
-                                                mime="application/pdf",
-                                                use_container_width=True,
-                                                key=f"pdf_dl_{hrow['id']}"
-                                            )
-                                    except Exception as e:
-                                        st.error(f"Error PDF: {e}")
+                                except Exception as e:
+                                    st.error(f"Error PDF: {e}")
 
                                 with bacc2:
                                     num_wa = str(pac.get("telefono", "")).strip()
