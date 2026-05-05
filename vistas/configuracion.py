@@ -5,6 +5,10 @@ from database import cargar_sucursales, guardar_sucursal, eliminar_sucursal
 def render_configuracion():
     st.title("⚙️ Configuración del Sistema")
     
+    if "suc_msg" in st.session_state:
+        st.success(st.session_state.pop("suc_msg"))
+        st.balloons()
+
     tab1, tab2 = st.tabs(["🏢 Gestión de Sedes", "👤 Mi Perfil"])
     
     with tab1:
@@ -14,7 +18,7 @@ def render_configuracion():
         df_suc = cargar_sucursales()
         
         with st.expander("➕ Añadir Nueva Sede", expanded=False):
-            with st.form("form_nueva_sede"):
+            with st.form("form_nueva_sede", clear_on_submit=True):
                 c1, c2 = st.columns(2)
                 n_nombre = c1.text_input("Nombre de la Sede", placeholder="Ej: Sucursal Centro")
                 n_ciudad = c2.text_input("Ciudad", value="Quito")
@@ -30,7 +34,7 @@ def render_configuracion():
                             "ciudad": n_ciudad
                         })
                         if success:
-                            st.success(f"✅ Sede '{n_nombre}' creada. Base de datos activada.")
+                            st.session_state["suc_msg"] = f"✅ Sede '{n_nombre}' guardada correctamente."
                             st.rerun()
                         else:
                             st.error(f"❌ Error al guardar: {msg}")
@@ -66,7 +70,7 @@ def render_configuracion():
                                         "ciudad": e_ciudad
                                     })
                                     if success:
-                                        st.success("✅ Actualizado con éxito")
+                                        st.session_state["suc_msg"] = f"✅ Sede '{e_nombre}' actualizada con éxito."
                                         st.rerun()
                                     else:
                                         st.error(f"❌ Error: {msg}")
