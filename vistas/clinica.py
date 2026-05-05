@@ -532,6 +532,7 @@ def render_clinica():
                                         "cargo":    _ud.get("cargo") or st.session_state.get("user_cargo") or _global_opto.get("opto_cargo", "Optometrista"),
                                         "registro": _ud.get("registro") or st.session_state.get("user_registro") or _global_opto.get("opto_registro", ""),
                                         "telefono": _ud.get("telefono") or st.session_state.get("user_telefono") or _global_opto.get("opto_telefono", ""),
+                                        "firma_base64": _ud.get("firma_base64") or st.session_state.get("user_firma", "")
                                     }
                                     
                                     pdf_bytes = generar_pdf_historia(hrow.to_dict(), pac.to_dict(), opto_info)
@@ -559,44 +560,39 @@ def render_clinica():
 
                                 with bacc3:
                                     with st.popover("💊 Enviar Indicacion", use_container_width=True):
-                                        st.markdown("<p style='font-size:14px; font-weight:700; margin-bottom:5px;'>📲 Enviar Indicaciones al Paciente</p>", unsafe_allow_html=True)
+                                        st.markdown("<p style='font-size:14px; font-weight:700; margin-bottom:5px;'>📲 Enviar Indicaciones</p>", unsafe_allow_html=True)
                                         
-                                        # Usar session_state para el autocompletado
-                                        wa_key = f"wa_input_state_{hrow['id']}"
+                                        # Plantillas Rápidas
+                                        plantillas = {
+                                            "Seleccionar plantilla...": "",
+                                            "👓 Uso Lentes": "Se recomienda el uso permanente de sus lentes para todas sus actividades.",
+                                            "💧 Gotas": "Aplicar lubricante ocular (lágrimas artificiales) 1 gota en cada ojo cada 4 horas.",
+                                            "🖥️ Regla 20-20": "Regla 20-20-20: Por cada 20 min de pantalla, mirar lejos 20 seg.",
+                                            "📅 Control 6m": "Control visual obligatorio en 6 meses."
+                                        }
+                                        
+                                        wa_key = f"wa_input_val_{hrow['id']}"
                                         if wa_key not in st.session_state:
                                             st.session_state[wa_key] = hrow.get("recomendaciones", "")
 
-                                        # Sugerencias rápidas
-                                        cs1, cs2 = st.columns(2)
-                                        if cs1.button("👓 Lentes", key=f"s1_{hrow['id']}", use_container_width=True):
-                                            st.session_state[wa_key] = "Se recomienda el uso permanente de sus lentes."
-                                            st.rerun()
-                                        if cs2.button("💧 Gotas", key=f"s2_{hrow['id']}", use_container_width=True):
-                                            st.session_state[wa_key] = "Aplicar lubricante ocular 1 gota cada 4 horas."
-                                            st.rerun()
-                                        
-                                        cs3, cs4 = st.columns(2)
-                                        if cs3.button("🖥️ 20-20", key=f"s3_{hrow['id']}", use_container_width=True):
-                                            st.session_state[wa_key] = "Por cada 20 min de pantalla, mirar lejos 20 seg."
-                                            st.rerun()
-                                        if cs4.button("📅 6 meses", key=f"s4_{hrow['id']}", use_container_width=True):
-                                            st.session_state[wa_key] = "Control visual obligatorio en 6 meses."
-                                            st.rerun()
+                                        elegida = st.selectbox("Plantillas rápidas:", list(plantillas.keys()), key=f"sel_{hrow['id']}")
+                                        if elegida != "Seleccionar plantilla...":
+                                            st.session_state[wa_key] = plantillas[elegida]
 
-                                        # Input unificado
                                         final_msg = st.text_area("Mensaje para el paciente", 
                                                                  value=st.session_state[wa_key], 
-                                                                 key=f"wa_field_{hrow['id']}", 
+                                                                 key=f"wa_txt_{hrow['id']}", 
                                                                  height=120)
                                         
                                         # Botón final
                                         tel_pac = str(pac.get("telefono", "")).replace(" ","").replace("+","")
                                         if tel_pac:
                                             import urllib.parse
-                                            wa_url = f"https://wa.me/{tel_pac}?text={urllib.parse.quote('Hola ' + pac.get('nombre','') + ', tus indicaciones: ' + final_msg)}"
+                                            full_wa_msg = f"Hola {pac.get('nombre','')}, tus indicaciones de Happy Vision son: {final_msg}"
+                                            wa_url = f"https://wa.me/{tel_pac}?text={urllib.parse.quote(full_wa_msg)}"
                                             st.markdown(f'<a href="{wa_url}" target="_blank"><button style="width:100%; background:#25D366; color:white; border:none; border-radius:8px; padding:12px; cursor:pointer; font-weight:bold; font-size:14px;">📲 Enviar por WhatsApp</button></a>', unsafe_allow_html=True)
                                         else:
-                                            st.caption("⚠️ Sin teléfono")
+                                            st.caption("⚠️ Sin teléfono registrado")
 
     elif not q:
         st.info("🔍 Escribe el nombre o cédula en el buscador. Si es nuevo, usa ➕ Nuevo Paciente.")

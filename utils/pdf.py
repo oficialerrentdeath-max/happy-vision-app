@@ -317,7 +317,17 @@ def generar_pdf_historia(row: dict, paciente_info: dict, opto: dict) -> bytes:
     if y_firma + espacio_firma > 277:
         y_firma = 277 - espacio_firma
 
-    if os.path.exists(firma_path):
+    # Intentar cargar firma desde Base64 (Base de datos) o archivo local
+    firma_base64 = opto.get("firma_base64")
+    import base64 as _b64
+    if firma_base64:
+        try:
+            with open("temp_firma.png", "wb") as f:
+                f.write(_b64.b64decode(firma_base64))
+            pdf.image("temp_firma.png", x=77, y=y_firma, w=55, h=16)
+        except Exception: 
+            if os.path.exists(firma_path): pdf.image(firma_path, x=77, y=y_firma, w=55, h=16)
+    elif os.path.exists(firma_path):
         try:
             pdf.image(firma_path, x=77, y=y_firma, w=55, h=16)
         except Exception:

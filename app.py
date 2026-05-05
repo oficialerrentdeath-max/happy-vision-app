@@ -573,6 +573,7 @@ if not st.session_state.logged_in:
                         st.session_state.user_cargo  = ud.get("cargo", "Optometrista")
                         st.session_state.user_registro = ud.get("registro", "")
                         st.session_state.user_telefono = ud.get("telefono", "")
+                        st.session_state.user_firma    = ud.get("firma_base64", "")
                         
                         # Manejo de sucursales (Administradores siempre tienen todas)
                         assigned_branches = ud.get("sucursales_asignadas")
