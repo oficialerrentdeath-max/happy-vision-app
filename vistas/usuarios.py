@@ -176,11 +176,14 @@ def render_usuarios():
                     if st.button("✏️", key=f"btn_edit_{username}", help="Editar datos"):
                         st.session_state["edit_usr_target"] = username
                 with b2:
-                    if not is_main_admin:
+                    is_myself = username == st.session_state.get("user_login")
+                    if not is_main_admin and not is_myself:
                         if st.button("🗑️", key=f"btn_del_{username}", help="Eliminar usuario"):
                             _eliminar_usuario(username)
                             st.success(f"Usuario '{username}' eliminado.")
                             st.rerun()
+                    elif is_myself:
+                        st.caption("🔒 Tú")
 
             # --- FORMULARIO DE EDICIÓN ---
             if st.session_state.get("edit_usr_target") == username:
