@@ -6,6 +6,7 @@ Certificado Visual + Informe Médico
 import io
 import os
 from datetime import date
+import pandas as pd
 from fpdf import FPDF
 
 
