@@ -51,6 +51,11 @@ def registrar_auditoria(accion: str, entidad: str = "", detalle: str = "",
             "detalle":       detalle,
             "sucursal":      sucursal,
         }).execute()
+        # Confirmación visual opcional
+        try:
+            import streamlit as st
+            st.toast(f"📝 Auditoría: {accion}")
+        except: pass
     except Exception as e:
         print(f"[Auditoría] Error registrando evento: {e}")
 
