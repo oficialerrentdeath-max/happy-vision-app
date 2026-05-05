@@ -13,10 +13,9 @@ from datetime import datetime
 import base64
 
 # ── Utilidades y vistas ────────────────────────────────────────
-from utils import generate_sample_data, guardar_datos
+from utils import wa_link
 
 from vistas.clinica   import render_clinica
-from vistas.pacientes import render_pacientes
 from vistas.usuarios  import render_usuarios
 from vistas.configuracion import render_configuracion
 from vistas.inventario import render_inventario

@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
-from utils import wa_link, guardar_datos, generar_pdf_historia, generar_msg_indicaciones
-from database import eliminar_historia
+from utils import wa_link, generar_pdf_historia, generar_msg_indicaciones
+from database import eliminar_historia, actualizar_historia
 
 
 def _render_lectura_historia(hrow):
@@ -184,7 +184,8 @@ def render_clinica():
                             "sucursal": sucursal_actual
                         }
                         st.session_state.df_pacientes = pd.concat([st.session_state.df_pacientes, pd.DataFrame([nuevo_p])], ignore_index=True)
-                        guardar_datos()
+                        from database import guardar_paciente
+                        guardar_paciente(nuevo_p)
                         # AUDITORÍA: Nuevo Paciente
                         from database import registrar_auditoria
                         registrar_auditoria(
@@ -295,7 +296,11 @@ def render_clinica():
                                 st.session_state.df_pacientes.at[idx_p, "correo"]           = str(e_mail)
                                 st.session_state.df_pacientes.at[idx_p, "direccion"]        = str(e_dir)
                                 st.session_state.df_pacientes.at[idx_p, "ocupacion"]        = e_ocu
-                                guardar_datos()
+                                
+                                from database import guardar_paciente
+                                # Obtenemos la fila actualizada para mandar a DB
+                                row_upd = st.session_state.df_pacientes.iloc[idx_p].to_dict()
+                                guardar_paciente(row_upd)
                                 # AUDITORÍA: Edición de paciente
                                 from database import registrar_auditoria
                                 registrar_auditoria(
@@ -525,8 +530,9 @@ def render_clinica():
                                         st.session_state.df_historias["id"] == hrow["id"]
                                     ].index[0]
                                     st.session_state.df_historias.at[idx_h, "recomendaciones"] = rec_editado
-                                    guardar_datos()
-                                    st.toast("✅ Recomendación guardada.")
+                                    from database import actualizar_historia
+                                    actualizar_historia(hrow["id"], {"recomendaciones": rec_editado})
+                                    st.toast("✅ Recomendación guardada en la nube.")
                                     st.rerun()
 
                                 st.markdown("---")
@@ -986,7 +992,8 @@ def render_clinica():
                     st.session_state.df_historias = pd.concat(
                         [st.session_state.df_historias, pd.DataFrame([nueva_h])], ignore_index=True
                     )
-                    guardar_datos()
+                    from database import guardar_historia
+                    guardar_historia(nueva_h)
                     # AUDITORÍA: Nueva Historia
                     from database import registrar_auditoria
                     registrar_auditoria(

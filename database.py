@@ -205,6 +205,14 @@ def cerrar_caja(caja_id: int, data: dict):
         registrar_auditoria("Cierre de Caja", "Contabilidad", f"Cierre final: ${data['monto_cierre']}", data['cerrada_por'], sucursal=data['sucursal'])
     except Exception as e: print(f"Error cerrar_caja: {e}")
 
+def actualizar_historia(historia_id: int, data: dict):
+    """Actualiza campos de una historia clínica en Supabase."""
+    try:
+        if not supabase: return
+        supabase.table("historias").update(data).eq("id", historia_id).execute()
+        registrar_auditoria("Actualizar Historia", "Clínica", f"ID Historia: {historia_id}", st.session_state.user_login, sucursal=st.session_state.get("sucursal_activa", ""))
+    except Exception as e: print(f"Error actualizar_historia: {e}")
+
 # ══════════════════════════════════════════════════════════════
 # PACIENTES
 # ══════════════════════════════════════════════════════════════
