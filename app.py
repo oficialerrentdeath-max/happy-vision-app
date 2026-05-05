@@ -684,7 +684,6 @@ with st.sidebar:
     # Navegacion simplificada: solo Pacientes, Clinica y (para admin) Usuarios
     pages = {
         "Pacientes": ("👥", "Pacientes"),
-        "Clinica":   ("🩺", "Historias Clinicas"),
     }
     if _role == "Administrador":
         pages["Usuarios"] = ("👤", "Gestion de Usuarios")
@@ -748,12 +747,10 @@ with st.sidebar:
 page = st.session_state.page
 
 if page == "Pacientes":
-    render_pacientes()
-elif page == "Clinica":
     render_clinica()
 elif page == "Usuarios":
     render_usuarios()
 elif page == "Configuracion":
     render_configuracion()
 else:
-    render_pacientes()
+    render_clinica()
