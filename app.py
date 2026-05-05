@@ -708,7 +708,7 @@ with st.sidebar:
     pages = {
         "Inicio":      ("🏠", "Inicio"),
         "Pacientes":   ("👥", "Pacientes"),
-        "Laboratorio": ("🧪", "Laboratorio"),
+        "Trabajos":    ("📋", "Trabajos"),
     }
     if _role == "Administrador":
         pages["Inventario"]    = ("📦", "Inventario")
@@ -787,7 +787,7 @@ if page == "Inicio":
     render_dashboard()
 elif page == "Pacientes":
     render_clinica()
-elif page == "Laboratorio":
+elif page == "Trabajos":
     render_laboratorio()
 elif page == "Inventario":
     render_inventario()

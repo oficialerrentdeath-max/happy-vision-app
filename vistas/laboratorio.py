@@ -6,7 +6,7 @@ from database import cargar_ordenes_trabajo, actualizar_estado_orden
 def render_laboratorio():
     st.markdown("""
         <div class="page-header">
-            <h1 style='margin:0; color:#1e293b;'>🧪 Gestión de Laboratorio</h1>
+            <h1 style='margin:0; color:#1e293b;'>📋 Gestión de Trabajos</h1>
             <p style='margin:5px 0 0 0; color:#64748b;'>Órdenes de trabajo, estados y entregas</p>
         </div>
     """, unsafe_allow_html=True)
