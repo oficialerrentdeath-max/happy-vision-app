@@ -353,7 +353,7 @@ def generar_pdf_historia(row: dict, paciente_info: dict, opto: dict) -> bytes:
     
     pdf.set_font("Helvetica", "I", 8)
     pdf.set_text_color(150, 150, 150)
-    pdf.cell(0, 4, f"Atendido en: {sucursal_pdf} - {dir_sucursal}", ln=True, align="C")
+    pdf.cell(0, 4, _s(f"Atendido en: {sucursal_pdf} - {dir_sucursal}"), ln=True, align="C")
     buf = io.BytesIO()
     raw = pdf.output(dest='S')
     if isinstance(raw, (bytes, bytearray)):
