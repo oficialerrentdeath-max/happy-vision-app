@@ -539,7 +539,16 @@ def render_clinica():
                                     
                                     # Definir tel_pac una sola vez para todos los botones
                                     import urllib.parse
-                                    tel_pac = str(pac.get("telefono", "")).replace(" ","").replace("+","")
+                                    def _normalizar_tel(tel_raw):
+                                        """Convierte el número al formato internacional para WhatsApp (Ecuador)."""
+                                        t = str(tel_raw).strip().replace(" ", "").replace("-", "").replace("+", "")
+                                        if t.startswith("0"):      # 0987654321 → 593987654321
+                                            t = "593" + t[1:]
+                                        elif not t.startswith("593"):  # Sin código de país, añadir Ecuador
+                                            t = "593" + t
+                                        return t
+                                    
+                                    tel_pac = _normalizar_tel(pac.get("telefono", ""))
                                     nombre_pac = pac.get('nombre', '')
                                     
                                     with bacc1:
