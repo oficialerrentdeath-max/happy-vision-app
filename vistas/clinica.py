@@ -579,40 +579,51 @@ def render_clinica():
 
                                     with bacc3:
                                         with st.popover("💊 Enviar Indicacion", use_container_width=True):
-                                            st.markdown("<p style='font-size:14px; font-weight:700; margin-bottom:5px;'>📲 Enviar Indicaciones</p>", unsafe_allow_html=True)
+                                            st.markdown("<p style='font-size:14px; font-weight:700; margin-bottom:2px;'>📋 Indicaciones para el Paciente</p>", unsafe_allow_html=True)
+                                            st.caption("Selecciona una plantilla, edítala y envía.")
                                             
                                             wa_key = f"wa_msg_val_{hrow['id']}"
                                             if wa_key not in st.session_state:
                                                 st.session_state[wa_key] = hrow.get("recomendaciones", "")
 
-                                            # Botones en cuadros
+                                            # Botones con plantillas editables
                                             c_s1, c_s2 = st.columns(2)
                                             if c_s1.button("👓 Lentes", key=f"btn_s1_{hrow['id']}", use_container_width=True):
-                                                st.session_state[wa_key] = "Se recomienda el uso permanente de sus lentes."
+                                                st.session_state[wa_key] = "✅ Uso permanente de lentes correctivos para todas sus actividades diarias (lectura, pantallas y distancia)."
                                                 st.rerun()
                                             if c_s2.button("💧 Gotas", key=f"btn_s2_{hrow['id']}", use_container_width=True):
-                                                st.session_state[wa_key] = "Aplicar lubricante ocular 1 gota cada 4 horas."
+                                                st.session_state[wa_key] = "💧 Lubricante ocular: Aplicar 1 gota de [NOMBRE DEL MEDICAMENTO] en cada ojo cada 4 horas. No suspender sin indicación médica."
                                                 st.rerun()
                                             
                                             c_s3, c_s4 = st.columns(2)
                                             if c_s3.button("🖥️ 20-20", key=f"btn_s3_{hrow['id']}", use_container_width=True):
-                                                st.session_state[wa_key] = "Por cada 20 min de pantalla, mirar lejos 20 seg."
+                                                st.session_state[wa_key] = "🖥️ Higiene visual: Por cada 20 minutos frente a pantallas, enfoque un objeto a 6 metros de distancia durante 20 segundos. Parpadee conscientemente para lubricar sus ojos."
                                                 st.rerun()
                                             if c_s4.button("📅 6 meses", key=f"btn_s4_{hrow['id']}", use_container_width=True):
-                                                st.session_state[wa_key] = "Control visual obligatorio en 6 meses."
+                                                st.session_state[wa_key] = "📅 Control visual programado en 6 meses. Es importante cumplir este seguimiento para monitorear la evolución de su salud visual."
                                                 st.rerun()
 
-                                            final_msg = st.text_area("Mensaje para el paciente", 
-                                                                     value=st.session_state[wa_key], 
-                                                                     key=f"wa_final_txt_{hrow['id']}", 
-                                                                     height=120)
+                                            indicacion_editada = st.text_area(
+                                                "✏️ Edita el mensaje antes de enviar:",
+                                                value=st.session_state[wa_key],
+                                                key=f"wa_final_txt_{hrow['id']}",
+                                                height=140,
+                                                placeholder="Selecciona una plantilla arriba o escribe aquí..."
+                                            )
                                             
                                             if tel_pac:
-                                                full_wa_msg = f"Hola {nombre_pac}, tus indicaciones de Happy Vision son: {final_msg}"
+                                                fecha_hc = hrow.get('fecha', '')
+                                                full_wa_msg = (
+                                                    f"👁️ *Happy Vision — Indicaciones Médicas*\n\n"
+                                                    f"Estimado/a *{nombre_pac}*, a continuación las indicaciones de su consulta del *{fecha_hc}*:\n\n"
+                                                    f"{indicacion_editada}\n\n"
+                                                    f"Ante cualquier duda o molestia, comuníquese con nosotros.\n"
+                                                    f"📍 *Happy Vision* | 📞 +593 96 324 1158"
+                                                )
                                                 wa_url = f"https://wa.me/{tel_pac}?text={urllib.parse.quote(full_wa_msg)}"
-                                                st.markdown(f'<a href="{wa_url}" target="_blank"><button style="width:100%; background:#25D366; color:white; border:none; border-radius:8px; padding:12px; cursor:pointer; font-weight:bold; font-size:14px;">📲 Enviar por WhatsApp</button></a>', unsafe_allow_html=True)
+                                                st.markdown(f'<a href="{wa_url}" target="_blank"><button style="width:100%; background:#25D366; color:white; border:none; border-radius:8px; padding:12px; cursor:pointer; font-weight:bold; font-size:13px;">📲 Enviar Indicaciones por WhatsApp</button></a>', unsafe_allow_html=True)
                                             else:
-                                                st.caption("⚠️ Sin teléfono")
+                                                st.caption("⚠️ Sin teléfono registrado")
                                 except Exception as e:
                                     st.error(f"⚠️ Error generando PDF: {e}")
 
