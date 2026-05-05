@@ -285,6 +285,7 @@ if "initialized_v5" not in st.session_state:
     st.session_state.df_pacientes = cargar_pacientes()
     st.session_state.df_historias = cargar_historias()
     migrar_estructuras()
+    st.session_state.page = "Inicio"
     st.session_state.initialized_v5 = True
 
     pass
