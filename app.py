@@ -688,11 +688,23 @@ with st.sidebar:
 
     st.markdown("<div class='fancy-divider'></div>", unsafe_allow_html=True)
 
-    # ── INFO DEL USUARIO ──────────────────────────────────────
-    n_pacientes = len(st.session_state.df_pacientes)
-    n_historias = len(st.session_state.df_historias)
+    # ── INFO DEL USUARIO (FILTRADA POR SUCURSAL) ────────────────
+    suc_actual = st.session_state.get("sucursal_activa", "Matriz")
+    
+    # Filtrar dataframes para el resumen
+    df_p_view = st.session_state.df_pacientes
+    df_h_view = st.session_state.df_historias
+    
+    if "sucursal" in df_p_view.columns:
+        df_p_view = df_p_view[df_p_view["sucursal"] == suc_actual]
+    if "sucursal" in df_h_view.columns:
+        df_h_view = df_h_view[df_h_view["sucursal"] == suc_actual]
+        
+    n_pacientes = len(df_p_view)
+    n_historias = len(df_h_view)
+    
     st.markdown(
-        f"<p style='color:#475569; font-size:10px; text-transform:uppercase; letter-spacing:1.5px; margin:0 0 6px 0;'>Resumen</p>",
+        f"<p style='color:#475569; font-size:10px; text-transform:uppercase; letter-spacing:1.5px; margin:0 0 6px 0;'>Resumen ({suc_actual})</p>",
         unsafe_allow_html=True
     )
     c1, c2 = st.columns(2)
