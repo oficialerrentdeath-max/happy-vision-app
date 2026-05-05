@@ -682,7 +682,7 @@ def render_clinica():
                 )
                 col_b.caption(f"📞 {rp.get('telefono','')}")
                 col_c.caption(f"📋 Historias: {n_hist}")
-                if col_d.button("📂 Ver Historias", key=f"rap_cons_{rp['id']}", use_container_width=True):
+                if col_d.button("🔍 Ver", key=f"rap_cons_{rp['id']}", use_container_width=True):
                     st.session_state["clinica_buscar"] = rp.get("nombre","")
                     st.rerun()
                 if col_e.button("✏️ Editar", key=f"rap_edit_{rp['id']}", use_container_width=True):
