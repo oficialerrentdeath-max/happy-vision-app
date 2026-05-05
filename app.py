@@ -571,9 +571,17 @@ if not st.session_state.logged_in:
                         st.session_state.user_cargo  = ud.get("cargo", "Optometrista")
                         st.session_state.user_registro = ud.get("registro", "")
                         st.session_state.user_telefono = ud.get("telefono", "")
+                        # Manejo de sucursales a prueba de errores
+                        assigned_branches = ud.get("sucursales_asignadas")
                         
-                        # Manejo de sucursales
-                        assigned_branches = ud.get("sucursales_asignadas", ["Matriz"])
+                        if not assigned_branches: # Si es None o lista vacía
+                            if "Administrador" in raw_role:
+                                assigned_branches = ["Matriz", "Sucursal 1", "Sucursal 2"]
+                            else:
+                                assigned_branches = ["Matriz"]
+                        elif isinstance(assigned_branches, str):
+                            assigned_branches = [assigned_branches]
+                            
                         st.session_state.sucursales_asignadas = assigned_branches
                         
                         if len(assigned_branches) == 1:
