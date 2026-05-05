@@ -665,7 +665,7 @@ def render_clinica():
                 _nombres   = str(rp.get("nombres", "")).strip()
                 display_name = f"{_apellidos} {_nombres}" if _apellidos and _nombres else str(rp.get("nombre", ""))
 
-                col_num, col_a, col_b, col_c, col_d, col_e = st.columns([0.5, 3.5, 1.8, 1.8, 1.4, 0.6])
+                col_num, col_a, col_b, col_c, col_d, col_e, col_f = st.columns([0.5, 3.2, 1.8, 1.5, 1.4, 1.4, 0.6])
 
                 col_num.markdown(
                     f"<div style='text-align:center; padding-top:6px;'>"
@@ -685,9 +685,21 @@ def render_clinica():
                 if col_d.button("📋 Consulta", key=f"rap_cons_{rp['id']}", use_container_width=True):
                     st.session_state["nueva_consulta_paciente"] = rp.get("nombre","")
                     st.rerun()
-                if col_e.button("🔍", key=f"rap_ver_{rp['id']}", use_container_width=True, help="Ver historias"):
+                if col_e.button("✏️ Editar", key=f"rap_edit_{rp['id']}", use_container_width=True):
+                    st.session_state["editar_paciente_id"] = rp["id"]
                     st.session_state["clinica_buscar"] = rp.get("nombre","")
                     st.rerun()
+                if col_f.button("🗑️", key=f"rap_del_{rp['id']}", use_container_width=True, help="Eliminar paciente"):
+                    if n_hist > 0:
+                        st.error(f"❌ No puedes eliminar a **{display_name}** porque tiene {n_hist} historia(s) clínica(s). Elimínalas primero.")
+                    else:
+                        from database import eliminar_paciente
+                        eliminar_paciente(rp["id"])
+                        st.session_state.df_pacientes = st.session_state.df_pacientes[
+                            st.session_state.df_pacientes["id"] != rp["id"]
+                        ]
+                        st.success(f"✅ Paciente **{display_name}** eliminado.")
+                        st.rerun()
                 st.divider()
 
     # ── FORMULARIO DE NUEVA CONSULTA ─────────────────────────────────
