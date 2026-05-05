@@ -151,6 +151,61 @@ def actualizar_estado_orden(orden_id: int, nuevo_estado: str, usuario: str = "",
         print(f"Error actualizar_estado_orden: {e}")
 
 # ══════════════════════════════════════════════════════════════
+# CONTABILIDAD Y CAJA
+# ══════════════════════════════════════════════════════════════
+def obtener_estado_caja(sucursal: str, fecha: str) -> dict:
+    """Busca si hay una caja abierta para hoy en esta sucursal."""
+    try:
+        if not supabase: return None
+        res = supabase.table("caja_diaria").select("*").eq("sucursal", sucursal).eq("fecha", fecha).execute()
+        return res.data[0] if res.data else None
+    except: return None
+
+def abrir_caja(data: dict):
+    """Crea el registro de apertura de caja."""
+    try:
+        if not supabase: return
+        supabase.table("caja_diaria").insert(data).execute()
+        registrar_auditoria("Apertura de Caja", "Contabilidad", f"Monto inicial: ${data['monto_apertura']}", data['abierta_por'], sucursal=data['sucursal'])
+    except Exception as e: print(f"Error abrir_caja: {e}")
+
+def registrar_gasto(data: dict):
+    """Registra un egreso de dinero."""
+    try:
+        if not supabase: return
+        supabase.table("gastos").insert(data).execute()
+        registrar_auditoria("Gasto Registrado", "Contabilidad", f"{data['categoria']}: ${data['monto']}", data['usuario'], sucursal=data['sucursal'])
+    except Exception as e: print(f"Error registrar_gasto: {e}")
+
+def obtener_resumen_dia(sucursal: str, fecha: str):
+    """Calcula totales de ventas y gastos del día para el cierre."""
+    try:
+        if not supabase: return {"Efectivo":0, "Tarjeta":0, "Transferencia":0, "Gastos":0}
+        # Ventas (Abonos de nuevas órdenes + Saldos cobrados)
+        # Nota: Simplificado para este MVP sumando abonos de órdenes creadas hoy
+        res_v = supabase.table("ordenes_trabajo").select("total_venta, abono, metodo_pago").eq("sucursal", sucursal).filter("creado_el", "gte", f"{fecha}T00:00:00").execute()
+        
+        totales = {"Efectivo":0, "Tarjeta":0, "Transferencia":0, "Gastos":0}
+        for v in res_v.data:
+            m = v.get("metodo_pago", "Efectivo")
+            totales[m] += float(v.get("abono", 0))
+            
+        # Gastos
+        res_g = supabase.table("gastos").select("monto").eq("sucursal", sucursal).eq("fecha", fecha).execute()
+        totales["Gastos"] = sum(float(g["monto"]) for g in res_g.data)
+        
+        return totales
+    except: return {"Efectivo":0, "Tarjeta":0, "Transferencia":0, "Gastos":0}
+
+def cerrar_caja(caja_id: int, data: dict):
+    """Cierra la caja del día."""
+    try:
+        if not supabase: return
+        supabase.table("caja_diaria").update(data).eq("id", caja_id).execute()
+        registrar_auditoria("Cierre de Caja", "Contabilidad", f"Cierre final: ${data['monto_cierre']}", data['cerrada_por'], sucursal=data['sucursal'])
+    except Exception as e: print(f"Error cerrar_caja: {e}")
+
+# ══════════════════════════════════════════════════════════════
 # PACIENTES
 # ══════════════════════════════════════════════════════════════
 def cargar_pacientes() -> pd.DataFrame:

@@ -21,6 +21,7 @@ from vistas.usuarios  import render_usuarios
 from vistas.configuracion import render_configuracion
 from vistas.inventario import render_inventario
 from vistas.laboratorio import render_laboratorio
+from vistas.contabilidad import render_contabilidad
 from database import cargar_sucursales
 
 
@@ -701,6 +702,7 @@ with st.sidebar:
     }
     if _role == "Administrador":
         pages["Inventario"]    = ("📦", "Inventario")
+        pages["Contabilidad"]  = ("💰", "Contabilidad")
         pages["Usuarios"]      = ("👤", "Gestion de Usuarios")
         pages["Configuracion"] = ("⚙️", "Configuracion")
 
@@ -767,6 +769,8 @@ elif page == "Laboratorio":
     render_laboratorio()
 elif page == "Inventario":
     render_inventario()
+elif page == "Contabilidad":
+    render_contabilidad()
 elif page == "Usuarios":
     render_usuarios()
 elif page == "Configuracion":
