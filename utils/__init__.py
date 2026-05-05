@@ -15,6 +15,7 @@ from utils.pdf import (
     _s,
     generar_pdf_historia,
     generar_pdf_ticket,
+    generar_pdf_venta,
 )
 
 __all__ = [

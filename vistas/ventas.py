@@ -116,12 +116,16 @@ def render_ventas():
                                 "vendedor": st.session_state.user_login,
                                 "detalles": st.session_state.items_venta
                             }
-                            # Reutilizamos registrar_venta_directa o creamos una específica
                             res = registrar_venta_directa(data_v)
                             if res:
                                 st.success("Venta guardada exitosamente.")
+                                # Generar PDF para descarga inmediata
+                                from utils import generar_pdf_venta
+                                pdf_b = generar_pdf_venta(data_v)
+                                st.download_button("📥 Descargar Comprobante/Factura", data=pdf_b, file_name=f"Venta_{cliente}.pdf", mime="application/pdf", use_container_width=True)
+                                
                                 st.session_state.items_venta = []
-                                st.rerun()
+                                # st.rerun() # No hacemos rerun inmediato para que pueda descargar el PDF
                         else:
                             st.error("Añade productos antes de finalizar.")
 

@@ -217,22 +217,22 @@ def registrar_venta_directa(data: dict):
     """Registra una venta de productos de inventario y descuenta stock."""
     try:
         if not supabase: return None
-        # 1. Registrar la venta
+        # 1. Registrar la venta en la tabla 'ventas'
         res = supabase.table("ventas").insert(data).execute()
         
-        # 2. Descontar stock (si hay productos vinculados)
-        for item in data.get("productos", []):
-            p_id = item.get("id")
-            cant = item.get("cantidad", 1)
-            # Consultar stock actual
-            curr = supabase.table("inventario").select("stock").eq("id", p_id).execute()
-            if curr.data:
-                nuevo_stock = max(0, float(curr.data[0]["stock"]) - cant)
-                supabase.table("inventario").update({"stock": nuevo_stock}).eq("id", p_id).execute()
+        # 2. Descontar stock (recorriendo los items de la venta)
+        for item in data.get("detalles", []):
+            p_id = item.get("id_ref")
+            if p_id: # Solo si es un producto de inventario
+                # Consultar stock actual
+                curr = supabase.table("inventario").select("stock").eq("id", p_id).execute()
+                if curr.data:
+                    nuevo_stock = max(0, float(curr.data[0]["stock"]) - 1)
+                    supabase.table("inventario").update({"stock": nuevo_stock}).eq("id", p_id).execute()
         
         # 3. Auditoría
         registrar_auditoria("Venta Directa", "Ventas", f"Total: ${data['total']} | Cliente: {data.get('cliente')}", st.session_state.user_login, sucursal=data['sucursal'])
-        return res.data[0] if res.data else None
+        return res.data[0] if res.data else True
     except Exception as e:
         print(f"Error registrar_venta_directa: {e}")
         return None

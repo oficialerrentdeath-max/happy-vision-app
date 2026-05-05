@@ -453,3 +453,50 @@ def generar_pdf_ticket(orden: dict, sucursal_info: dict = None) -> bytes:
     pdf.cell(0, 5, _s(f"📍 Sucursal: {orden['sucursal']} | Happy Vision"), ln=True, align="C")
 
     return pdf.output(dest="S").encode("latin-1")
+
+def generar_pdf_venta(venta_data: dict) -> bytes:
+    """Genera un PDF de factura/ticket para una venta directa."""
+    pdf = FPDF(orientation='P', unit='mm', format='A5')
+    pdf.add_page()
+    
+    # Encabezado (Logo si existe)
+    if os.path.exists("logo.png"):
+        pdf.image("logo.png", 10, 8, 33)
+    
+    pdf.set_font("Arial", 'B', 14)
+    pdf.cell(0, 10, _s("HAPPY VISION"), ln=True, align="C")
+    pdf.set_font("Arial", '', 9)
+    pdf.cell(0, 5, _s("RUC: 1726715053001"), ln=True, align="C")
+    pdf.cell(0, 5, _s("Dirección: Sucursal " + venta_data.get('sucursal', 'Matriz')), ln=True, align="C")
+    pdf.ln(5)
+    
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(0, 8, _s("COMPROBANTE DE VENTA"), ln=True, align="C", border="B")
+    pdf.ln(2)
+    
+    pdf.set_font("Arial", '', 10)
+    pdf.cell(0, 6, _s(f"Cliente: {venta_data.get('cliente', 'Consumidor Final')}"), ln=True)
+    pdf.cell(0, 6, _s(f"Fecha: {pd.to_datetime(venta_data.get('fecha')).strftime('%Y-%m-%d %H:%M')}"), ln=True)
+    pdf.ln(4)
+    
+    # Detalle de productos
+    pdf.set_fill_color(240, 240, 240)
+    pdf.set_font("Arial", 'B', 9)
+    pdf.cell(90, 7, _s("Descripción"), 1, 0, 'C', True)
+    pdf.cell(30, 7, _s("Precio"), 1, 1, 'C', True)
+    
+    pdf.set_font("Arial", '', 9)
+    for item in venta_data.get('detalles', []):
+        pdf.cell(90, 7, _s(item['detalle']), 1)
+        pdf.cell(30, 7, f"${item['precio']:.2f}", 1, 1, 'R')
+    
+    pdf.ln(2)
+    pdf.set_font("Arial", 'B', 11)
+    pdf.cell(90, 8, _s("TOTAL A PAGAR:"), 0, 0, 'R')
+    pdf.cell(30, 8, f"${venta_data.get('total', 0):.2f}", 1, 1, 'C', True)
+    
+    pdf.ln(10)
+    pdf.set_font("Arial", 'I', 8)
+    pdf.multi_cell(0, 4, _s("Gracias por su compra. Recuerde realizar su control visual cada año.\nEste documento no es una factura válida ante el SRI."), align="C")
+    
+    return pdf.output(dest='S').encode('latin1')
