@@ -484,24 +484,11 @@ def render_clinica():
                                                 st.rerun()
 
 
-                                st.markdown("**💡 Recomendaciones / Indicaciones Rápidas:**")
-                                # Botones de sugerencias
-                                cols_sug = st.columns(4)
-                                if cols_sug[0].button("👓 Uso Lentes", key=f"sug1_{hrow['id']}", use_container_width=True):
-                                    st.session_state[f"rec_{hrow['id']}"] += " • Se recomienda el uso permanente de sus lentes. "
-                                if cols_sug[1].button("💧 Lubricante", key=f"sug2_{hrow['id']}", use_container_width=True):
-                                    st.session_state[f"rec_{hrow['id']}"] += " • Aplicar lubricante ocular 1 gota cada 4 horas. "
-                                if cols_sug[2].button("🖥️ Regla 20-20", key=f"sug3_{hrow['id']}", use_container_width=True):
-                                    st.session_state[f"rec_{hrow['id']}"] += " • Realizar pausa activa: por cada 20 min de pantalla, mirar lejos 20 seg. "
-                                if cols_sug[3].button("📅 Control", key=f"sug4_{hrow['id']}", use_container_width=True):
-                                    st.session_state[f"rec_{hrow['id']}"] += " • Control visual en 6 meses. "
-
+                                st.markdown("**💡 Recomendaciones / Lo que se llevó el paciente:**")
                                 rec_val     = hrow.get("recomendaciones", "")
                                 rec_editado = st.text_area("Recomendaciones", value=str(rec_val) if rec_val else "",
-                                    key=f"rec_{hrow['id']}", label_visibility="collapsed", height=100)
-                                
-                                b_rec1, b_rec2 = st.columns([1, 1])
-                                if b_rec1.button("💾 Guardar y Actualizar", key=f"save_rec_{hrow['id']}", use_container_width=True, type="primary"):
+                                    key=f"rec_{hrow['id']}", label_visibility="collapsed", height=80)
+                                if st.button("💾 Guardar recomendación", key=f"save_rec_{hrow['id']}"):
                                     idx_h = st.session_state.df_historias[
                                         st.session_state.df_historias["id"] == hrow["id"]
                                     ].index[0]
@@ -509,14 +496,6 @@ def render_clinica():
                                     guardar_datos()
                                     st.toast("✅ Recomendación guardada.")
                                     st.rerun()
-                                
-                                # Botón de WhatsApp
-                                tel_pac = str(pac.get("telefono", "")).replace(" ","").replace("+","")
-                                if tel_pac:
-                                    msg_wa = f"Hola {pac.get('nombre','')}, tus indicaciones de Happy Vision son: {rec_editado}"
-                                    import urllib.parse
-                                    wa_url = f"https://wa.me/{tel_pac}?text={urllib.parse.quote(msg_wa)}"
-                                    b_rec2.markdown(f'<a href="{wa_url}" target="_blank"><button style="width:100%; background:#25D366; color:white; border:none; border-radius:8px; padding:10px; cursor:pointer; font-weight:bold;">📲 Enviar por WhatsApp</button></a>', unsafe_allow_html=True)
 
                                 st.markdown("---")
                                 bacc1, bacc2, bacc3 = st.columns(3)
@@ -578,25 +557,35 @@ def render_clinica():
                                 except Exception as e:
                                     st.error(f"Error PDF: {e}")
 
-                                with bacc2:
-                                    num_wa = str(pac.get("telefono", "")).strip()
-                                    if num_wa:
-                                        msg_wa = (
-                                            f"Hola {pac.get('nombre','')}, adjunto encontraras tu *Certificado Visual* "
-                                            f"de la consulta del {hrow.get('fecha','')}. "
-                                            f"Happy Vision +593 96 324 1158"
-                                        )
-                                        link_wa = wa_link(num_wa, msg_wa)
-                                        st.markdown(
-                                            f'<a href="{link_wa}" target="_blank" style="text-decoration:none;">'
-                                            f'<button style="width:100%;background:#25D366;color:white;border:none;'
-                                            f'border-radius:8px;padding:8px 0;cursor:pointer;font-size:13px;font-weight:600;">'
-                                            f'📲 WhatsApp (adjuntar PDF)</button></a>',
-                                            unsafe_allow_html=True
-                                        )
-                                        st.caption("Descarga el PDF ⬆️ y adjúntalo en WhatsApp")
+                                with bacc3:
+                                    st.markdown("<p style='font-size:13px; font-weight:700; margin-bottom:5px;'>📲 Enviar Indicaciones</p>", unsafe_allow_html=True)
+                                    
+                                    # Sugerencias rápidas para el mensaje
+                                    sug_text = ""
+                                    c_s1, c_s2 = st.columns(2)
+                                    if c_s1.button("👓 Lentes", key=f"s1_{hrow['id']}", use_container_width=True):
+                                        sug_text = "Se recomienda el uso permanente de sus lentes."
+                                    if c_s2.button("💧 Gotas", key=f"s2_{hrow['id']}", use_container_width=True):
+                                        sug_text = "Aplicar lubricante ocular 1 gota cada 4 horas."
+                                    
+                                    c_s3, c_s4 = st.columns(2)
+                                    if c_s3.button("🖥️ 20-20", key=f"s3_{hrow['id']}", use_container_width=True):
+                                        sug_text = "Por cada 20 min de pantalla, mirar lejos 20 seg."
+                                    if c_s4.button("📅 6 meses", key=f"s4_{hrow['id']}", use_container_width=True):
+                                        sug_text = "Control visual obligatorio en 6 meses."
+
+                                    # Input para el mensaje de WhatsApp (se auto-llena con las recomendaciones guardadas o la sugerencia)
+                                    msg_base = sug_text if sug_text else hrow.get("recomendaciones", "")
+                                    wa_msg_input = st.text_area("Mensaje WA", value=msg_base, key=f"wa_area_{hrow['id']}", height=70, label_visibility="collapsed")
+                                    
+                                    tel_pac = str(pac.get("telefono", "")).replace(" ","").replace("+","")
+                                    if tel_pac:
+                                        import urllib.parse
+                                        full_wa_msg = f"Hola {pac.get('nombre','')}, tus indicaciones de Happy Vision son: {wa_msg_input}"
+                                        wa_url = f"https://wa.me/{tel_pac}?text={urllib.parse.quote(full_wa_msg)}"
+                                        st.markdown(f'<a href="{wa_url}" target="_blank"><button style="width:100%; background:#25D366; color:white; border:none; border-radius:8px; padding:10px; cursor:pointer; font-weight:bold; font-size:12px;">📲 Enviar por WhatsApp</button></a>', unsafe_allow_html=True)
                                     else:
-                                        st.caption("⚠️ Sin número registrado")
+                                        st.caption("⚠️ Sin teléfono")
 
                                 with bacc3:
                                     with st.popover("💊 Enviar Indicacion"):
