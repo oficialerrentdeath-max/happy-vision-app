@@ -665,28 +665,23 @@ def render_clinica():
                 _nombres   = str(rp.get("nombres", "")).strip()
                 display_name = f"{_apellidos} {_nombres}" if _apellidos and _nombres else str(rp.get("nombre", ""))
 
-                col_num, col_a, col_b, col_c, col_d, col_e, col_f = st.columns([0.5, 3, 2, 1.8, 0.7, 1.4, 0.6])
-                
-                col_num.markdown(
-                    f"<div style='text-align:center;'>"
-                    f"<span style='color:#93c5fd;font-size:18px;font-weight:800;'>{rp.get('id','')}</span></div>",
-                    unsafe_allow_html=True
-                )
+                col_a, col_b, col_c, col_d, col_e = st.columns([3.5, 1.8, 1.8, 1.4, 0.6])
+
                 col_a.markdown(
                     f"**{display_name}**  \n"
-                    f"<span style='font-size:12px;color:#64748b;'>🆔 {rp.get('identificacion','')} &nbsp;·&nbsp; {rp.get('genero','')} &nbsp;·&nbsp; {rp.get('edad','')} años</span>",
+                    f"<span style='font-size:12px;color:#64748b;'>"
+                    f"🪪 ID Pac: {rp.get('id','')} &nbsp;·&nbsp; "
+                    f"🆔 Cédula: {rp.get('identificacion','')} &nbsp;·&nbsp; "
+                    f"{rp.get('genero','')} &nbsp;·&nbsp; {rp.get('edad','')} años"
+                    f"</span>",
                     unsafe_allow_html=True
                 )
                 col_b.caption(f"📞 {rp.get('telefono','')}")
-                col_c.caption(f"🏥 {rp.get('ocupacion','')}")
-                col_d.markdown(
-                    f"<span style='background:#1e40af;color:#bfdbfe;border-radius:5px;padding:3px 8px;font-size:11px;font-weight:700;'>HC: {n_hist}</span>",
-                    unsafe_allow_html=True
-                )
-                if col_e.button("📋 Consulta", key=f"rap_cons_{rp['id']}", use_container_width=True):
+                col_c.caption(f"📋 Historias: {n_hist}")
+                if col_d.button("📋 Consulta", key=f"rap_cons_{rp['id']}", use_container_width=True):
                     st.session_state["nueva_consulta_paciente"] = rp.get("nombre","")
                     st.rerun()
-                if col_f.button("🔍", key=f"rap_ver_{rp['id']}", use_container_width=True, help="Ver historias"):
+                if col_e.button("🔍", key=f"rap_ver_{rp['id']}", use_container_width=True, help="Ver historias"):
                     st.session_state["clinica_buscar"] = rp.get("nombre","")
                     st.rerun()
                 st.divider()
