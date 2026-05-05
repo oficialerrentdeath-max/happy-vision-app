@@ -559,57 +559,44 @@ def render_clinica():
 
                                 with bacc3:
                                     with st.popover("💊 Enviar Indicacion", use_container_width=True):
-                                        st.markdown("<p style='font-size:13px; font-weight:700; margin-bottom:5px;'>📲 Enviar Indicaciones</p>", unsafe_allow_html=True)
+                                        st.markdown("<p style='font-size:14px; font-weight:700; margin-bottom:5px;'>📲 Enviar Indicaciones al Paciente</p>", unsafe_allow_html=True)
                                         
-                                        # Sugerencias rápidas para el mensaje
-                                        sug_text = ""
-                                        c_s1, c_s2 = st.columns(2)
-                                        if c_s1.button("👓 Lentes", key=f"s1_{hrow['id']}", use_container_width=True):
-                                            sug_text = "Se recomienda el uso permanente de sus lentes."
-                                        if c_s2.button("💧 Gotas", key=f"s2_{hrow['id']}", use_container_width=True):
-                                            sug_text = "Aplicar lubricante ocular 1 gota cada 4 horas."
-                                        
-                                        c_s3, c_s4 = st.columns(2)
-                                        if c_s3.button("🖥️ 20-20", key=f"s3_{hrow['id']}", use_container_width=True):
-                                            sug_text = "Por cada 20 min de pantalla, mirar lejos 20 seg."
-                                        if c_s4.button("📅 6 meses", key=f"s4_{hrow['id']}", use_container_width=True):
-                                            sug_text = "Control visual obligatorio en 6 meses."
+                                        # Usar session_state para el autocompletado
+                                        wa_key = f"wa_input_state_{hrow['id']}"
+                                        if wa_key not in st.session_state:
+                                            st.session_state[wa_key] = hrow.get("recomendaciones", "")
 
-                                        # Input para el mensaje de WhatsApp
-                                        msg_base = sug_text if sug_text else hrow.get("recomendaciones", "")
-                                        wa_msg_input = st.text_area("Mensaje WA", value=msg_base, key=f"wa_area_{hrow['id']}", height=100, label_visibility="collapsed")
+                                        # Sugerencias rápidas
+                                        cs1, cs2 = st.columns(2)
+                                        if cs1.button("👓 Lentes", key=f"s1_{hrow['id']}", use_container_width=True):
+                                            st.session_state[wa_key] = "Se recomienda el uso permanente de sus lentes."
+                                            st.rerun()
+                                        if cs2.button("💧 Gotas", key=f"s2_{hrow['id']}", use_container_width=True):
+                                            st.session_state[wa_key] = "Aplicar lubricante ocular 1 gota cada 4 horas."
+                                            st.rerun()
                                         
+                                        cs3, cs4 = st.columns(2)
+                                        if cs3.button("🖥️ 20-20", key=f"s3_{hrow['id']}", use_container_width=True):
+                                            st.session_state[wa_key] = "Por cada 20 min de pantalla, mirar lejos 20 seg."
+                                            st.rerun()
+                                        if cs4.button("📅 6 meses", key=f"s4_{hrow['id']}", use_container_width=True):
+                                            st.session_state[wa_key] = "Control visual obligatorio en 6 meses."
+                                            st.rerun()
+
+                                        # Input unificado
+                                        final_msg = st.text_area("Mensaje para el paciente", 
+                                                                 value=st.session_state[wa_key], 
+                                                                 key=f"wa_field_{hrow['id']}", 
+                                                                 height=120)
+                                        
+                                        # Botón final
                                         tel_pac = str(pac.get("telefono", "")).replace(" ","").replace("+","")
                                         if tel_pac:
                                             import urllib.parse
-                                            full_wa_msg = f"Hola {pac.get('nombre','')}, tus indicaciones de Happy Vision son: {wa_msg_input}"
-                                            wa_url = f"https://wa.me/{tel_pac}?text={urllib.parse.quote(full_wa_msg)}"
-                                            st.markdown(f'<a href="{wa_url}" target="_blank"><button style="width:100%; background:#25D366; color:white; border:none; border-radius:8px; padding:10px; cursor:pointer; font-weight:bold; font-size:12px;">📲 Enviar por WhatsApp</button></a>', unsafe_allow_html=True)
+                                            wa_url = f"https://wa.me/{tel_pac}?text={urllib.parse.quote('Hola ' + pac.get('nombre','') + ', tus indicaciones: ' + final_msg)}"
+                                            st.markdown(f'<a href="{wa_url}" target="_blank"><button style="width:100%; background:#25D366; color:white; border:none; border-radius:8px; padding:12px; cursor:pointer; font-weight:bold; font-size:14px;">📲 Enviar por WhatsApp</button></a>', unsafe_allow_html=True)
                                         else:
                                             st.caption("⚠️ Sin teléfono")
-                                        st.markdown("**Enviar indicación/medicación al paciente**")
-                                        ind_texto = st.text_area("Indicación:", key=f"ind_{hrow['id']}", height=120,
-                                            placeholder="Ej: Aplicar 1 gota de Systane Ultra cada 8 horas.")
-                                        num_ind = str(pac.get("telefono", "")).strip()
-                                        if st.button("📤 Enviar por WhatsApp", key=f"send_ind_{hrow['id']}"):
-                                            if num_ind and ind_texto.strip():
-                                                msg_ind = (
-                                                    f"*👁️ Happy Vision - Indicaciones Medicas*\n\n"
-                                                    f"👤 Paciente: {pac.get('nombre','')}\n"
-                                                    f"📅 Fecha: {hrow.get('fecha','')}\n\n"
-                                                    f"*Indicaciones:*\n{ind_texto}\n\n"
-                                                    f"Conéctate: +593 96 324 1158"
-                                                )
-                                                link_ind = wa_link(num_ind, msg_ind)
-                                                st.markdown(
-                                                    f'<a href="{link_ind}" target="_blank">'
-                                                    f'<button style="background:#25D366;color:white;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;">✅ Abrir WhatsApp</button></a>',
-                                                    unsafe_allow_html=True
-                                                )
-                                            elif not num_ind:
-                                                st.error("⚠️ Sin número registrado.")
-                                            else:
-                                                st.warning("Escribe la indicación primero.")
 
     elif not q:
         st.info("🔍 Escribe el nombre o cédula en el buscador. Si es nuevo, usa ➕ Nuevo Paciente.")
