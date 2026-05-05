@@ -191,6 +191,12 @@ def render_clinica():
 
     # ── RESULTADOS DE BÚSQUEDA ────────────────────────
     if q:
+        # Botón para volver al listado
+        if st.button("← Volver al listado", key="btn_volver_listado"):
+            st.session_state["buscador_act"] = ""
+            st.rerun()
+        st.markdown("---")
+
         resultados = df_p_all[
             df_p_all["nombre"].str.contains(q, case=False, na=False) |
             df_p_all["identificacion"].astype(str).str.contains(q, case=False, na=False)
