@@ -555,44 +555,51 @@ def render_clinica():
                                                 f'width="100%" height="500px" style="border:none;"></iframe>',
                                                 unsafe_allow_html=True
                                             )
-                                except Exception as e:
-                                    st.error(f"Error PDF: {e}")
-
-                                with bacc3:
-                                    with st.popover("💊 Enviar Indicacion", use_container_width=True):
-                                        st.markdown("<p style='font-size:14px; font-weight:700; margin-bottom:5px;'>📲 Enviar Indicaciones</p>", unsafe_allow_html=True)
                                         
-                                        # Plantillas Rápidas
-                                        plantillas = {
-                                            "Seleccionar plantilla...": "",
-                                            "👓 Uso Lentes": "Se recomienda el uso permanente de sus lentes para todas sus actividades.",
-                                            "💧 Gotas": "Aplicar lubricante ocular (lágrimas artificiales) 1 gota en cada ojo cada 4 horas.",
-                                            "🖥️ Regla 20-20": "Regla 20-20-20: Por cada 20 min de pantalla, mirar lejos 20 seg.",
-                                            "📅 Control 6m": "Control visual obligatorio en 6 meses."
-                                        }
-                                        
-                                        wa_key = f"wa_input_val_{hrow['id']}"
-                                        if wa_key not in st.session_state:
-                                            st.session_state[wa_key] = hrow.get("recomendaciones", "")
-
-                                        elegida = st.selectbox("Plantillas rápidas:", list(plantillas.keys()), key=f"sel_{hrow['id']}")
-                                        if elegida != "Seleccionar plantilla...":
-                                            st.session_state[wa_key] = plantillas[elegida]
-
-                                        final_msg = st.text_area("Mensaje para el paciente", 
-                                                                 value=st.session_state[wa_key], 
-                                                                 key=f"wa_txt_{hrow['id']}", 
-                                                                 height=120)
-                                        
-                                        # Botón final
+                                        # Botón de WhatsApp para adjuntar PDF
                                         tel_pac = str(pac.get("telefono", "")).replace(" ","").replace("+","")
                                         if tel_pac:
+                                            msg_pdf = f"Hola {pac.get('nombre','')}, adjunto tu certificado visual de Happy Vision. 👁️"
                                             import urllib.parse
-                                            full_wa_msg = f"Hola {pac.get('nombre','')}, tus indicaciones de Happy Vision son: {final_msg}"
-                                            wa_url = f"https://wa.me/{tel_pac}?text={urllib.parse.quote(full_wa_msg)}"
-                                            st.markdown(f'<a href="{wa_url}" target="_blank"><button style="width:100%; background:#25D366; color:white; border:none; border-radius:8px; padding:12px; cursor:pointer; font-weight:bold; font-size:14px;">📲 Enviar por WhatsApp</button></a>', unsafe_allow_html=True)
-                                        else:
-                                            st.caption("⚠️ Sin teléfono registrado")
+                                            wa_pdf_url = f"https://wa.me/{tel_pac}?text={urllib.parse.quote(msg_pdf)}"
+                                            st.markdown(f'<a href="{wa_pdf_url}" target="_blank"><button style="width:100%; background:#25D366; color:white; border:none; border-radius:8px; padding:8px; cursor:pointer; font-weight:bold; font-size:12px; margin-top:5px;">📲 WhatsApp (Adjuntar PDF)</button></a>', unsafe_allow_html=True)
+
+                                    with bacc3:
+                                        with st.popover("💊 Enviar Indicacion", use_container_width=True):
+                                            st.markdown("<p style='font-size:14px; font-weight:700; margin-bottom:5px;'>📲 Enviar Indicaciones</p>", unsafe_allow_html=True)
+                                            
+                                            wa_key = f"wa_msg_val_{hrow['id']}"
+                                            if wa_key not in st.session_state:
+                                                st.session_state[wa_key] = hrow.get("recomendaciones", "")
+
+                                            # Botones en cuadros
+                                            c_s1, c_s2 = st.columns(2)
+                                            if c_s1.button("👓 Lentes", key=f"btn_s1_{hrow['id']}", use_container_width=True):
+                                                st.session_state[wa_key] = "Se recomienda el uso permanente de sus lentes."
+                                                st.rerun()
+                                            if c_s2.button("💧 Gotas", key=f"btn_s2_{hrow['id']}", use_container_width=True):
+                                                st.session_state[wa_key] = "Aplicar lubricante ocular 1 gota cada 4 horas."
+                                                st.rerun()
+                                            
+                                            c_s3, c_s4 = st.columns(2)
+                                            if c_s3.button("🖥️ 20-20", key=f"btn_s3_{hrow['id']}", use_container_width=True):
+                                                st.session_state[wa_key] = "Por cada 20 min de pantalla, mirar lejos 20 seg."
+                                                st.rerun()
+                                            if c_s4.button("📅 6 meses", key=f"btn_s4_{hrow['id']}", use_container_width=True):
+                                                st.session_state[wa_key] = "Control visual obligatorio en 6 meses."
+                                                st.rerun()
+
+                                            final_msg = st.text_area("Mensaje para el paciente", 
+                                                                     value=st.session_state[wa_key], 
+                                                                     key=f"wa_final_txt_{hrow['id']}", 
+                                                                     height=120)
+                                            
+                                            if tel_pac:
+                                                full_wa_msg = f"Hola {pac.get('nombre','')}, tus indicaciones de Happy Vision son: {final_msg}"
+                                                wa_url = f"https://wa.me/{tel_pac}?text={urllib.parse.quote(full_wa_msg)}"
+                                                st.markdown(f'<a href="{wa_url}" target="_blank"><button style="width:100%; background:#25D366; color:white; border:none; border-radius:8px; padding:12px; cursor:pointer; font-weight:bold; font-size:14px;">📲 Enviar por WhatsApp</button></a>', unsafe_allow_html=True)
+                                            else:
+                                                st.caption("⚠️ Sin teléfono")
 
     elif not q:
         st.info("🔍 Escribe el nombre o cédula en el buscador. Si es nuevo, usa ➕ Nuevo Paciente.")
