@@ -186,17 +186,18 @@ def render_usuarios():
             if st.session_state.get("edit_usr_target") == username:
                 with st.form(f"form_edit_{username}"):
                     st.markdown(f"#### ✏️ Editando: `{username}`")
-                    e1, e2 = st.columns(2)
-                    en_nombre = e1.text_input("Nombre Completo", value=data.get("nombre", ""))
+                    e1, e2, e3 = st.columns([1, 1, 1])
+                    en_username = e1.text_input("Usuario (Login)", value=username)
+                    en_nombre = e2.text_input("Nombre Completo", value=data.get("nombre", ""))
                     
                     # Limpiar rol para el selectbox
                     raw_role = data.get("role", "Optometrista")
                     current_clean_role = str(raw_role).replace("INACTIVO:", "")
-                    en_role   = e2.selectbox("Rol", ["Optometrista", "Administrador"], 
+                    en_role   = e3.selectbox("Rol", ["Optometrista", "Administrador"], 
                                            index=0 if current_clean_role=="Optometrista" else 1)
                     
-                    e3, e4 = st.columns(2)
-                    en_cargo    = e3.text_input("Cargo / Título", value=data.get("cargo", ""))
+                    e3_2, e4 = st.columns(2)
+                    en_cargo    = e3_2.text_input("Cargo / Título", value=data.get("cargo", ""))
                     en_registro = e4.text_input("N° Registro Profesional", value=data.get("registro", ""))
                     
                     e5, e6, e7 = st.columns([1, 1, 1])
@@ -206,7 +207,10 @@ def render_usuarios():
                     is_currently_active = not str(raw_role).startswith("INACTIVO:")
                     en_activo   = e7.checkbox("Permitir acceso al sistema", value=is_currently_active)
                     
-                    sucursales_disponibles = ["Matriz", "Sucursal 1", "Sucursal 2"]
+                    from database import cargar_sucursales
+                    df_suc_db = cargar_sucursales()
+                    sucursales_disponibles = df_suc_db["nombre"].tolist() if not df_suc_db.empty else ["Matriz"]
+                    
                     current_sucursales = data.get("sucursales_asignadas", ["Matriz"])
                     en_sucursales = st.multiselect(
                         "Sucursales asignadas",
@@ -219,8 +223,8 @@ def render_usuarios():
 
                     eb1, eb2 = st.columns([1, 1])
                     if eb1.form_submit_button("💾 Guardar Cambios", type="primary", use_container_width=True):
+                        new_user = en_username.strip()
                         data["nombre"]   = en_nombre.strip()
-                        # Guardar estado en el mismo campo de rol
                         data["role"]     = en_role if en_activo else f"INACTIVO:{en_role}"
                         data["cargo"]    = en_cargo.strip()
                         data["registro"] = en_registro.strip()
@@ -233,6 +237,13 @@ def render_usuarios():
                             try:
                                 data["firma_base64"] = base64.b64encode(en_firma.getvalue()).decode()
                             except: pass
+                        
+                        # Si cambió el login, borramos el viejo primero
+                        if new_user != username:
+                            from database import supabase
+                            if supabase:
+                                supabase.table("usuarios").delete().eq("username", username).execute()
+                            username = new_user
                         
                         _guardar_usuario(username, data)
                         
