@@ -583,8 +583,9 @@ def render_clinica():
                                             st.caption("Selecciona una plantilla, edítala y envía.")
                                             
                                             wa_key = f"wa_msg_val_{hrow['id']}"
+                                            # Inicializar solo si no existe (primera vez)
                                             if wa_key not in st.session_state:
-                                                st.session_state[wa_key] = hrow.get("recomendaciones", "")
+                                                st.session_state[wa_key] = hrow.get("recomendaciones", "") or ""
 
                                             # Botones con plantillas editables
                                             c_s1, c_s2 = st.columns(2)
@@ -603,16 +604,17 @@ def render_clinica():
                                                 st.session_state[wa_key] = "📅 Control visual programado en 6 meses. Es importante cumplir este seguimiento para monitorear la evolución de su salud visual."
                                                 st.rerun()
 
+                                            # SIN value= para que Streamlit use el session_state del key directamente
                                             indicacion_editada = st.text_area(
                                                 "✏️ Edita el mensaje antes de enviar:",
-                                                value=st.session_state[wa_key],
-                                                key=f"wa_final_txt_{hrow['id']}",
+                                                key=wa_key,
                                                 height=140,
                                                 placeholder="Selecciona una plantilla arriba o escribe aquí..."
                                             )
                                             
                                             if tel_pac:
                                                 fecha_hc = hrow.get('fecha', '')
+                                                indicacion_editada = st.session_state.get(wa_key, "")
                                                 full_wa_msg = (
                                                     f"👁️ *Happy Vision — Indicaciones Médicas*\n\n"
                                                     f"Estimado/a *{nombre_pac}*, a continuación las indicaciones de su consulta del *{fecha_hc}*:\n\n"
