@@ -29,17 +29,17 @@ def render_ventas():
             else:
                 # Buscador de productos
                 busc_prod = st.text_input("🔍 Buscar producto...", placeholder="Nombre del armazón, líquido, etc.")
-                df_f = df_inv[df_inv["producto"].str.contains(busc_prod, case=False)] if busc_prod else df_inv
+                df_f = df_inv[df_inv["nombre"].str.contains(busc_prod, case=False)] if busc_prod else df_inv
                 
                 for _, prod in df_f.head(10).iterrows():
                     with st.container():
                         c1, c2, c3 = st.columns([3, 1, 1])
-                        c1.markdown(f"**{prod['producto']}**\n<small>{prod['categoria']} | Stock: {prod['stock']}</small>", unsafe_allow_html=True)
-                        c2.markdown(f"**${float(prod['precio']):.2f}**")
+                        c1.markdown(f"**{prod['nombre']}**\n<small>{prod['categoria']} | Stock: {prod['stock']}</small>", unsafe_allow_html=True)
+                        c2.markdown(f"**${float(prod['precio_venta']):.2f}**")
                         if c3.button("➕", key=f"add_{prod['id']}"):
                             if prod['stock'] > 0:
-                                st.session_state.cart.append({"id": prod['id'], "nombre": prod['producto'], "precio": float(prod['precio'])})
-                                st.toast(f"Añadido: {prod['producto']}")
+                                st.session_state.cart.append({"id": prod['id'], "nombre": prod['nombre'], "precio": float(prod['precio_venta'])})
+                                st.toast(f"Añadido: {prod['nombre']}")
                             else:
                                 st.error("Sin stock")
 
