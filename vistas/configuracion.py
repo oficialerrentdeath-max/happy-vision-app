@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from database import cargar_sucursales, guardar_sucursal, eliminar_sucursal, cargar_auditoria
+from database import cargar_sucursales, guardar_sucursal, eliminar_sucursal, cargar_auditoria, obtener_resumen_dia
 
 def render_configuracion():
     st.title("⚙️ Configuración del Sistema")
@@ -104,7 +104,6 @@ def render_configuracion():
                 st.info("Registro inmutable de cambios en Pacientes, Historias, Inventario y Laboratorio.")
                 
                 # RESUMEN CONTABLE GLOBAL (TODAS LAS SEDES)
-                from database import cargar_sucursales, obtener_resumen_dia
                 df_s = cargar_sucursales()
                 sedes = df_s["nombre"].tolist() if not df_s.empty else ["Matriz"]
                 hoy = pd.Timestamp.now().strftime("%Y-%m-%d")
