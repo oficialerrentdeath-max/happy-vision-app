@@ -665,12 +665,16 @@ def render_clinica():
                 _nombres   = str(rp.get("nombres", "")).strip()
                 display_name = f"{_apellidos} {_nombres}" if _apellidos and _nombres else str(rp.get("nombre", ""))
 
-                col_a, col_b, col_c, col_d, col_e = st.columns([3.5, 1.8, 1.8, 1.4, 0.6])
+                col_num, col_a, col_b, col_c, col_d, col_e = st.columns([0.5, 3.5, 1.8, 1.8, 1.4, 0.6])
 
+                col_num.markdown(
+                    f"<div style='text-align:center; padding-top:6px;'>"
+                    f"<span style='color:#93c5fd;font-size:22px;font-weight:800;line-height:1;'>{rp.get('id','')}</span></div>",
+                    unsafe_allow_html=True
+                )
                 col_a.markdown(
                     f"**{display_name}**  \n"
                     f"<span style='font-size:12px;color:#64748b;'>"
-                    f"🪪 ID Pac: {rp.get('id','')} &nbsp;·&nbsp; "
                     f"🆔 Cédula: {rp.get('identificacion','')} &nbsp;·&nbsp; "
                     f"{rp.get('genero','')} &nbsp;·&nbsp; {rp.get('edad','')} años"
                     f"</span>",
