@@ -98,37 +98,39 @@ def render_configuracion():
     if is_admin:
         with st_tabs[2]:
             st.subheader("📋 Registro de Auditoría")
-            st.info("Este registro es inmutable. Muestra quién hizo cambios críticos en el sistema y a qué hora.")
+            tabs_admin = st.tabs(["📊 Auditoría de Cambios", "👤 Control de Sesiones"])
             
-            if st.button("🔄 Actualizar", key="btn_refresh_audit"):
-                st.rerun()
-                
-            df_auditoria = cargar_auditoria(limit=1000)
-            
-            if df_auditoria.empty:
-                st.warning("No hay registros de auditoría disponibles.")
-            else:
-                # Convertir fechas para mejor lectura si existe la columna
-                if "fecha_hora" in df_auditoria.columns:
-                    df_auditoria["fecha_hora"] = pd.to_datetime(df_auditoria["fecha_hora"]).dt.strftime("%Y-%m-%d %H:%M:%S")
-                
-                # Opciones de filtrado rápido
-                col_filt1, col_filt2 = st.columns(2)
-                with col_filt1:
-                    usuarios_unicos = ["Todos"] + df_auditoria["usuario"].unique().tolist()
-                    filtro_usr = st.selectbox("Filtrar por Usuario", usuarios_unicos)
-                with col_filt2:
-                    acciones_unicas = ["Todas"] + df_auditoria["accion"].unique().tolist()
-                    filtro_acc = st.selectbox("Filtrar por Acción", acciones_unicas)
+            with tabs_admin[0]:
+                st.info("Registro inmutable de cambios en Pacientes, Historias, Inventario y Laboratorio.")
+                df_auditoria = cargar_auditoria(limit=2000)
+                if not df_auditoria.empty:
+                    # Filtrar para NO mostrar seguridad aquí
+                    df_cambios = df_auditoria[df_auditoria["entidad"] != "Seguridad"]
                     
-                df_show = df_auditoria.copy()
-                if filtro_usr != "Todos":
-                    df_show = df_show[df_show["usuario"] == filtro_usr]
-                if filtro_acc != "Todas":
-                    df_show = df_show[df_show["accion"] == filtro_acc]
+                    if "fecha_hora" in df_cambios.columns:
+                        df_cambios["fecha_hora"] = pd.to_datetime(df_cambios["fecha_hora"]).dt.strftime("%Y-%m-%d %H:%M:%S")
                     
-                st.dataframe(
-                    df_show[["fecha_hora", "nombre_usuario", "accion", "entidad", "detalle", "sucursal"]],
-                    use_container_width=True,
-                    hide_index=True
-                )
+                    c1, c2 = st.columns(2)
+                    filtro_usr = c1.selectbox("Filtrar por Usuario", ["Todos"] + df_cambios["usuario"].unique().tolist(), key="f_usr_aud")
+                    filtro_acc = c2.selectbox("Filtrar por Acción", ["Todas"] + df_cambios["accion"].unique().tolist(), key="f_acc_aud")
+                    
+                    df_view = df_cambios.copy()
+                    if filtro_usr != "Todos": df_view = df_view[df_view["usuario"] == filtro_usr]
+                    if filtro_acc != "Todas": df_view = df_view[df_view["accion"] == filtro_acc]
+                    
+                    st.dataframe(df_view[["fecha_hora", "nombre_usuario", "accion", "entidad", "detalle", "sucursal"]], use_container_width=True, hide_index=True)
+                else:
+                    st.warning("No hay registros de cambios.")
+
+            with tabs_admin[1]:
+                st.info("Registro de accesos al sistema (Inicios de sesión, salidas e intentos fallidos).")
+                if not df_auditoria.empty:
+                    # Filtrar para mostrar SOLO seguridad aquí
+                    df_sesiones = df_auditoria[df_auditoria["entidad"] == "Seguridad"]
+                    
+                    if "fecha_hora" in df_sesiones.columns:
+                        df_sesiones["fecha_hora"] = pd.to_datetime(df_sesiones["fecha_hora"]).dt.strftime("%Y-%m-%d %H:%M:%S")
+                    
+                    st.dataframe(df_sesiones[["fecha_hora", "usuario", "accion", "detalle", "sucursal"]], use_container_width=True, hide_index=True)
+                else:
+                    st.warning("No hay registros de sesiones.")
