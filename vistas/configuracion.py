@@ -6,8 +6,7 @@ def render_configuracion():
     st.title("⚙️ Configuración del Sistema")
     
     if "suc_msg" in st.session_state:
-        st.success(st.session_state.pop("suc_msg"))
-        st.balloons()
+        st.toast(st.session_state.pop("suc_msg"))
 
     tab1, tab2 = st.tabs(["🏢 Gestión de Sedes", "👤 Mi Perfil"])
     
