@@ -250,13 +250,15 @@ def render_usuarios():
                         
                         _guardar_usuario(username, data)
                         
-                        # Actualizar sesion si el editado es el actual
+                        # Actualizar sesion si el editado es el usuario activo
                         if st.session_state.get("user_login") == username:
-                            st.session_state.user_name = data["nombre"]
-                            st.session_state.user_role = data["role"]
-                            st.session_state.user_cargo = data["cargo"]
+                            st.session_state.user_name     = data["nombre"]
+                            st.session_state.user_role     = data["role"]
+                            st.session_state.user_cargo    = data["cargo"]
                             st.session_state.user_registro = data["registro"]
                             st.session_state.user_telefono = data["telefono"]
+                            if data.get("firma_base64"):
+                                st.session_state["user_firma"] = data["firma_base64"]
 
                         st.session_state["edit_usr_target"] = None
                         st.success(f"Usuario '{username}' actualizado.")

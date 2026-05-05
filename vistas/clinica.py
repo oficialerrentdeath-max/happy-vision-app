@@ -513,32 +513,29 @@ def render_clinica():
 
                                 # Generar PDF para botones
                                 try:
-                                    import json as _json
                                     import base64 as _b64
                                     _ulogin = st.session_state.get("user_login", "")
-                                    _usuarios_data = {}
-                                    try:
-                                        with open("usuarios.json", "r", encoding="utf-8") as _f:
-                                            _usuarios_data = _json.load(_f)
-                                    except: pass
-                                    _ud = _usuarios_data.get(_ulogin, {})
                                     
-                                    # Fallback global desde optometrista.json
-                                    _os = __import__("os")
-                                    _global_opto = {}
-                                    if _os.path.exists("optometrista.json"):
-                                        try:
-                                            with open("optometrista.json", "r", encoding="utf-8") as _f:
-                                                _global_opto = _json.load(_f)
-                                        except Exception: pass
+                                    # Cargar datos frescos del usuario desde Supabase
+                                    _ud_supabase = {}
+                                    try:
+                                        from database import supabase as _supa
+                                        if _supa:
+                                            _res = _supa.table("usuarios").select("*").eq("username", _ulogin).execute()
+                                            if _res.data:
+                                                _ud_supabase = _res.data[0]
+                                                # Actualizar session_state con la firma mas reciente
+                                                if _ud_supabase.get("firma_base64"):
+                                                    st.session_state["user_firma"] = _ud_supabase["firma_base64"]
+                                    except Exception: pass
 
                                     opto_info = {
-                                        "username": _ulogin,
-                                        "nombre":   _ud.get("nombre") or st.session_state.get("user_name") or _global_opto.get("opto_nombre", ""),
-                                        "cargo":    _ud.get("cargo") or st.session_state.get("user_cargo") or _global_opto.get("opto_cargo", "Optometrista"),
-                                        "registro": _ud.get("registro") or st.session_state.get("user_registro") or _global_opto.get("opto_registro", ""),
-                                        "telefono": _ud.get("telefono") or st.session_state.get("user_telefono") or _global_opto.get("opto_telefono", ""),
-                                        "firma_base64": _ud.get("firma_base64") or st.session_state.get("user_firma", "")
+                                        "username":     _ulogin,
+                                        "nombre":       _ud_supabase.get("nombre")   or st.session_state.get("user_name", ""),
+                                        "cargo":        _ud_supabase.get("cargo")    or st.session_state.get("user_cargo", "Optometrista"),
+                                        "registro":     _ud_supabase.get("registro") or st.session_state.get("user_registro", ""),
+                                        "telefono":     _ud_supabase.get("telefono") or st.session_state.get("user_telefono", ""),
+                                        "firma_base64": _ud_supabase.get("firma_base64") or st.session_state.get("user_firma", "")
                                     }
                                     
                                     pdf_bytes = generar_pdf_historia(hrow.to_dict(), pac.to_dict(), opto_info)
