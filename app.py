@@ -22,6 +22,7 @@ from vistas.inventario import render_inventario
 from vistas.laboratorio import render_laboratorio
 from vistas.contabilidad import render_contabilidad
 from vistas.dashboard import render_dashboard
+from vistas.ventas import render_ventas
 from database import cargar_sucursales
 
 
@@ -709,6 +710,7 @@ with st.sidebar:
         "Inicio":      ("🏠", "Inicio"),
         "Pacientes":   ("👥", "Pacientes"),
         "Trabajos":    ("📋", "Trabajos"),
+        "Ventas":      ("🛒", "Ventas"),
     }
     if _role == "Administrador":
         pages["Inventario"]    = ("📦", "Inventario")
@@ -789,6 +791,8 @@ elif page == "Pacientes":
     render_clinica()
 elif page == "Trabajos":
     render_laboratorio()
+elif page == "Ventas":
+    render_ventas()
 elif page == "Inventario":
     render_inventario()
 elif page == "Contabilidad":

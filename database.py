@@ -213,6 +213,54 @@ def actualizar_historia(historia_id: int, data: dict):
         registrar_auditoria("Actualizar Historia", "Clínica", f"ID Historia: {historia_id}", st.session_state.user_login, sucursal=st.session_state.get("sucursal_activa", ""))
     except Exception as e: print(f"Error actualizar_historia: {e}")
 
+def registrar_venta_directa(data: dict):
+    """Registra una venta de productos de inventario y descuenta stock."""
+    try:
+        if not supabase: return None
+        # 1. Registrar la venta
+        res = supabase.table("ventas").insert(data).execute()
+        
+        # 2. Descontar stock (si hay productos vinculados)
+        for item in data.get("productos", []):
+            p_id = item.get("id")
+            cant = item.get("cantidad", 1)
+            # Consultar stock actual
+            curr = supabase.table("inventario").select("stock").eq("id", p_id).execute()
+            if curr.data:
+                nuevo_stock = max(0, float(curr.data[0]["stock"]) - cant)
+                supabase.table("inventario").update({"stock": nuevo_stock}).eq("id", p_id).execute()
+        
+        # 3. Auditoría
+        registrar_auditoria("Venta Directa", "Ventas", f"Total: ${data['total']} | Cliente: {data.get('cliente')}", st.session_state.user_login, sucursal=data['sucursal'])
+        return res.data[0] if res.data else None
+    except Exception as e:
+        print(f"Error registrar_venta_directa: {e}")
+        return None
+
+def registrar_pago_saldo(orden_id: int, monto: float, metodo: str, usuario: str, sucursal: str):
+    """Registra el pago de un saldo pendiente de una orden de trabajo."""
+    try:
+        if not supabase: return
+        # 1. Obtener orden
+        res = supabase.table("ordenes_trabajo").select("saldo, abono").eq("id", orden_id).execute()
+        if res.data:
+            orden = res.data[0]
+            nuevo_abono = float(orden["abono"]) + monto
+            nuevo_saldo = max(0, float(orden["saldo"]) - monto)
+            
+            # 2. Actualizar orden
+            upd = {"abono": nuevo_abono, "saldo": nuevo_saldo}
+            if nuevo_saldo == 0: upd["estado"] = "Entregado" # Autocierre
+            
+            supabase.table("ordenes_trabajo").update(upd).eq("id", orden_id).execute()
+            
+            # 3. Auditoría
+            registrar_auditoria("Cobro de Saldo", "Ventas", f"Orden #{orden_id} | Cobrado: ${monto}", usuario, sucursal=sucursal)
+            return True
+    except Exception as e:
+        print(f"Error registrar_pago_saldo: {e}")
+        return False
+
 # ══════════════════════════════════════════════════════════════
 # PACIENTES
 # ══════════════════════════════════════════════════════════════
