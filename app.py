@@ -614,6 +614,15 @@ if not st.session_state.logged_in:
                             
                         st.rerun()
                 else:
+                    # AUDITORÍA: Intento fallido
+                    from database import registrar_auditoria
+                    registrar_auditoria(
+                        accion="Intento de Acceso Fallido",
+                        entidad="Seguridad",
+                        detalle=f"Se intentó ingresar con el usuario '{usuario}' pero la contraseña fue incorrecta.",
+                        usuario=usuario,
+                        sucursal="N/A"
+                    )
                     st.error("Credenciales invalidas. Verifica tu usuario y contrasena.")
         
         st.markdown('</div>', unsafe_allow_html=True)
@@ -755,6 +764,16 @@ with st.sidebar:
             st.rerun()
             
     if st.button("Cerrar Sesion", use_container_width=True):
+        # AUDITORÍA: Cierre de sesión
+        from database import registrar_auditoria
+        registrar_auditoria(
+            accion="Cierre de Sesión",
+            entidad="Seguridad",
+            detalle=f"Usuario '{st.session_state.user_login}' salió del sistema.",
+            usuario=st.session_state.user_login,
+            nombre_usuario=st.session_state.user_name,
+            sucursal=st.session_state.get("sucursal_activa", "N/A")
+        )
         for key in ["logged_in","user_role","user_name","user_login","user_cargo","user_registro","user_telefono"]:
             st.session_state.pop(key, None)
         st.rerun()
