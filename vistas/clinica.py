@@ -537,11 +537,16 @@ def render_clinica():
                                     
                                     pdf_bytes = generar_pdf_historia(hrow.to_dict(), pac.to_dict(), opto_info)
                                     
+                                    # Definir tel_pac una sola vez para todos los botones
+                                    import urllib.parse
+                                    tel_pac = str(pac.get("telefono", "")).replace(" ","").replace("+","")
+                                    nombre_pac = pac.get('nombre', '')
+                                    
                                     with bacc1:
                                         st.download_button(
                                             label="📥 Descargar Certificado (PDF)",
                                             data=pdf_bytes,
-                                            file_name=f"Certificado_{pac.get('nombre','').replace(' ','_')}.pdf",
+                                            file_name=f"Certificado_{nombre_pac.replace(' ','_')}.pdf",
                                             mime="application/pdf",
                                             use_container_width=True,
                                             key=f"pdf_dl_main_{hrow['id']}"
@@ -556,13 +561,13 @@ def render_clinica():
                                                 unsafe_allow_html=True
                                             )
                                         
-                                        # Botón de WhatsApp para adjuntar PDF
-                                        tel_pac = str(pac.get("telefono", "")).replace(" ","").replace("+","")
+                                        # Botón WhatsApp para adjuntar y enviar el certificado PDF
                                         if tel_pac:
-                                            msg_pdf = f"Hola {pac.get('nombre','')}, adjunto tu certificado visual de Happy Vision. 👁️"
-                                            import urllib.parse
+                                            msg_pdf = f"Hola {nombre_pac}, adjunto tu certificado visual de Happy Vision. 👁️"
                                             wa_pdf_url = f"https://wa.me/{tel_pac}?text={urllib.parse.quote(msg_pdf)}"
-                                            st.markdown(f'<a href="{wa_pdf_url}" target="_blank"><button style="width:100%; background:#25D366; color:white; border:none; border-radius:8px; padding:8px; cursor:pointer; font-weight:bold; font-size:12px; margin-top:5px;">📲 WhatsApp (Adjuntar PDF)</button></a>', unsafe_allow_html=True)
+                                            st.markdown(f'<a href="{wa_pdf_url}" target="_blank"><button style="width:100%; background:#25D366; color:white; border:none; border-radius:8px; padding:8px; cursor:pointer; font-weight:bold; font-size:12px; margin-top:5px;">📲 WhatsApp (Enviar Certificado)</button></a>', unsafe_allow_html=True)
+                                        else:
+                                            st.caption("⚠️ Sin teléfono")
 
                                     with bacc3:
                                         with st.popover("💊 Enviar Indicacion", use_container_width=True):
@@ -595,7 +600,7 @@ def render_clinica():
                                                                      height=120)
                                             
                                             if tel_pac:
-                                                full_wa_msg = f"Hola {pac.get('nombre','')}, tus indicaciones de Happy Vision son: {final_msg}"
+                                                full_wa_msg = f"Hola {nombre_pac}, tus indicaciones de Happy Vision son: {final_msg}"
                                                 wa_url = f"https://wa.me/{tel_pac}?text={urllib.parse.quote(full_wa_msg)}"
                                                 st.markdown(f'<a href="{wa_url}" target="_blank"><button style="width:100%; background:#25D366; color:white; border:none; border-radius:8px; padding:12px; cursor:pointer; font-weight:bold; font-size:14px;">📲 Enviar por WhatsApp</button></a>', unsafe_allow_html=True)
                                             else:
