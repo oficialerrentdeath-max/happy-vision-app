@@ -280,59 +280,14 @@ if not os.path.exists(_firma_dst) and os.path.exists(_firma_src):
 # ══════════════════════════════════════════════════════════════
 # SESSION STATE INIT
 # ══════════════════════════════════════════════════════════════
-if "initialized_v4" not in st.session_state:
-    df_t, df_i, df_g, df_p, df_h = generate_sample_data()
+if "initialized_v5" not in st.session_state:
+    from database import cargar_pacientes, cargar_historias, migrar_estructuras
+    st.session_state.df_pacientes = cargar_pacientes()
+    st.session_state.df_historias = cargar_historias()
+    migrar_estructuras()
+    st.session_state.initialized_v5 = True
 
-    # 1. Cargar desde CSV local por defecto (fallback)
-    if os.path.exists("pacientes.csv"):
-        try: df_p = pd.read_csv("pacientes.csv", dtype=str)
-        except Exception: pass
-    if os.path.exists("historias.csv"):
-        try: df_h = pd.read_csv("historias.csv", dtype=str)
-        except Exception: pass
-
-    # 2. Cargar desde Supabase (sobrescribe lo local si está configurado y hay datos)
-    try:
-        from database import cargar_pacientes, cargar_historias, supabase
-        if supabase:
-            _df_pac = cargar_pacientes()
-            if len(_df_pac) > 0:
-                # Solo sobrescribir si Supabase tiene más o igual datos y el local no tiene columnas nuevas
-                if len(_df_pac) > len(df_p) or ("nombres" in _df_pac.columns and len(_df_pac) == len(df_p)):
-                    df_p = _df_pac
-
-            _df_his = cargar_historias()
-            if len(_df_his) > 0:
-                # Verificar si Supabase tiene la columna nueva llena. Si el CSV local la tiene y Supabase no, priorizar CSV.
-                supa_has_data = "meses_proximo_control" in _df_his.columns and not _df_his["meses_proximo_control"].replace("", pd.NA).isna().all()
-                local_has_data = "meses_proximo_control" in df_h.columns and not df_h["meses_proximo_control"].replace("", pd.NA).isna().all()
-                
-                if len(_df_his) > len(df_h):
-                    df_h = _df_his
-                elif len(_df_his) == len(df_h):
-                    if local_has_data and not supa_has_data:
-                        pass # Mantener CSV local porque tiene la fecha de control que Supabase perdió
-                    else:
-                        df_h = _df_his
-
-        # Sincronizar estructuras (Migración)
-        from database import migrar_estructuras
-        st.session_state.df_pacientes = df_p
-        st.session_state.df_historias  = df_h
-        migrar_estructuras()
-        
-        # Guardar cambios de migración
-        guardar_datos()
-
-    except Exception as e:
-        print(f"Error inicializando Supabase: {e}")
-
-    st.session_state.df_trabajos   = df_t
-    st.session_state.df_inventario = df_i
-    st.session_state.df_gastos     = df_g
-    st.session_state.df_pacientes  = df_p
-    st.session_state.df_historias  = df_h
-    st.session_state.page          = "Dashboard"
+    pass
 
 
     # Perfil del optometrista
