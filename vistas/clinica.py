@@ -605,6 +605,8 @@ def render_clinica():
                                                 st.markdown(f'<a href="{wa_url}" target="_blank"><button style="width:100%; background:#25D366; color:white; border:none; border-radius:8px; padding:12px; cursor:pointer; font-weight:bold; font-size:14px;">📲 Enviar por WhatsApp</button></a>', unsafe_allow_html=True)
                                             else:
                                                 st.caption("⚠️ Sin teléfono")
+                                except Exception as e:
+                                    st.error(f"⚠️ Error generando PDF: {e}")
 
     elif not q:
         st.info("🔍 Escribe el nombre o cédula en el buscador. Si es nuevo, usa ➕ Nuevo Paciente.")
