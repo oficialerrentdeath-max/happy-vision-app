@@ -102,6 +102,26 @@ def render_configuracion():
             
             with tabs_admin[0]:
                 st.info("Registro inmutable de cambios en Pacientes, Historias, Inventario y Laboratorio.")
+                
+                # RESUMEN CONTABLE GLOBAL (TODAS LAS SEDES)
+                from database import cargar_sucursales, obtener_resumen_dia
+                df_s = cargar_sucursales()
+                sedes = df_s["nombre"].tolist() if not df_s.empty else ["Matriz"]
+                hoy = pd.Timestamp.now().strftime("%Y-%m-%d")
+                
+                t_ventas = 0
+                t_gastos = 0
+                for s in sedes:
+                    res = obtener_resumen_dia(s, hoy)
+                    t_ventas += (res["Efectivo"] + res["Tarjeta"] + res["Transferencia"])
+                    t_gastos += res["Gastos"]
+                
+                c_m1, c_m2, c_m3 = st.columns(3)
+                c_m1.metric("💰 Ventas Globales (Hoy)", f"${t_ventas:.2f}")
+                c_m2.metric("📉 Gastos Globales (Hoy)", f"${t_gastos:.2f}")
+                c_m3.metric("📈 Utilidad Bruta", f"${t_ventas - t_gastos:.2f}")
+                st.markdown("---")
+                
                 df_auditoria = cargar_auditoria(limit=2000)
                 if not df_auditoria.empty:
                     # Filtrar para NO mostrar seguridad aquí
