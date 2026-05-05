@@ -538,7 +538,7 @@ def render_clinica():
 
                                 st.markdown("---")
                                 from database import guardar_orden_trabajo, cargar_inventario
-                                bacc1, bacc2, bacc3, bacc4 = st.columns(4)
+                                bacc1, bacc2, bacc3 = st.columns(3)
 
                                 with bacc1:
                                     # ... (lógica de opto_info omitida por brevedad en este chunk pero se mantiene) ...
@@ -707,46 +707,7 @@ def render_clinica():
                                             else:
                                                 st.caption("⚠️ Sin teléfono registrado")
                                     
-                                    with bacc4:
-                                        with st.popover("🛒 Crear Orden Lab", use_container_width=True):
-                                            st.markdown("**Nueva Orden de Trabajo**")
-                                            df_inv = cargar_inventario(st.session_state.get("sucursal_activa"))
-                                            
-                                            prod_opciones = ["Solo Cristales / Otros"]
-                                            if not df_inv.empty:
-                                                prod_opciones += df_inv["nombre"].tolist()
-                                            
-                                            p_sel = st.selectbox("Seleccionar Montura", prod_opciones, key=f"ord_p_{hrow['id']}")
-                                            v_total = st.number_input("Valor Total ($)", min_value=0.0, format="%.2f", key=f"ord_t_{hrow['id']}")
-                                            v_abono = st.number_input("Abono ($)", min_value=0.0, max_value=v_total if v_total > 0 else 1000.0, format="%.2f", key=f"ord_a_{hrow['id']}")
-                                            v_saldo = v_total - v_abono
-                                            st.warning(f"Saldo Pendiente: ${v_saldo:.2f}")
-                                            
-                                            metodo = st.selectbox("Método de Pago", ["Efectivo", "Tarjeta", "Transferencia"], key=f"ord_m_{hrow['id']}")
-                                            
-                                            if st.button("🚀 Confirmar Orden", key=f"btn_ord_{hrow['id']}", use_container_width=True):
-                                                nueva_orden = {
-                                                    "paciente_id": str(pac["id"]),
-                                                    "paciente_nombre": pac["nombre"],
-                                                    "detalles_receta": {
-                                                        "fecha_rx": hrow.get("fecha"),
-                                                        "od": hrow.get("rx_od"),
-                                                        "oi": hrow.get("rx_oi"),
-                                                        "diagnostico": hrow.get("diagnostico")
-                                                    },
-                                                    "montura_detalle": p_sel,
-                                                    "total_venta": v_total,
-                                                    "abono": v_abono,
-                                                    "saldo": v_saldo,
-                                                    "metodo_pago": metodo,
-                                                    "vendedor": st.session_state.user_login,
-                                                    "sucursal": st.session_state.get("sucursal_activa", "Matriz"),
-                                                    "estado": "Pendiente"
-                                                }
-                                                guardar_orden_trabajo(nueva_orden)
-                                                st.success("✅ Orden creada exitosamente.")
-                                                st.balloons()
-                                                st.rerun()
+                                # El bloque bacc4 (Crear Orden Lab) ha sido eliminado por solicitud del usuario.
 
                                 except Exception as e:
                                     st.error(f"⚠️ Error generando PDF: {e}")
