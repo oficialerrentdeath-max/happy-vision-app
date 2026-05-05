@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from database import cargar_sucursales, guardar_sucursal, eliminar_sucursal
+from database import cargar_sucursales, guardar_sucursal, eliminar_sucursal, cargar_auditoria
 
 def render_configuracion():
     st.title("⚙️ Configuración del Sistema")
@@ -8,7 +8,14 @@ def render_configuracion():
     if "suc_msg" in st.session_state:
         st.toast(st.session_state.pop("suc_msg"))
 
-    tab1, tab2 = st.tabs(["🏢 Gestión de Sedes", "👤 Mi Perfil"])
+    tabs_names = ["🏢 Gestión de Sedes", "👤 Mi Perfil"]
+    is_admin = st.session_state.get("user_role") == "Administrador"
+    if is_admin:
+        tabs_names.append("📋 Auditoría")
+
+    st_tabs = st.tabs(tabs_names)
+    tab1 = st_tabs[0]
+    tab2 = st_tabs[1]
     
     with tab1:
         st.subheader("Locales y Sucursales")
@@ -87,3 +94,41 @@ def render_configuracion():
         st.write(f"**Nombre:** {st.session_state.get('user_name')}")
         st.write(f"**Rol:** {st.session_state.get('user_role')}")
         st.write(f"**Cargo:** {st.session_state.get('user_cargo')}")
+
+    if is_admin:
+        with st_tabs[2]:
+            st.subheader("📋 Registro de Auditoría")
+            st.info("Este registro es inmutable. Muestra quién hizo cambios críticos en el sistema y a qué hora.")
+            
+            if st.button("🔄 Actualizar", key="btn_refresh_audit"):
+                st.rerun()
+                
+            df_auditoria = cargar_auditoria(limit=1000)
+            
+            if df_auditoria.empty:
+                st.warning("No hay registros de auditoría disponibles.")
+            else:
+                # Convertir fechas para mejor lectura si existe la columna
+                if "fecha_hora" in df_auditoria.columns:
+                    df_auditoria["fecha_hora"] = pd.to_datetime(df_auditoria["fecha_hora"]).dt.strftime("%Y-%m-%d %H:%M:%S")
+                
+                # Opciones de filtrado rápido
+                col_filt1, col_filt2 = st.columns(2)
+                with col_filt1:
+                    usuarios_unicos = ["Todos"] + df_auditoria["usuario"].unique().tolist()
+                    filtro_usr = st.selectbox("Filtrar por Usuario", usuarios_unicos)
+                with col_filt2:
+                    acciones_unicas = ["Todas"] + df_auditoria["accion"].unique().tolist()
+                    filtro_acc = st.selectbox("Filtrar por Acción", acciones_unicas)
+                    
+                df_show = df_auditoria.copy()
+                if filtro_usr != "Todos":
+                    df_show = df_show[df_show["usuario"] == filtro_usr]
+                if filtro_acc != "Todas":
+                    df_show = df_show[df_show["accion"] == filtro_acc]
+                    
+                st.dataframe(
+                    df_show[["fecha_hora", "nombre_usuario", "accion", "entidad", "detalle", "sucursal"]],
+                    use_container_width=True,
+                    hide_index=True
+                )
