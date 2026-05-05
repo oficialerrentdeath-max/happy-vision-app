@@ -73,6 +73,84 @@ def cargar_auditoria(limit: int = 500) -> pd.DataFrame:
 
 
 # ══════════════════════════════════════════════════════════════
+# INVENTARIO
+# ══════════════════════════════════════════════════════════════
+def cargar_inventario(sucursal: str = None) -> pd.DataFrame:
+    """Carga el inventario. Si se pasa sucursal, filtra por ella."""
+    try:
+        if not supabase: return pd.DataFrame()
+        query = supabase.table("inventario").select("*")
+        if sucursal:
+            query = query.eq("sucursal", sucursal)
+        res = query.order("nombre").execute()
+        return pd.DataFrame(res.data) if res.data else pd.DataFrame()
+    except Exception as e:
+        print(f"Error cargar_inventario: {e}")
+        return pd.DataFrame()
+
+def guardar_producto(data: dict):
+    """Guarda o actualiza un producto en el inventario."""
+    try:
+        if not supabase: return
+        if "id" in data:
+            supabase.table("inventario").update(data).eq("id", data["id"]).execute()
+        else:
+            supabase.table("inventario").insert(data).execute()
+    except Exception as e:
+        print(f"Error guardar_producto: {e}")
+
+# ══════════════════════════════════════════════════════════════
+# ÓRDENES DE TRABAJO (LABORATORIO)
+# ══════════════════════════════════════════════════════════════
+def cargar_ordenes_trabajo(sucursal: str = None, limit: int = 200) -> pd.DataFrame:
+    """Carga las órdenes de trabajo recientes."""
+    try:
+        if not supabase: return pd.DataFrame()
+        query = supabase.table("ordenes_trabajo").select("*")
+        if sucursal:
+            query = query.eq("sucursal", sucursal)
+        res = query.order("creado_el", desc=True).limit(limit).execute()
+        return pd.DataFrame(res.data) if res.data else pd.DataFrame()
+    except Exception as e:
+        print(f"Error cargar_ordenes_trabajo: {e}")
+        return pd.DataFrame()
+
+def guardar_orden_trabajo(data: dict):
+    """Inserta una nueva orden de trabajo."""
+    try:
+        if not supabase: return None
+        res = supabase.table("ordenes_trabajo").insert(data).execute()
+        if res.data:
+            # Registrar en auditoría automáticamente
+            registrar_auditoria(
+                accion="Nueva Orden de Trabajo",
+                entidad="Laboratorio",
+                detalle=f"Orden para: {data.get('paciente_nombre')} | Total: {data.get('total_venta')} | Estado: {data.get('estado')}",
+                usuario=data.get("vendedor", ""),
+                sucursal=data.get("sucursal", "")
+            )
+            return res.data[0]
+        return None
+    except Exception as e:
+        print(f"Error guardar_orden_trabajo: {e}")
+        return None
+
+def actualizar_estado_orden(orden_id: int, nuevo_estado: str, usuario: str = "", sucursal: str = ""):
+    """Actualiza el estado de una orden (Pendiente -> Laboratorio -> etc)."""
+    try:
+        if not supabase: return
+        supabase.table("ordenes_trabajo").update({"estado": nuevo_estado}).eq("id", orden_id).execute()
+        registrar_auditoria(
+            accion="Cambio Estado Orden",
+            entidad="Laboratorio",
+            detalle=f"Orden ID {orden_id} pasó a estado: {nuevo_estado}",
+            usuario=usuario,
+            sucursal=sucursal
+        )
+    except Exception as e:
+        print(f"Error actualizar_estado_orden: {e}")
+
+# ══════════════════════════════════════════════════════════════
 # PACIENTES
 # ══════════════════════════════════════════════════════════════
 def cargar_pacientes() -> pd.DataFrame:

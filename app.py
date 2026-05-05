@@ -19,6 +19,8 @@ from vistas.clinica   import render_clinica
 from vistas.pacientes import render_pacientes
 from vistas.usuarios  import render_usuarios
 from vistas.configuracion import render_configuracion
+from vistas.inventario import render_inventario
+from vistas.laboratorio import render_laboratorio
 from database import cargar_sucursales
 
 
@@ -692,12 +694,14 @@ with st.sidebar:
     st.markdown("<p style='color:#475569; font-size:10px; text-transform:uppercase; letter-spacing:1.5px; margin:0 0 10px 0;'>Navegacion</p>", unsafe_allow_html=True)
 
     _role = st.session_state.user_role
-    # Navegacion simplificada: solo Pacientes, Clinica y (para admin) Usuarios
+    # Navegacion simplificada
     pages = {
-        "Pacientes": ("👥", "Pacientes"),
+        "Pacientes":   ("👥", "Pacientes"),
+        "Laboratorio": ("🧪", "Laboratorio"),
     }
     if _role == "Administrador":
-        pages["Usuarios"] = ("👤", "Gestion de Usuarios")
+        pages["Inventario"]    = ("📦", "Inventario")
+        pages["Usuarios"]      = ("👤", "Gestion de Usuarios")
         pages["Configuracion"] = ("⚙️", "Configuracion")
 
     if st.session_state.page not in pages:
@@ -759,6 +763,10 @@ page = st.session_state.page
 
 if page == "Pacientes":
     render_clinica()
+elif page == "Laboratorio":
+    render_laboratorio()
+elif page == "Inventario":
+    render_inventario()
 elif page == "Usuarios":
     render_usuarios()
 elif page == "Configuracion":
