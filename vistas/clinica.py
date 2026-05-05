@@ -202,10 +202,11 @@ def render_clinica():
 
     # ── RESULTADOS DE BÚSQUEDA ────────────────────────
     if q:
-        # Botón para volver al listado
-        if st.button("← Volver al listado", key="btn_volver_listado"):
+        def limpiar_buscador():
             st.session_state["buscador_act"] = ""
-            st.rerun()
+            
+        # Botón para volver al listado
+        st.button("← Volver al listado", key="btn_volver_listado", on_click=limpiar_buscador)
         st.markdown("---")
 
         resultados = df_p_all[
