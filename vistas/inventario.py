@@ -18,29 +18,53 @@ def render_inventario():
         <style>
         .row-container {
             border-bottom: 1px solid #f1f5f9;
-            padding: 5px 0;
+            display: flex;
+            align-items: center;
         }
         .row-container:hover {
             background-color: #f8fafc;
         }
         .cell-content {
             font-size: 14px;
-            padding: 8px 0;
+            padding: 12px 0;
+            display: flex;
+            align-items: center;
+            min-height: 45px;
         }
-        /* Estilo para que el botón de código parezca un link */
-        .code-btn button {
+        /* Estilo ultra-específico para que el botón de código parezca un link y esté alineado */
+        .code-btn {
+            padding: 12px 0;
+            display: flex;
+            align-items: center;
+            min-height: 45px;
+        }
+        .code-btn div[data-testid="stButton"] {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        .code-btn div[data-testid="stButton"] > button {
             border: none !important;
             background: transparent !important;
             padding: 0 !important;
+            margin: 0 !important;
             color: #2563eb !important;
             font-size: 14px !important;
             font-weight: bold !important;
             text-decoration: underline !important;
             box-shadow: none !important;
             text-align: left !important;
+            min-height: 0 !important;
+            line-height: 1.2 !important;
         }
-        .code-btn button:hover {
+        .code-btn div[data-testid="stButton"] > button:hover {
             color: #1d4ed8 !important;
+            background: transparent !important;
+        }
+        .code-btn div[data-testid="stButton"] > button:active, 
+        .code-btn div[data-testid="stButton"] > button:focus {
+            background: transparent !important;
+            color: #1d4ed8 !important;
+            box-shadow: none !important;
         }
         </style>
     """, unsafe_allow_html=True)
