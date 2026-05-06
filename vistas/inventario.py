@@ -24,7 +24,7 @@ def render_inventario():
             background-color: #f8fafc;
         }
         .cell-content {
-            font-size: 13px;
+            font-size: 14px;
             padding: 8px 0;
         }
         /* Estilo para que el botón de código parezca un link */
@@ -33,7 +33,7 @@ def render_inventario():
             background: transparent !important;
             padding: 0 !important;
             color: #2563eb !important;
-            font-size: 13px !important;
+            font-size: 14px !important;
             font-weight: bold !important;
             text-decoration: underline !important;
             box-shadow: none !important;
