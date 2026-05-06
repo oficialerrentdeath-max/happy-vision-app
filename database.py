@@ -99,6 +99,14 @@ def guardar_producto(data: dict):
     except Exception as e:
         print(f"Error guardar_producto: {e}")
 
+def eliminar_producto(id_producto: int):
+    """Elimina un producto del inventario."""
+    try:
+        if not supabase: return
+        supabase.table("inventario").delete().eq("id", id_producto).execute()
+    except Exception as e:
+        print(f"Error eliminar_producto: {e}")
+
 # ══════════════════════════════════════════════════════════════
 # TRABAJOS (ÓRDENES) Y PAGOS
 # ══════════════════════════════════════════════════════════════
