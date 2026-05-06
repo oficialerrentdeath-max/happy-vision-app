@@ -67,11 +67,23 @@ def render_inventario():
         "precio_venta":       "precio_venta",
         "cantidad_disponible":"cantidad_disponible",
     }
-    for col, default in [("nombre", ""), ("categoria", ""), ("proveedor", ""),
-                         ("costo_compra", 0.0), ("precio_venta", 0.0),
-                         ("cantidad_disponible", 0), ("codigo_referencia", "")]:
+    for col, default in [
+        ("codigo_referencia",   ""),
+        ("nombre",              ""),
+        ("categoria",           ""),
+        ("marca",               ""),
+        ("proveedor",           ""),
+        ("costo_compra",        0.0),
+        ("precio_venta",        0.0),
+        ("stock",               0),          # columna real en Supabase
+        ("cantidad_disponible", 0),
+    ]:
         if col not in df.columns:
             df[col] = default
+    
+    # Unificar stock: usar 'stock' si 'cantidad_disponible' no existe o está vacío
+    if "stock" in df.columns:
+        df["cantidad_disponible"] = df["stock"]
 
     # Filtros rápidos
     fil1, fil2, fil3 = st.columns([2, 1, 1])
@@ -135,21 +147,21 @@ def render_inventario():
             if id_orig is None:
                 continue
             guardar_producto({
-                "id":                  id_orig,
-                "codigo_referencia":   row_edit["Código"],
-                "nombre":              row_edit["Producto"],
-                "categoria":           row_edit["Categoría"],
-                "marca":               row_edit["Marca"],
-                "proveedor":           row_edit["Proveedor"],
-                "costo_compra":        row_edit["Costo Compra Unit"],
-                "precio_venta":        row_edit["Precio al Paciente"],
-                "cantidad_disponible": int(row_edit["Stock"]),
+                "id":                 id_orig,
+                "codigo_referencia":  row_edit["Código"],
+                "nombre":             row_edit["Producto"],
+                "categoria":          row_edit["Categoría"],
+                "marca":              row_edit["Marca"],
+                "proveedor":          row_edit["Proveedor"],
+                "precio_costo":       row_edit["Costo Compra Unit"],
+                "precio_venta":       row_edit["Precio al Paciente"],
+                "stock":              int(row_edit["Stock"]),
             })
             cambios += 1
-        st.success(f"✅ {cambios} productos actualizados en Supabase.")
+        st.success(f"✅ {cambios} productos actualizados.")
         st.rerun()
 
     # Alerta de stock bajo
-    bajo_stock = df[df["cantidad_disponible"] <= 3]
+    bajo_stock = df[df["stock"] <= 3]
     if not bajo_stock.empty:
-        st.warning(f"⚠️ **{len(bajo_stock)} producto(s) con stock ≤ 3:** " + ", ".join(bajo_stock["codigo_referencia"].astype(str).tolist()))
+        st.warning(f"⚠️ **{len(bajo_stock)} producto(s) con stock ≤ 3:** " + ", ".join(bajo_stock["nombre"].astype(str).tolist()))
