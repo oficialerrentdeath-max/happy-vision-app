@@ -41,7 +41,17 @@ def render_inventario():
             box-shadow: none !important;
             min-height: 0 !important;
         }
-        hr { margin: 5px 0 !important; opacity: 0.1; }
+        hr { 
+            margin: 2px 0 !important; 
+            opacity: 0.25; /* Línea más visible */
+            border: 0;
+            border-top: 1px solid #e2e8f0;
+        }
+        /* Efecto al pasar el mouse para identificar la fila */
+        .stColumns:hover {
+            background-color: #f8fafc;
+            border-radius: 4px;
+        }
         </style>
     """, unsafe_allow_html=True)
 
