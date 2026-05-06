@@ -12,6 +12,31 @@ def render_inventario():
     """, unsafe_allow_html=True)
 
     sucursal_activa = st.session_state.get("sucursal_activa", "Matriz")
+    
+    # CSS para que los botones de nombre de producto parezcan texto normal
+    st.markdown("""
+        <style>
+        .producto-btn button {
+            border: none !important;
+            background: transparent !important;
+            padding: 0 !important;
+            color: #1e293b !important;
+            font-weight: bold !important;
+            text-align: left !important;
+            font-size: 13px !important;
+            box-shadow: none !important;
+            display: inline !important;
+        }
+        .producto-btn button:hover {
+            color: #2563eb !important;
+            text-decoration: underline !important;
+        }
+        .producto-btn button:active {
+            background: transparent !important;
+            color: #1d4ed8 !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
 
     # ── FORMULARIO AGREGAR ─────────────────────────────────────
     with st.expander("➕ Agregar Nueva Montura / Producto", expanded=False):
@@ -92,23 +117,22 @@ def render_inventario():
     if filtro_cat != "Todos":
         df_f = df_f[df_f["categoria"] == filtro_cat]
 
-    # ── TABLA ESTILO EXCEL CON SELECCIÓN ────────────────────────
+    # ── TABLA ESTILO EXCEL CON ACCIONES ────────────────────────
     st.markdown("---")
     
-    # Definir proporciones de columnas (Checkbox al inicio, sin columna de acciones)
-    cols_ratio = [0.5, 1.2, 2.5, 1.5, 1.5, 1.5, 1, 1, 1]
+    # Definir proporciones de columnas (ajustadas sin la columna Acciones)
+    cols_ratio = [1.5, 3.5, 1.5, 1.5, 2, 1, 1, 1]
     
     # Encabezado de la tabla
     header_cols = st.columns(cols_ratio)
-    header_cols[0].markdown("✓")
-    header_cols[1].markdown("**Código**")
-    header_cols[2].markdown("**Producto**")
-    header_cols[3].markdown("**Categoría**")
-    header_cols[4].markdown("**Marca**")
-    header_cols[5].markdown("**Proveedor**")
-    header_cols[6].markdown("**Costo**")
-    header_cols[7].markdown("**PVP**")
-    header_cols[8].markdown("**Stock**")
+    header_cols[0].markdown("**Código**")
+    header_cols[1].markdown("**Producto**")
+    header_cols[2].markdown("**Categoría**")
+    header_cols[3].markdown("**Marca**")
+    header_cols[4].markdown("**Proveedor**")
+    header_cols[5].markdown("**Costo**")
+    header_cols[6].markdown("**PVP**")
+    header_cols[7].markdown("**Stock**")
     st.markdown("<hr style='margin-top: 5px; margin-bottom: 5px;'>", unsafe_allow_html=True)
     
     # Filas de datos
@@ -119,21 +143,28 @@ def render_inventario():
         stock = row.get('cantidad_disponible', 0)
         color_stock = "red" if stock <= 3 else "green"
         
-        # Checkbox para seleccionar la fila
-        with cols[0]:
-            seleccionado = st.checkbox("", key=f"sel_{row['id']}")
+        cols[0].markdown(f"<span style='font-size:13px;'>{row.get('codigo_referencia', '')}</span>", unsafe_allow_html=True)
+        
+        # El nombre del producto es ahora el gatillo para expandir (envuelto en un div para el CSS)
+        with cols[1]:
+            st.markdown('<div class="producto-btn">', unsafe_allow_html=True)
+            if st.button(row.get('nombre', 'Sin nombre'), key=f"select_{row['id']}"):
+                if st.session_state.get("inventario_expanded") == row['id']:
+                    st.session_state.inventario_expanded = None
+                else:
+                    st.session_state.inventario_expanded = row['id']
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
             
-        cols[1].markdown(f"<span style='font-size:13px;'>{row.get('codigo_referencia', '')}</span>", unsafe_allow_html=True)
-        cols[2].markdown(f"<span style='font-size:13px; font-weight:bold; color:#1e293b;'>{row.get('nombre', '')}</span>", unsafe_allow_html=True)
-        cols[3].markdown(f"<span style='font-size:13px;'>{row.get('categoria', '')}</span>", unsafe_allow_html=True)
-        cols[4].markdown(f"<span style='font-size:13px;'>{row.get('marca', '')}</span>", unsafe_allow_html=True)
-        cols[5].markdown(f"<span style='font-size:13px;'>{row.get('proveedor', '')}</span>", unsafe_allow_html=True)
-        cols[6].markdown(f"<span style='font-size:13px;'>${float(row.get('costo_compra', 0)):.2f}</span>", unsafe_allow_html=True)
-        cols[7].markdown(f"<span style='font-size:13px; color:#2563eb; font-weight:bold;'>${float(row.get('precio_venta', 0)):.2f}</span>", unsafe_allow_html=True)
-        cols[8].markdown(f"<span style='font-size:14px; font-weight:bold; color:{color_stock};'>{stock}</span>", unsafe_allow_html=True)
+        cols[2].markdown(f"<span style='font-size:13px;'>{row.get('categoria', '')}</span>", unsafe_allow_html=True)
+        cols[3].markdown(f"<span style='font-size:13px;'>{row.get('marca', '')}</span>", unsafe_allow_html=True)
+        cols[4].markdown(f"<span style='font-size:13px;'>{row.get('proveedor', '')}</span>", unsafe_allow_html=True)
+        cols[5].markdown(f"<span style='font-size:13px;'>${float(row.get('costo_compra', 0)):.2f}</span>", unsafe_allow_html=True)
+        cols[6].markdown(f"<span style='font-size:13px; color:#2563eb; font-weight:bold;'>${float(row.get('precio_venta', 0)):.2f}</span>", unsafe_allow_html=True)
+        cols[7].markdown(f"<span style='font-size:14px; font-weight:bold; color:{color_stock};'>{stock}</span>", unsafe_allow_html=True)
                 
-        # Opciones expandidas al seleccionar
-        if seleccionado:
+        # Opciones expandidas
+        if st.session_state.get("inventario_expanded") == row['id']:
             with st.container():
                 st.markdown(f"""
                     <div style='background-color: #f8fafc; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6; margin-bottom: 10px; margin-top: 5px;'>
@@ -182,6 +213,7 @@ def render_inventario():
                         st.error("⚠️ ¿Eliminar permanentemente?")
                         if st.button("Sí, Eliminar", key=f"del_{row['id']}", type="primary", use_container_width=True):
                             eliminar_producto(row['id'])
+                            st.session_state.inventario_expanded = None
                             st.rerun()
                             
         st.markdown("<hr style='margin: 0; padding: 0; border-top: 1px solid #f1f5f9;'>", unsafe_allow_html=True)
