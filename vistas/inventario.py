@@ -144,23 +144,40 @@ def render_inventario():
                     eliminar_producto(row['id']); st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
                 
-                # Formulario de Edición
+                # Formulario de Edición Completo
                 if st.session_state.get(f"ed_{row['id']}"):
                     st.markdown('<div class="edit-container">', unsafe_allow_html=True)
                     with st.form(f"f_{row['id']}", border=False):
-                        e1, e2, e3 = st.columns([1, 1, 2])
-                        n_c = e1.number_input("Costo", value=float(row.get('costo_compra', 0)), step=0.01)
-                        n_p = e2.number_input("PVP", value=float(row.get('precio_venta', 0)), step=0.01)
-                        n_n = e3.text_input("Nombre", value=row.get('nombre', ''))
+                        # Fila 1: Datos de Identificación
+                        c1, c2, c3 = st.columns([1, 1, 1])
+                        n_cod = c1.text_input("Código", value=row.get('codigo_referencia', ''))
+                        n_cat = c2.text_input("Categoría", value=row.get('categoria', ''))
+                        n_mar = c3.text_input("Marca", value=row.get('marca', ''))
                         
-                        if st.form_submit_button("Guardar"):
+                        # Fila 2: Detalles del Producto
+                        c4, c5 = st.columns([2, 1])
+                        n_nom = c4.text_input("Nombre / Producto", value=row.get('nombre', ''))
+                        n_pro = c5.text_input("Proveedor", value=row.get('proveedor', ''))
+                        
+                        # Fila 3: Precios
+                        c6, c7 = st.columns([1, 1])
+                        n_cos = c6.number_input("Costo Compra ($)", value=float(row.get('costo_compra', 0)), step=0.01)
+                        n_pvp = c7.number_input("PVP ($)", value=float(row.get('precio_venta', 0)), step=0.01)
+                        
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        if st.form_submit_button("💾 Guardar Cambios", use_container_width=True):
                             guardar_producto({
                                 "id": row['id'], 
-                                "costo_compra": n_c, 
-                                "precio_venta": n_p, 
-                                "nombre": n_n
+                                "codigo_referencia": n_cod,
+                                "categoria": n_cat,
+                                "marca": n_mar,
+                                "nombre": n_nom,
+                                "proveedor": n_pro,
+                                "costo_compra": n_cos, 
+                                "precio_venta": n_pvp
                             })
                             st.session_state[f"ed_{row['id']}"] = False
+                            st.success("Producto actualizado")
                             st.rerun()
                     st.markdown('</div>', unsafe_allow_html=True)
         
