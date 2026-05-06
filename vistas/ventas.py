@@ -99,33 +99,92 @@ def render_ventas():
                 st.markdown(f"## Total: ${total_venta:.2f}")
                 
                 with st.form("form_finalizar_venta"):
-                    cliente = st.text_input("Nombre del Cliente", value="Consumidor Final")
+                    # Selección de Paciente (Opcional para venta directa, obligatorio para orden lab)
+                    from database import cargar_pacientes
+                    df_pacs = cargar_pacientes()
+                    pac_nombres = ["Consumidor Final"] + df_pacs["nombre"].tolist() if not df_pacs.empty else ["Consumidor Final"]
+                    paciente_sel = st.selectbox("Paciente / Cliente", pac_nombres)
+                    
+                    st.markdown("---")
+                    st.markdown("🩺 **Datos Clínicos (Si aplica)**")
+                    c_rx1, c_rx2 = st.columns(2)
+                    rx_od = c_rx1.text_input("Receta OD", placeholder="Esf, Cyl, Eje")
+                    rx_oi = c_rx2.text_input("Receta OI", placeholder="Esf, Cyl, Eje")
+                    
+                    c_rx3, c_rx4 = st.columns(2)
+                    dist_pupilar = c_rx3.number_input("Distancia Pupilar (mm)", min_value=0.0, format="%.1f")
+                    tipo_lente = c_rx4.text_input("Tipo de Lente (Laboratorio)", placeholder="Ej: Policarbonato AR")
+                    
+                    st.markdown("---")
+                    st.markdown("💰 **Finanzas**")
                     metodo = st.selectbox("Forma de Pago", ["Efectivo", "Tarjeta", "Transferencia"])
-                    abono = st.number_input("Abono ($)", min_value=0.0, max_value=total_venta, value=total_venta)
+                    abono = st.number_input("Abono Inicial ($)", min_value=0.0, max_value=total_venta, value=total_venta)
+                    saldo = total_venta - abono
+                    st.warning(f"Saldo Pendiente: ${saldo:.2f}")
                     
                     if st.form_submit_button("🛒 Finalizar y Guardar", use_container_width=True, type="primary"):
                         if total_venta > 0:
-                            data_v = {
-                                "fecha": datetime.now().isoformat(),
-                                "cliente": cliente,
-                                "total": total_venta,
-                                "abono": abono,
-                                "saldo": total_venta - abono,
-                                "metodo_pago": metodo,
+                            # 1. Preparar Datos de la Orden
+                            p_id = None
+                            if paciente_sel != "Consumidor Final":
+                                p_id = df_pacs[df_pacs["nombre"] == paciente_sel].iloc[0]["id"]
+                            
+                            # Buscar ID de la montura si hay una en el carrito
+                            montura_id = None
+                            for it in st.session_state.items_venta:
+                                if it["tipo"] == "Montura":
+                                    montura_id = it["id_ref"]
+                                    break
+                            
+                            orden_data = {
+                                "paciente_id": p_id,
+                                "paciente_nombre": paciente_sel,
+                                "montura_id": montura_id,
+                                "receta_od": rx_od,
+                                "receta_oi": rx_oi,
+                                "distancia_pupilar": dist_pupilar,
+                                "tipo_lente_laboratorio": tipo_lente,
+                                "estado_trabajo": "Pendiente",
                                 "sucursal": sucursal_activa,
-                                "vendedor": st.session_state.user_login,
-                                "detalles": st.session_state.items_venta
+                                "detalles_json": st.session_state.items_venta # Guardamos todo el carrito por si acaso
                             }
-                            res = registrar_venta_directa(data_v)
-                            if res:
-                                st.success("Venta guardada exitosamente.")
-                                # Generar PDF para descarga inmediata
+                            
+                            # 2. Preparar Datos del Pago
+                            pago_data = {
+                                "monto_total": total_venta,
+                                "abono_inicial": abono,
+                                "saldo_pendiente": saldo,
+                                "metodo_pago": metodo
+                            }
+                            
+                            # 3. Guardar en Base de Datos (Función vinculada)
+                            from database import guardar_orden_trabajo
+                            res_id = guardar_orden_trabajo(orden_data, pago_data)
+                            
+                            if res_id:
+                                # 4. Descontar stock si hubo montura
+                                if montura_id:
+                                    from database import supabase
+                                    curr = supabase.table("inventario_monturas").select("cantidad_disponible").eq("id", montura_id).execute()
+                                    if curr.data:
+                                        nuevo_stock = max(0, int(curr.data[0]["cantidad_disponible"]) - 1)
+                                        supabase.table("inventario_monturas").update({"cantidad_disponible": nuevo_stock}).eq("id", montura_id).execute()
+
+                                st.success(f"Orden #{res_id} y Pago registrados exitosamente.")
+                                
+                                # Generar PDF de la Venta
                                 from utils import generar_pdf_venta
-                                pdf_b = generar_pdf_venta(data_v)
-                                st.download_button("📥 Descargar Comprobante/Factura", data=pdf_b, file_name=f"Venta_{cliente}.pdf", mime="application/pdf", use_container_width=True)
+                                data_pdf = {
+                                    "fecha": datetime.now().isoformat(),
+                                    "cliente": paciente_sel,
+                                    "total": total_venta,
+                                    "sucursal": sucursal_activa,
+                                    "detalles": st.session_state.items_venta
+                                }
+                                pdf_b = generar_pdf_venta(data_pdf)
+                                st.download_button("📥 Descargar Comprobante/Orden", data=pdf_b, file_name=f"Orden_{res_id}_{paciente_sel}.pdf", mime="application/pdf", use_container_width=True)
                                 
                                 st.session_state.items_venta = []
-                                # st.rerun() # No hacemos rerun inmediato para que pueda descargar el PDF
                         else:
                             st.error("Añade productos antes de finalizar.")
 

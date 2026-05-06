@@ -73,63 +73,63 @@ def cargar_auditoria(limit: int = 500) -> pd.DataFrame:
 
 
 # ══════════════════════════════════════════════════════════════
-# INVENTARIO
+# INVENTARIO (MONTURAS)
 # ══════════════════════════════════════════════════════════════
 def cargar_inventario(sucursal: str = None) -> pd.DataFrame:
-    """Carga el inventario. Si se pasa sucursal, filtra por ella."""
+    """Carga el inventario de monturas."""
     try:
         if not supabase: return pd.DataFrame()
-        query = supabase.table("inventario").select("*")
+        query = supabase.table("inventario_monturas").select("*")
         if sucursal:
             query = query.eq("sucursal", sucursal)
-        res = query.order("nombre").execute()
+        res = query.order("marca").execute()
         return pd.DataFrame(res.data) if res.data else pd.DataFrame()
     except Exception as e:
         print(f"Error cargar_inventario: {e}")
         return pd.DataFrame()
 
 def guardar_producto(data: dict):
-    """Guarda o actualiza un producto en el inventario."""
+    """Guarda o actualiza una montura en el inventario."""
     try:
         if not supabase: return
         if "id" in data:
-            supabase.table("inventario").update(data).eq("id", data["id"]).execute()
+            supabase.table("inventario_monturas").update(data).eq("id", data["id"]).execute()
         else:
-            supabase.table("inventario").insert(data).execute()
+            supabase.table("inventario_monturas").insert(data).execute()
     except Exception as e:
         print(f"Error guardar_producto: {e}")
 
 # ══════════════════════════════════════════════════════════════
-# ÓRDENES DE TRABAJO (LABORATORIO)
+# TRABAJOS (ÓRDENES) Y PAGOS
 # ══════════════════════════════════════════════════════════════
-def cargar_ordenes_trabajo(sucursal: str = None, limit: int = 200) -> pd.DataFrame:
-    """Carga las órdenes de trabajo recientes."""
+def cargar_ordenes_trabajo(sucursal: str = None) -> pd.DataFrame:
+    """Carga las órdenes de trabajo junto con sus pagos."""
     try:
         if not supabase: return pd.DataFrame()
-        query = supabase.table("ordenes_trabajo").select("*")
+        # Traemos la orden y el pago asociado (join simple de Supabase)
+        query = supabase.table("ordenes_trabajo").select("*, pagos_y_saldos(*)")
         if sucursal:
             query = query.eq("sucursal", sucursal)
-        res = query.order("creado_el", desc=True).limit(limit).execute()
+        res = query.order("id", desc=True).execute()
         return pd.DataFrame(res.data) if res.data else pd.DataFrame()
     except Exception as e:
         print(f"Error cargar_ordenes_trabajo: {e}")
         return pd.DataFrame()
 
-def guardar_orden_trabajo(data: dict):
-    """Inserta una nueva orden de trabajo."""
+def guardar_orden_trabajo(orden_data: dict, pago_data: dict):
+    """Guarda una orden de trabajo y su pago inicial de forma vinculada."""
     try:
         if not supabase: return None
-        res = supabase.table("ordenes_trabajo").insert(data).execute()
-        if res.data:
-            # Registrar en auditoría automáticamente
-            registrar_auditoria(
-                accion="Nueva Orden de Trabajo",
-                entidad="Laboratorio",
-                detalle=f"Orden para: {data.get('paciente_nombre')} | Total: {data.get('total_venta')} | Estado: {data.get('estado')}",
-                usuario=data.get("vendedor", ""),
-                sucursal=data.get("sucursal", "")
-            )
-            return res.data[0]
+        # 1. Insertar Orden
+        res_o = supabase.table("ordenes_trabajo").insert(orden_data).execute()
+        if res_o.data:
+            nueva_id = res_o.data[0]["id"]
+            # 2. Insertar Pago
+            pago_data["orden_id"] = nueva_id
+            supabase.table("pagos_y_saldos").insert(pago_data).execute()
+            
+            registrar_auditoria("Nueva Orden", "Trabajos", f"Orden #{nueva_id} | Paciente ID: {orden_data.get('paciente_id')}", st.session_state.user_login, sucursal=orden_data.get("sucursal"))
+            return nueva_id
         return None
     except Exception as e:
         print(f"Error guardar_orden_trabajo: {e}")
