@@ -92,90 +92,105 @@ def render_inventario():
     if filtro_cat != "Todos":
         df_f = df_f[df_f["categoria"] == filtro_cat]
 
-    # ── TABLA ESTILO EXCEL INTERACTIVA ────────────────────────
+    # ── TABLA ESTILO EXCEL CON ACCIONES ────────────────────────
     st.markdown("---")
-    st.markdown("👆 **Haz clic en cualquier producto de la tabla para ver sus opciones (editar, stock, eliminar).**")
-
-    # Preparar DataFrame para visualización
-    df_tabla = df_f[[
-        "codigo_referencia", "nombre", "categoria", "marca",
-        "proveedor", "costo_compra", "precio_venta", "cantidad_disponible"
-    ]].copy()
     
-    df_tabla.columns = ["Código", "Producto", "Categoría", "Marca", "Proveedor", "Costo", "PVP", "Stock"]
-
-    # Mostrar la tabla interactiva
-    event = st.dataframe(
-        df_tabla,
-        use_container_width=True,
-        hide_index=True,
-        selection_mode="single-row",
-        on_select="rerun",
-        key="tabla_interactiva_inventario"
-    )
-
-    # Si el usuario selecciona una fila, mostramos las acciones debajo
-    if event.selection.rows:
-        idx_seleccionado = event.selection.rows[0]
-        row = df_f.iloc[idx_seleccionado]
-        stock = row.get("cantidad_disponible", 0)
+    # Definir proporciones de columnas
+    cols_ratio = [1.2, 2.5, 1.5, 1.5, 1.5, 1, 1, 1, 1]
+    
+    # Encabezado de la tabla
+    header_cols = st.columns(cols_ratio)
+    header_cols[0].markdown("**Código**")
+    header_cols[1].markdown("**Producto**")
+    header_cols[2].markdown("**Categoría**")
+    header_cols[3].markdown("**Marca**")
+    header_cols[4].markdown("**Proveedor**")
+    header_cols[5].markdown("**Costo**")
+    header_cols[6].markdown("**PVP**")
+    header_cols[7].markdown("**Stock**")
+    header_cols[8].markdown("**Acciones**")
+    st.markdown("<hr style='margin-top: 5px; margin-bottom: 5px;'>", unsafe_allow_html=True)
+    
+    # Filas de datos
+    for _, row in df_f.iterrows():
+        cols = st.columns(cols_ratio)
         
-        st.markdown(f"""
-            <div style='background-color: #f8fafc; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6; margin-top: 10px;'>
-                <h3 style='margin:0; color:#1e293b;'>🛠️ Acciones para: {row.get('nombre', '')}</h3>
-                <p style='margin:0; color:#64748b;'>Código: {row.get('codigo_referencia', '')} | Stock actual: {stock}</p>
-            </div>
-        """, unsafe_allow_html=True)
+        # Color de stock
+        stock = row.get('cantidad_disponible', 0)
+        color_stock = "red" if stock <= 3 else "green"
         
-        st.write("")
-        c1, c2, c3, c4 = st.columns(4)
+        cols[0].markdown(f"<span style='font-size:13px;'>{row.get('codigo_referencia', '')}</span>", unsafe_allow_html=True)
+        cols[1].markdown(f"<span style='font-size:13px; font-weight:bold; color:#1e293b;'>{row.get('nombre', '')}</span>", unsafe_allow_html=True)
+        cols[2].markdown(f"<span style='font-size:13px;'>{row.get('categoria', '')}</span>", unsafe_allow_html=True)
+        cols[3].markdown(f"<span style='font-size:13px;'>{row.get('marca', '')}</span>", unsafe_allow_html=True)
+        cols[4].markdown(f"<span style='font-size:13px;'>{row.get('proveedor', '')}</span>", unsafe_allow_html=True)
+        cols[5].markdown(f"<span style='font-size:13px;'>${float(row.get('costo_compra', 0)):.2f}</span>", unsafe_allow_html=True)
+        cols[6].markdown(f"<span style='font-size:13px; color:#2563eb; font-weight:bold;'>${float(row.get('precio_venta', 0)):.2f}</span>", unsafe_allow_html=True)
+        cols[7].markdown(f"<span style='font-size:14px; font-weight:bold; color:{color_stock};'>{stock}</span>", unsafe_allow_html=True)
         
-        with c1:
-            if st.button("➕ Aumentar Stock", use_container_width=True, type="primary"):
-                guardar_producto({"id": row['id'], "cantidad_disponible": stock + 1})
+        # Botón para expandir opciones
+        with cols[8]:
+            if st.button("🔽 Ver", key=f"btn_ver_{row['id']}", use_container_width=True):
+                if st.session_state.get("inventario_expanded") == row['id']:
+                    st.session_state.inventario_expanded = None
+                else:
+                    st.session_state.inventario_expanded = row['id']
                 st.rerun()
                 
-        with c2:
-            if st.button("➖ Disminuir Stock", use_container_width=True):
-                if stock > 0:
-                    guardar_producto({"id": row['id'], "cantidad_disponible": stock - 1})
-                    st.rerun()
-                    
-        with c3:
-            with st.popover("✏️ Editar Producto", use_container_width=True):
-                with st.form(f"edit_form_{row['id']}"):
-                    e_cod = st.text_input("Código", value=row.get('codigo_referencia', ''))
-                    e_nom = st.text_input("Producto", value=row.get('nombre', ''))
-                    
-                    cat_opciones = ["Monturas", "Lentes de Contacto", "Líquidos", "Accesorios", "Otros"]
-                    cat_actual = row.get('categoria', 'Monturas')
-                    if cat_actual not in cat_opciones: cat_actual = "Monturas"
-                    e_cat = st.selectbox("Categoría", cat_opciones, index=cat_opciones.index(cat_actual))
-                    
-                    e_marca = st.text_input("Marca", value=row.get('marca', ''))
-                    e_prov = st.text_input("Proveedor", value=row.get('proveedor', ''))
-                    e_costo = st.number_input("Costo", value=float(row.get('costo_compra', 0)))
-                    e_pvp = st.number_input("PVP", value=float(row.get('precio_venta', 0)))
-                    
-                    if st.form_submit_button("💾 Guardar Cambios"):
-                        guardar_producto({
-                            "id": row['id'],
-                            "codigo_referencia": e_cod,
-                            "nombre": e_nom,
-                            "categoria": e_cat,
-                            "marca": e_marca,
-                            "proveedor": e_prov,
-                            "costo_compra": e_costo,
-                            "precio_venta": e_pvp
-                        })
+        # Opciones expandidas
+        if st.session_state.get("inventario_expanded") == row['id']:
+            with st.container():
+                st.markdown(f"""
+                    <div style='background-color: #f8fafc; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6; margin-bottom: 10px; margin-top: 5px;'>
+                        <h4 style='margin:0; color:#1e293b;'>🛠️ Acciones para: {row.get('nombre', '')}</h4>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                c1, c2, c3, c4 = st.columns(4)
+                with c1:
+                    if st.button("➕ Aumentar Stock", key=f"add_{row['id']}", use_container_width=True, type="primary"):
+                        guardar_producto({"id": row['id'], "cantidad_disponible": stock + 1})
                         st.rerun()
-                        
-        with c4:
-            with st.popover("🗑️ Eliminar", use_container_width=True):
-                st.error("⚠️ ¿Eliminar permanentemente?")
-                if st.button("Sí, Eliminar", key=f"del_{row['id']}", type="primary", use_container_width=True):
-                    eliminar_producto(row['id'])
-                    st.rerun()
+                with c2:
+                    if st.button("➖ Disminuir Stock", key=f"sub_{row['id']}", use_container_width=True):
+                        if stock > 0:
+                            guardar_producto({"id": row['id'], "cantidad_disponible": stock - 1})
+                            st.rerun()
+                with c3:
+                    with st.popover("✏️ Editar Producto", use_container_width=True):
+                        with st.form(f"edit_form_{row['id']}"):
+                            e_cod = st.text_input("Código", value=row.get('codigo_referencia', ''))
+                            e_nom = st.text_input("Producto", value=row.get('nombre', ''))
+                            cat_opciones = ["Monturas", "Lentes de Contacto", "Líquidos", "Accesorios", "Otros"]
+                            cat_actual = row.get('categoria', 'Monturas')
+                            if cat_actual not in cat_opciones: cat_actual = "Monturas"
+                            e_cat = st.selectbox("Categoría", cat_opciones, index=cat_opciones.index(cat_actual))
+                            e_marca = st.text_input("Marca", value=row.get('marca', ''))
+                            e_prov = st.text_input("Proveedor", value=row.get('proveedor', ''))
+                            e_costo = st.number_input("Costo", value=float(row.get('costo_compra', 0)))
+                            e_pvp = st.number_input("PVP", value=float(row.get('precio_venta', 0)))
+                            
+                            if st.form_submit_button("💾 Guardar Cambios"):
+                                guardar_producto({
+                                    "id": row['id'],
+                                    "codigo_referencia": e_cod,
+                                    "nombre": e_nom,
+                                    "categoria": e_cat,
+                                    "marca": e_marca,
+                                    "proveedor": e_prov,
+                                    "costo_compra": e_costo,
+                                    "precio_venta": e_pvp
+                                })
+                                st.rerun()
+                with c4:
+                    with st.popover("🗑️ Eliminar", use_container_width=True):
+                        st.error("⚠️ ¿Eliminar permanentemente?")
+                        if st.button("Sí, Eliminar", key=f"del_{row['id']}", type="primary", use_container_width=True):
+                            eliminar_producto(row['id'])
+                            st.session_state.inventario_expanded = None
+                            st.rerun()
+                            
+        st.markdown("<hr style='margin: 0; padding: 0; border-top: 1px solid #f1f5f9;'>", unsafe_allow_html=True)
 
 
     # Alerta de stock bajo
