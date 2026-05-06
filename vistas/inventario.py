@@ -128,22 +128,24 @@ def render_inventario():
         cols[6].markdown(f"<span style='font-size:13px; color:#2563eb; font-weight:bold;'>${float(row.get('precio_venta', 0)):.2f}</span>", unsafe_allow_html=True)
         cols[7].markdown(f"<span style='font-size:14px; font-weight:bold; color:{color_stock};'>{stock}</span>", unsafe_allow_html=True)
         
-        # Acciones
+        # Acciones agrupadas en un Popover
         with cols[8]:
-            btn1, btn2, btn3, btn4 = st.columns(4)
-            with btn1:
-                if st.button("➕", key=f"add_{row['id']}", help="Aumentar Stock"):
-                    guardar_producto({"id": row['id'], "cantidad_disponible": stock + 1})
-                    st.rerun()
-            with btn2:
-                if st.button("➖", key=f"sub_{row['id']}", help="Disminuir Stock"):
-                    if stock > 0:
-                        guardar_producto({"id": row['id'], "cantidad_disponible": stock - 1})
+            with st.popover("🔽"):
+                st.markdown("**Ajustar Stock**")
+                btn_add, btn_sub = st.columns(2)
+                with btn_add:
+                    if st.button("➕ Añadir", key=f"add_{row['id']}", use_container_width=True):
+                        guardar_producto({"id": row['id'], "cantidad_disponible": stock + 1})
                         st.rerun()
-            with btn3:
-                with st.popover("✏️"):
+                with btn_sub:
+                    if st.button("➖ Quitar", key=f"sub_{row['id']}", use_container_width=True):
+                        if stock > 0:
+                            guardar_producto({"id": row['id'], "cantidad_disponible": stock - 1})
+                            st.rerun()
+                
+                st.markdown("**Opciones**")
+                with st.expander("✏️ Editar Producto"):
                     with st.form(f"edit_form_{row['id']}"):
-                        st.write("**Editar Producto**")
                         e_cod = st.text_input("Código", value=row.get('codigo_referencia', ''))
                         e_nom = st.text_input("Producto", value=row.get('nombre', ''))
                         e_cat = st.selectbox("Categoría", ["Monturas", "Lentes de Contacto", "Líquidos", "Accesorios", "Otros"], index=["Monturas", "Lentes de Contacto", "Líquidos", "Accesorios", "Otros"].index(row.get('categoria', 'Monturas')) if row.get('categoria', 'Monturas') in ["Monturas", "Lentes de Contacto", "Líquidos", "Accesorios", "Otros"] else 0)
@@ -152,7 +154,7 @@ def render_inventario():
                         e_costo = st.number_input("Costo", value=float(row.get('costo_compra', 0)))
                         e_pvp = st.number_input("PVP", value=float(row.get('precio_venta', 0)))
                         
-                        if st.form_submit_button("Actualizar"):
+                        if st.form_submit_button("💾 Actualizar"):
                             guardar_producto({
                                 "id": row['id'],
                                 "codigo_referencia": e_cod,
@@ -163,12 +165,11 @@ def render_inventario():
                                 "costo_compra": e_costo,
                                 "precio_venta": e_pvp
                             })
-                            st.success("Actualizado")
                             st.rerun()
-            with btn4:
-                with st.popover("🗑️"):
-                    st.error("¿Estás seguro?")
-                    if st.button("Sí, Eliminar", key=f"del_{row['id']}", type="primary"):
+                            
+                with st.expander("🗑️ Eliminar Producto"):
+                    st.error("⚠️ ¿Eliminar permanentemente?")
+                    if st.button("Sí, Eliminar", key=f"del_{row['id']}", type="primary", use_container_width=True):
                         eliminar_producto(row['id'])
                         st.rerun()
         
