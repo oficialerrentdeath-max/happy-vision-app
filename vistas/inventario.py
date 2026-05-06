@@ -16,25 +16,25 @@ def render_inventario():
     # CSS Refinado: Compacto y Profesional (Estilo Excel)
     st.markdown("""
         <style>
-        /* Ajuste global para que todo en la fila mida lo mismo */
-        .cell-content {
+        /* Ajuste solo para elementos en el área principal (no afecta al sidebar) */
+        [data-testid="stMain"] .cell-content {
             font-size: 14px;
             display: flex;
             align-items: center;
-            height: 34px; /* Altura reducida para que sea compacto */
+            height: 34px;
             color: #334155;
             margin: 0 !important;
             padding: 0 !important;
         }
-        /* Reset total del botón de Streamlit */
-        div[data-testid="stButton"] {
+        /* Reset de botones SOLO en el área de la tabla */
+        [data-testid="stMain"] div[data-testid="stButton"] {
             margin: 0 !important;
             padding: 0 !important;
             height: 34px !important;
             display: flex !important;
             align-items: center !important;
         }
-        div[data-testid="stButton"] > button {
+        [data-testid="stMain"] div[data-testid="stButton"] > button {
             border: none !important;
             background: transparent !important;
             padding: 0 !important;
@@ -49,9 +49,10 @@ def render_inventario():
             width: auto !important;
             text-align: left !important;
         }
-        div[data-testid="stButton"] > button:hover {
+        [data-testid="stMain"] div[data-testid="stButton"] > button:hover {
             color: #1d4ed8 !important;
             background: transparent !important;
+            text-decoration: underline !important;
         }
         hr { 
             margin: 4px 0 !important; 
