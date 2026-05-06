@@ -13,48 +13,19 @@ def render_inventario():
 
     sucursal_activa = st.session_state.get("sucursal_activa", "Matriz")
     
-    # CSS para que toda la fila sea cliqueable sin parecer un botón
+    # CSS para la tabla y efectos de hover
     st.markdown("""
         <style>
         .row-container {
-            position: relative;
-            transition: background-color 0.2s;
             border-bottom: 1px solid #f1f5f9;
+            padding: 5px 0;
         }
         .row-container:hover {
             background-color: #f8fafc;
         }
-        /* El botón invisible que cubre toda la fila */
-        .overlay-btn {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 10;
-        }
-        .overlay-btn button {
-            width: 1000px !important; /* Lo suficientemente ancho para cubrir todas las columnas */
-            height: 100% !important;
-            background: transparent !important;
-            border: none !important;
-            color: transparent !important;
-            cursor: pointer !important;
-            box-shadow: none !important;
-        }
-        .overlay-btn button:hover, .overlay-btn button:active, .overlay-btn button:focus {
-            background: transparent !important;
-            border: none !important;
-            color: transparent !important;
-            box-shadow: none !important;
-        }
-        /* Ajuste de z-index para que el texto se vea pero el botón capte el clic */
         .cell-content {
-            position: relative;
-            z-index: 1;
-            padding: 8px 0;
             font-size: 13px;
-            pointer-events: none; /* Deja que el clic pase al botón invisible */
+            padding: 8px 0;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -141,8 +112,11 @@ def render_inventario():
     # ── TABLA ESTILO EXCEL CON ACCIONES ────────────────────────
     st.markdown("---")
     
-    # Definir proporciones de columnas (ajustadas sin la columna Acciones)
-    cols_ratio = [1.5, 3.5, 1.5, 1.5, 2, 1, 1, 1]
+    # ── TABLA ESTILO EXCEL CON ACCIONES ────────────────────────
+    st.markdown("---")
+    
+    # Definir proporciones de columnas (Incluyendo Acciones)
+    cols_ratio = [1.2, 2.5, 1.5, 1.5, 1.5, 1, 1, 1, 1]
     
     # Encabezado de la tabla
     header_cols = st.columns(cols_ratio)
@@ -154,6 +128,7 @@ def render_inventario():
     header_cols[5].markdown("**Costo**")
     header_cols[6].markdown("**PVP**")
     header_cols[7].markdown("**Stock**")
+    header_cols[8].markdown("**Opc.**")
     st.markdown("<hr style='margin-top: 5px; margin-bottom: 5px;'>", unsafe_allow_html=True)
     
     # Filas de datos
@@ -164,22 +139,8 @@ def render_inventario():
         stock = row.get('cantidad_disponible', 0)
         color_stock = "red" if stock <= 3 else "green"
         
-        # Contenedor de la fila con el botón invisible encima
+        # Contenedor de la fila
         st.markdown('<div class="row-container">', unsafe_allow_html=True)
-        
-        # El botón invisible "Maestro" que cubre la fila
-        cols_btn = st.columns([1, 0.001]) # Un pequeño truco para poner el botón al inicio
-        with cols_btn[0]:
-            st.markdown('<div class="overlay-btn">', unsafe_allow_html=True)
-            if st.button("", key=f"row_click_{row['id']}"):
-                if st.session_state.get("inventario_expanded") == row['id']:
-                    st.session_state.inventario_expanded = None
-                else:
-                    st.session_state.inventario_expanded = row['id']
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        # Las columnas de datos (con pointer-events: none para que el clic llegue al botón de arriba)
         cols = st.columns(cols_ratio)
         
         def render_cell(content, col_idx, bold=False, color=None):
@@ -195,6 +156,15 @@ def render_inventario():
         render_cell(f"${float(row.get('costo_compra', 0)):.2f}", 5)
         render_cell(f"${float(row.get('precio_venta', 0)):.2f}", 6, color="#2563eb")
         render_cell(stock, 7, bold=True, color=color_stock)
+        
+        # Botón de flecha para expandir
+        with cols[8]:
+            if st.button("🔽", key=f"expand_{row['id']}", use_container_width=True):
+                if st.session_state.get("inventario_expanded") == row['id']:
+                    st.session_state.inventario_expanded = None
+                else:
+                    st.session_state.inventario_expanded = row['id']
+                st.rerun()
         
         st.markdown('</div>', unsafe_allow_html=True)
                 
