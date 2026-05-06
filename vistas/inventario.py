@@ -13,7 +13,7 @@ def render_inventario():
 
     sucursal_activa = st.session_state.get("sucursal_activa", "Matriz")
     
-    # CSS para la tabla y efectos de hover
+    # CSS para la tabla y botones-texto
     st.markdown("""
         <style>
         .row-container {
@@ -26,6 +26,21 @@ def render_inventario():
         .cell-content {
             font-size: 13px;
             padding: 8px 0;
+        }
+        /* Estilo para que el botón de código parezca un link */
+        .code-btn button {
+            border: none !important;
+            background: transparent !important;
+            padding: 0 !important;
+            color: #2563eb !important;
+            font-size: 13px !important;
+            font-weight: bold !important;
+            text-decoration: underline !important;
+            box-shadow: none !important;
+            text-align: left !important;
+        }
+        .code-btn button:hover {
+            color: #1d4ed8 !important;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -115,8 +130,8 @@ def render_inventario():
     # ── TABLA ESTILO EXCEL CON ACCIONES ────────────────────────
     st.markdown("---")
     
-    # Definir proporciones de columnas (Incluyendo Acciones)
-    cols_ratio = [1.2, 2.5, 1.5, 1.5, 1.5, 1, 1, 1, 1]
+    # Definir proporciones de columnas (Sin columna de acciones)
+    cols_ratio = [1.5, 3.5, 1.5, 1.5, 2, 1, 1, 1]
     
     # Encabezado de la tabla
     header_cols = st.columns(cols_ratio)
@@ -128,7 +143,6 @@ def render_inventario():
     header_cols[5].markdown("**Costo**")
     header_cols[6].markdown("**PVP**")
     header_cols[7].markdown("**Stock**")
-    header_cols[8].markdown("**Opc.**")
     st.markdown("<hr style='margin-top: 5px; margin-bottom: 5px;'>", unsafe_allow_html=True)
     
     # Filas de datos
@@ -139,16 +153,22 @@ def render_inventario():
         stock = row.get('cantidad_disponible', 0)
         color_stock = "red" if stock <= 3 else "green"
         
-        # Contenedor de la fila
-        st.markdown('<div class="row-container">', unsafe_allow_html=True)
-        cols = st.columns(cols_ratio)
-        
+        # Columna 1: Código como BOTÓN
+        with cols[0]:
+            st.markdown('<div class="code-btn">', unsafe_allow_html=True)
+            if st.button(row.get('codigo_referencia', '---'), key=f"code_click_{row['id']}"):
+                if st.session_state.get("inventario_expanded") == row['id']:
+                    st.session_state.inventario_expanded = None
+                else:
+                    st.session_state.inventario_expanded = row['id']
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+
         def render_cell(content, col_idx, bold=False, color=None):
             style = f"font-weight:bold; color:{color};" if bold and color else ("font-weight:bold;" if bold else "")
             with cols[col_idx]:
                 st.markdown(f'<div class="cell-content" style="{style}">{content}</div>', unsafe_allow_html=True)
 
-        render_cell(row.get('codigo_referencia', ''), 0)
         render_cell(row.get('nombre', ''), 1, bold=True)
         render_cell(row.get('categoria', ''), 2)
         render_cell(row.get('marca', ''), 3)
@@ -156,15 +176,6 @@ def render_inventario():
         render_cell(f"${float(row.get('costo_compra', 0)):.2f}", 5)
         render_cell(f"${float(row.get('precio_venta', 0)):.2f}", 6, color="#2563eb")
         render_cell(stock, 7, bold=True, color=color_stock)
-        
-        # Botón de flecha para expandir
-        with cols[8]:
-            if st.button("🔽", key=f"expand_{row['id']}", use_container_width=True):
-                if st.session_state.get("inventario_expanded") == row['id']:
-                    st.session_state.inventario_expanded = None
-                else:
-                    st.session_state.inventario_expanded = row['id']
-                st.rerun()
         
         st.markdown('</div>', unsafe_allow_html=True)
                 
