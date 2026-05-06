@@ -18,22 +18,21 @@ def render_nueva_orden():
         
         # Selección de Paciente (Buscador Inteligente)
         try:
-            res_p = supabase.table("historias_clinicas").select("id, paciente_nombre, identificacion").execute()
+            # Consultamos solo las columnas que sabemos que existen
+            res_p = supabase.table("historias_clinicas").select("id, paciente_nombre").execute()
             if res_p.data:
                 pacientes_df = pd.DataFrame(res_p.data)
                 
-                # Filtro dinámico
-                filtro = st.text_input("🔍 Escribe el nombre o cédula del paciente:", placeholder="Buscar...")
+                # Filtro dinámico por nombre
+                filtro = st.text_input("🔍 Escribe el nombre del paciente:", placeholder="Buscar...")
                 
                 if filtro:
                     pacientes_df = pacientes_df[
-                        pacientes_df["paciente_nombre"].str.contains(filtro, case=False, na=False) |
-                        pacientes_df["identificacion"].str.contains(filtro, case=False, na=False)
+                        pacientes_df["paciente_nombre"].str.contains(filtro, case=False, na=False)
                     ]
                 
                 if not pacientes_df.empty:
-                    pacientes_df["display"] = pacientes_df["paciente_nombre"] + " (" + pacientes_df["identificacion"] + ")"
-                    pacientes_dict = dict(zip(pacientes_df["id"], pacientes_df["display"]))
+                    pacientes_dict = dict(zip(pacientes_df["id"], pacientes_df["paciente_nombre"]))
                     pacientes_nombres = dict(zip(pacientes_df["id"], pacientes_df["paciente_nombre"]))
                     
                     paciente_id = st.selectbox("Confirmar Selección del Paciente:", 
@@ -41,7 +40,7 @@ def render_nueva_orden():
                                                 format_func=lambda x: pacientes_dict[x],
                                                 key="sel_paciente_orden")
                 else:
-                    st.warning("⚠️ No se encontraron pacientes con ese nombre/cédula.")
+                    st.warning("⚠️ No se encontraron pacientes con ese nombre.")
                     paciente_id = None
                     pacientes_nombres = {}
             else:
