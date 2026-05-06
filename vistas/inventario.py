@@ -11,309 +11,137 @@ def render_inventario():
         </div>
     """, unsafe_allow_html=True)
 
-    # Botón prominente para sincronizar costos reales si faltan
-    if st.button("🚨 Sincronizar Costos Reales (Ejecutar una vez)", type="primary", use_container_width=True):
-        df_sync = cargar_inventario(st.session_state.get("sucursal_activa", "Matriz"))
-        datos_reales = [
-            {"cod": "COS9857", "nom": "Armazon TR90", "marca": "COSTU", "costo": 4.62, "pvp": 25.00, "stock": 1},
-            {"cod": "MA6988", "nom": "Armazon Acetato", "marca": "MAUROS", "costo": 10.10, "pvp": 25.00, "stock": 1},
-            {"cod": "VI703", "nom": "Armazon Acetato", "marca": "SEVEN VISION", "costo": 8.50, "pvp": 25.00, "stock": 1},
-            {"cod": "Paño", "nom": "Paño de Microfibra", "marca": "S/M", "costo": 0.81, "pvp": 1.50, "stock": 4},
-            {"cod": "Estuches", "nom": "Estuches Duros Normales", "marca": "S/M", "costo": 2.60, "pvp": 3.00, "stock": 3},
-            {"cod": "A3", "nom": "Plaquetas Suaves", "marca": "S/M", "costo": 3.13, "pvp": 5.00, "stock": 6},
-            {"cod": "G19", "nom": "Plaquetas Silicona", "marca": "S/M", "costo": 2.09, "pvp": 4.00, "stock": 6},
-            {"cod": "A04", "nom": "Plaquetas Duras", "marca": "S/M", "costo": 0.83, "pvp": 3.00, "stock": 6},
-        ]
-        
-        puntos_actualizados = 0
-        for item in datos_reales:
-            match = df_sync[df_sync["codigo_referencia"] == item["cod"]]
-            if not match.empty:
-                product_id = match.iloc[0]["id"]
-                guardar_producto({
-                    "id": product_id,
-                    "marca": item["marca"],
-                    "costo_compra": item["costo"],
-                    "precio_venta": item["pvp"],
-                    "cantidad_disponible": item["stock"]
-                })
-                puntos_actualizados += 1
-            else:
-                guardar_producto({
-                    "codigo_referencia": item["cod"],
-                    "nombre": item["nom"],
-                    "marca": item["marca"],
-                    "costo_compra": item["costo"],
-                    "precio_venta": item["pvp"],
-                    "cantidad_disponible": item["stock"],
-                    "sucursal": st.session_state.get("sucursal_activa", "Matriz"),
-                    "categoria": "Monturas" if "Armazon" in item["nom"] else "Otros"
-                })
-                puntos_actualizados += 1
-        
-        st.success(f"✅ Se han actualizado/creado {puntos_actualizados} productos con sus costos reales.")
-        st.rerun()
-
     sucursal_activa = st.session_state.get("sucursal_activa", "Matriz")
     
-    # CSS para la tabla y botones-texto
+    # CSS Refinado: Compacto y Profesional (Estilo Excel)
     st.markdown("""
         <style>
-        .row-container {
-            border-bottom: 1px solid #f1f5f9;
-            display: flex;
-            align-items: center;
-        }
-        .row-container:hover {
-            background-color: #f8fafc;
-        }
         .cell-content {
-            font-size: 14px;
-            padding: 12px 0;
+            font-size: 13px;
+            padding: 8px 0;
             display: flex;
             align-items: center;
-            min-height: 45px;
+            min-height: 38px;
+            color: #334155;
         }
-        /* Estilo ultra-específico para que el botón de código parezca un link y esté alineado */
         .code-btn {
-            padding: 12px 0;
+            padding: 8px 0;
             display: flex;
             align-items: center;
-            min-height: 45px;
-        }
-        .code-btn div[data-testid="stButton"] {
-            margin: 0 !important;
-            padding: 0 !important;
+            min-height: 38px;
         }
         .code-btn div[data-testid="stButton"] > button {
             border: none !important;
             background: transparent !important;
             padding: 0 !important;
-            margin: 0 !important;
             color: #2563eb !important;
-            font-size: 14px !important;
+            font-size: 13px !important;
             font-weight: bold !important;
             text-decoration: underline !important;
             box-shadow: none !important;
-            text-align: left !important;
             min-height: 0 !important;
-            line-height: 1.2 !important;
         }
-        .code-btn div[data-testid="stButton"] > button:hover {
-            color: #1d4ed8 !important;
-            background: transparent !important;
-        }
-        .code-btn div[data-testid="stButton"] > button:active, 
-        .code-btn div[data-testid="stButton"] > button:focus {
-            background: transparent !important;
-            color: #1d4ed8 !important;
-            box-shadow: none !important;
-        }
+        hr { margin: 5px 0 !important; opacity: 0.1; }
         </style>
     """, unsafe_allow_html=True)
-
-    # ── FORMULARIO AGREGAR ─────────────────────────────────────
-    with st.expander("➕ Agregar Nueva Montura / Producto", expanded=False):
-        with st.form("nuevo_producto_form", clear_on_submit=True):
-            c1, c2, c3 = st.columns(3)
-            n_cod      = c1.text_input("Código", placeholder="Ej: RX-5154")
-            n_producto = c2.text_input("Producto", placeholder="Ej: Aviator Clásico")
-            n_cat      = c3.selectbox("Categoría", ["Monturas", "Lentes de Contacto", "Líquidos", "Accesorios", "Otros"])
-
-            c4, c5, c6 = st.columns(3)
-            n_marca    = c4.text_input("Marca", placeholder="Ej: Ray-Ban")
-            n_color    = c5.text_input("Color / Modelo", placeholder="Ej: Negro Mate")
-            n_prov     = c6.text_input("Proveedor", placeholder="Ej: Distribuidora XYZ")
-
-            c7, c8, c9 = st.columns(3)
-            n_costo    = c7.number_input("Costo Compra Unit ($)", min_value=0.0, format="%.2f")
-            n_venta    = c8.number_input("Precio al Paciente ($)", min_value=0.0, format="%.2f")
-            n_stock    = c9.number_input("Stock", min_value=0, value=0)
-
-            if st.form_submit_button("💾 Guardar", use_container_width=True, type="primary"):
-                if n_cod and n_marca:
-                    guardar_producto({
-                        "codigo_referencia": n_cod,
-                        "nombre":            n_producto,
-                        "categoria":         n_cat,
-                        "marca":             n_marca,
-                        "modelo_color":      n_color,
-                        "proveedor":         n_prov,
-                        "costo_compra":      n_costo,
-                        "precio_venta":      n_venta,
-                        "cantidad_disponible": n_stock,
-                        "sucursal":          sucursal_activa
-                    })
-                    st.success("✅ Producto agregado exitosamente.")
-                    st.rerun()
-                else:
-                    st.error("⚠️ Código y Marca son obligatorios.")
 
     # ── TABLA PRINCIPAL ────────────────────────────────────────
     df = cargar_inventario(sucursal_activa)
 
     if df.empty:
-        st.info("📭 No hay productos registrados. Agrega el primero con el formulario de arriba.")
+        st.info("📭 No hay productos registrados.")
+        # Formulario para agregar el primero
+        with st.expander("➕ Agregar Primer Producto", expanded=True):
+            with st.form("new_first"):
+                c1, c2 = st.columns(2); n_cod = c1.text_input("Código"); n_mar = c2.text_input("Marca")
+                if st.form_submit_button("Guardar"):
+                    guardar_producto({"codigo_referencia": n_cod, "marca": n_mar, "sucursal": sucursal_activa}); st.rerun()
         return
 
-    # Normalizar columnas al nuevo esquema
-    col_map = {
-        "codigo_referencia":  "codigo_referencia",
-        "nombre":             "nombre",
-        "categoria":          "categoria",
-        "marca":              "marca",
-        "proveedor":          "proveedor",
-        "costo_compra":       "costo_compra",
-        "precio_venta":       "precio_venta",
-        "cantidad_disponible":"cantidad_disponible",
-    }
+    # Normalización de columnas
     for col, default in [("nombre", ""), ("categoria", ""), ("proveedor", ""),
                          ("costo_compra", 0.0), ("precio_venta", 0.0),
                          ("cantidad_disponible", 0), ("codigo_referencia", "")]:
         if col not in df.columns:
             df[col] = default
 
-    # Filtros rápidos
-    fil1, fil2, fil3 = st.columns([2, 1, 1])
-    busq = fil1.text_input("🔍 Buscar", placeholder="Código, marca, producto...")
-    cats = ["Todos"] + sorted(df["categoria"].dropna().unique().tolist())
-    filtro_cat = fil2.selectbox("Categoría", cats)
-    st.markdown(f"**{len(df)} productos** en {sucursal_activa}")
+    # Buscador y Filtros
+    f1, f2 = st.columns([3, 1])
+    busq = f1.text_input("🔍 Buscar por código, marca o producto...", label_visibility="collapsed")
+    f_cat = f2.selectbox("Categoría", ["Todas"] + sorted(df["categoria"].unique().tolist()), label_visibility="collapsed")
 
     df_f = df.copy()
     if busq:
-        mask = (
-            df_f["codigo_referencia"].astype(str).str.contains(busq, case=False, na=False) |
-            df_f["nombre"].astype(str).str.contains(busq, case=False, na=False) |
-            df_f["marca"].astype(str).str.contains(busq, case=False, na=False)
-        )
-        df_f = df_f[mask]
-    if filtro_cat != "Todos":
-        df_f = df_f[df_f["categoria"] == filtro_cat]
+        df_f = df_f[df_f.apply(lambda r: busq.lower() in str(r).lower(), axis=1)]
+    if f_cat != "Todas":
+        df_f = df_f[df_f["categoria"] == f_cat]
 
-    # ── TABLA ESTILO EXCEL CON ACCIONES ────────────────────────
     st.markdown("---")
     
-    # ── TABLA ESTILO EXCEL CON ACCIONES ────────────────────────
-    st.markdown("---")
+    # ── ENCABEZADOS ────────────────────────────────────────────
+    # Ratios: Código(1.2), Producto(3.2), Cat(1.2), Marca(1.2), Prov(1.8), Costo(0.9), PVP(0.9), Stock(0.9)
+    cols_ratio = [1.2, 3.2, 1.2, 1.2, 1.8, 0.9, 0.9, 0.9]
+    h = st.columns(cols_ratio)
+    labels = ["CÓDIGO", "PRODUCTO", "CATEGORÍA", "MARCA", "PROVEEDOR", "COSTO", "PVP", "STOCK"]
+    for i, label in enumerate(labels):
+        h[i].markdown(f"<p style='font-size:11px; font-weight:bold; color:#64748b; margin:0;'>{label}</p>", unsafe_allow_html=True)
     
-    # Definir proporciones de columnas (Sin columna de acciones)
-    cols_ratio = [1.5, 3.5, 1.5, 1.5, 2, 1, 1, 1]
+    st.markdown("<hr>", unsafe_allow_html=True)
     
-    # Encabezado de la tabla
-    header_cols = st.columns(cols_ratio)
-    header_cols[0].markdown("**Código**")
-    header_cols[1].markdown("**Producto**")
-    header_cols[2].markdown("**Categoría**")
-    header_cols[3].markdown("**Marca**")
-    header_cols[4].markdown("**Proveedor**")
-    header_cols[5].markdown("**Costo**")
-    header_cols[6].markdown("**PVP**")
-    header_cols[7].markdown("**Stock**")
-    st.markdown("<hr style='margin-top: 5px; margin-bottom: 5px;'>", unsafe_allow_html=True)
-    
-    # Filas de datos
+    # ── FILAS DE DATOS ─────────────────────────────────────────
     for _, row in df_f.iterrows():
         cols = st.columns(cols_ratio)
         
-        # Color de stock
-        stock = row.get('cantidad_disponible', 0)
-        color_stock = "red" if stock <= 3 else "green"
-        
-        # Columna 1: Código como BOTÓN
+        # Código Interactuable
         with cols[0]:
             st.markdown('<div class="code-btn">', unsafe_allow_html=True)
-            if st.button(row.get('codigo_referencia', '---'), key=f"code_click_{row['id']}"):
-                if st.session_state.get("inventario_expanded") == row['id']:
-                    st.session_state.inventario_expanded = None
-                else:
-                    st.session_state.inventario_expanded = row['id']
+            if st.button(row.get('codigo_referencia') or "---", key=f"c_{row['id']}"):
+                st.session_state.inv_exp = row['id'] if st.session_state.get("inv_exp") != row['id'] else None
                 st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
 
-        def render_cell(content, col_idx, bold=False, color=None):
-            style = f"font-weight:bold; color:{color};" if bold and color else ("font-weight:bold;" if bold else "")
-            with cols[col_idx]:
-                st.markdown(f'<div class="cell-content" style="{style}">{content}</div>', unsafe_allow_html=True)
+        def draw(val, idx, bold=False, color=None, is_money=False):
+            style = f"font-weight:bold;" if bold else ""
+            if color: style += f"color:{color};"
+            display = f"${float(val):.2f}" if is_money else str(val)
+            with cols[idx]:
+                st.markdown(f'<div class="cell-content" style="{style}">{display}</div>', unsafe_allow_html=True)
 
-        render_cell(row.get('nombre', ''), 1, bold=True)
-        render_cell(row.get('categoria', ''), 2)
-        render_cell(row.get('marca', ''), 3)
-        render_cell(row.get('proveedor', ''), 4)
-        render_cell(f"${float(row.get('costo_compra', 0)):.2f}", 5)
-        render_cell(f"${float(row.get('precio_venta', 0)):.2f}", 6, color="#2563eb")
-        render_cell(stock, 7, bold=True, color=color_stock)
+        draw(row.get('nombre', ''), 1, bold=True)
+        draw(row.get('categoria', ''), 2)
+        draw(row.get('marca', ''), 3)
+        draw(row.get('proveedor', ''), 4)
+        draw(row.get('costo_compra', 0), 5, is_money=True)
+        draw(row.get('precio_venta', 0), 6, is_money=True, color="#2563eb", bold=True)
         
-        st.markdown('</div>', unsafe_allow_html=True)
-                
-        # Opciones expandidas
-        if st.session_state.get("inventario_expanded") == row['id']:
-            with st.container():
-                st.markdown(f"""
-                    <div style='background-color: #f8fafc; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6; margin-bottom: 10px; margin-top: 5px;'>
-                        <h4 style='margin:0; color:#1e293b;'>🛠️ Acciones para: {row.get('nombre', '')}</h4>
-                    </div>
-                """, unsafe_allow_html=True)
-                
-                c1, c2, c3, c4 = st.columns(4)
-                with c1:
-                    if st.button("➕ Aumentar Stock", key=f"add_{row['id']}", use_container_width=True, type="primary"):
-                        guardar_producto({"id": row['id'], "cantidad_disponible": stock + 1})
-                        st.rerun()
-                with c2:
-                    if st.button("➖ Disminuir Stock", key=f"sub_{row['id']}", use_container_width=True):
-                        if stock > 0:
-                            guardar_producto({"id": row['id'], "cantidad_disponible": stock - 1})
-                            st.rerun()
-                with c3:
-                    if st.button("✏️ Editar Detalles", use_container_width=True):
-                        st.session_state[f"edit_mode_{row['id']}"] = not st.session_state.get(f"edit_mode_{row['id']}", False)
-                
-                with c4:
-                    with st.popover("🗑️ Eliminar", use_container_width=True):
-                        st.error("⚠️ ¿Eliminar permanentemente?")
-                        if st.button("Sí, Eliminar", key=f"del_{row['id']}", type="primary", use_container_width=True):
-                            eliminar_producto(row['id'])
-                            st.session_state.inventario_expanded = None
-                            st.rerun()
+        stock = int(row.get('cantidad_disponible', 0))
+        draw(stock, 7, bold=True, color="red" if stock <= 3 else "green")
 
-                # Formulario de edición que se despliega HACIA ABAJO (sin popover)
-                if st.session_state.get(f"edit_mode_{row['id']}"):
-                    st.markdown("---")
-                    with st.form(f"edit_form_{row['id']}"):
-                        st.write("**📝 Editar Información del Producto**")
+        # Acciones Expandidas
+        if st.session_state.get("inv_exp") == row['id']:
+            with st.container():
+                st.markdown(f"<div style='background:#f1f5f9; border-radius:4px; padding:10px; margin:5px 0;'>", unsafe_allow_html=True)
+                a1, a2, a3, a4 = st.columns(4)
+                if a1.button("➕ Stock", key=f"p_{row['id']}", use_container_width=True):
+                    guardar_producto({"id": row['id'], "cantidad_disponible": stock+1}); st.rerun()
+                if a2.button("➖ Stock", key=f"m_{row['id']}", use_container_width=True):
+                    if stock > 0: guardar_producto({"id": row['id'], "cantidad_disponible": stock-1}); st.rerun()
+                if a3.button("✏️ Editar", key=f"e_{row['id']}", use_container_width=True):
+                    st.session_state[f"ed_{row['id']}"] = not st.session_state.get(f"ed_{row['id']}", False)
+                if a4.button("🗑️ Borrar", key=f"d_{row['id']}", use_container_width=True):
+                    eliminar_producto(row['id']); st.rerun()
+                
+                if st.session_state.get(f"ed_{row['id']}"):
+                    with st.form(f"f_{row['id']}"):
                         e1, e2, e3 = st.columns(3)
-                        e_cod = e1.text_input("Código", value=row.get('codigo_referencia', ''))
-                        e_nom = e2.text_input("Producto", value=row.get('nombre', ''))
-                        
-                        cat_opciones = ["Monturas", "Lentes de Contacto", "Líquidos", "Accesorios", "Otros"]
-                        cat_actual = row.get('categoria', 'Monturas')
-                        if cat_actual not in cat_opciones: cat_actual = "Monturas"
-                        e_cat = e3.selectbox("Categoría", cat_opciones, index=cat_opciones.index(cat_actual))
-                        
-                        e4, e5, e6 = st.columns(3)
-                        e_marca = e4.text_input("Marca", value=row.get('marca', ''))
-                        e_prov = e5.text_input("Proveedor", value=row.get('proveedor', ''))
-                        e_costo = e6.number_input("Costo", value=float(row.get('costo_compra', 0)))
-                        
-                        e7, e8 = st.columns(2)
-                        e_pvp = e7.number_input("PVP", value=float(row.get('precio_venta', 0)))
-                        
-                        if st.form_submit_button("💾 Guardar Cambios"):
-                            guardar_producto({
-                                "id": row['id'],
-                                "codigo_referencia": e_cod,
-                                "nombre": e_nom,
-                                "categoria": e_cat,
-                                "marca": e_marca,
-                                "proveedor": e_prov,
-                                "costo_compra": e_costo,
-                                "precio_venta": e_pvp
-                            })
-                            st.session_state[f"edit_mode_{row['id']}"] = False
-                            st.rerun()
-                            
-        st.markdown("<hr style='margin: 0; padding: 0; border-top: 1px solid #f1f5f9;'>", unsafe_allow_html=True)
+                        n_c = e1.number_input("Costo", value=float(row.get('cost_compra', row.get('costo_compra', 0))))
+                        n_p = e2.number_input("PVP", value=float(row.get('precio_venta', 0)))
+                        n_n = e3.text_input("Nombre", value=row.get('nombre', ''))
+                        if st.form_submit_button("Guardar"):
+                            guardar_producto({"id": row['id'], "costo_compra": n_c, "precio_venta": n_p, "nombre": n_n})
+                            st.session_state[f"ed_{row['id']}"] = False; st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("<hr>", unsafe_allow_html=True)
 
 
     # Alerta de stock bajo
