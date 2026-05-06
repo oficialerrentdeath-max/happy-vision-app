@@ -84,7 +84,7 @@ def render_inventario():
     h = st.columns(cols_ratio)
     labels = ["CÓDIGO", "PRODUCTO", "CATEGORÍA", "MARCA", "PROVEEDOR", "COSTO", "PVP", "STOCK"]
     for i, label in enumerate(labels):
-        h[i].markdown(f"<p style='font-size:11px; font-weight:bold; color:#64748b; margin:0;'>{label}</p>", unsafe_allow_html=True)
+        h[i].markdown(f"<p style='font-size:14px; font-weight:bold; color:#1e293b; margin:0;'>{label}</p>", unsafe_allow_html=True)
     
     st.markdown("<hr>", unsafe_allow_html=True)
     
