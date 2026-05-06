@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import re
-import io
 from datetime import datetime
 from database import supabase, registrar_auditoria, cargar_ordenes_trabajo
 from fpdf import FPDF
@@ -18,25 +17,17 @@ def parse_rx_string(rx_str):
     return res
 
 def generar_pdf_orden(data):
-    """Genera un PDF profesional para la orden de trabajo."""
     pdf = FPDF()
     pdf.add_page()
-    
-    # Encabezado
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(200, 10, "ORDEN DE TRABAJO - HAPPY VISION", ln=True, align='C')
     pdf.set_font("Arial", '', 10)
     pdf.cell(200, 10, f"Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}", ln=True, align='C')
     pdf.ln(5)
-    
-    # Datos Paciente
     pdf.set_fill_color(230, 230, 230)
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 10, f" PACIENTE: {data['paciente_nombre']}", ln=True, fill=True)
-    pdf.set_font("Arial", '', 11)
     pdf.ln(2)
-    
-    # Cuadro de Medidas
     pdf.set_font("Arial", 'B', 11)
     pdf.cell(40, 8, "OJO", 1, 0, 'C', True)
     pdf.cell(30, 8, "ESFERA", 1, 0, 'C', True)
@@ -44,58 +35,36 @@ def generar_pdf_orden(data):
     pdf.cell(30, 8, "EJE", 1, 0, 'C', True)
     pdf.cell(30, 8, "ADICION", 1, 0, 'C', True)
     pdf.cell(30, 8, "A.V.", 1, 1, 'C', True)
-    
     pdf.set_font("Arial", '', 11)
-    od = data['receta_od']
-    oi = data['receta_oi']
-    
+    od = data['receta_od']; oi = data['receta_oi']
     pdf.cell(40, 8, "DERECHO (OD)", 1)
     pdf.cell(30, 8, str(od.get('Esf','')), 1, 0, 'C')
     pdf.cell(30, 8, str(od.get('Cil','')), 1, 0, 'C')
     pdf.cell(30, 8, str(od.get('Eje','')), 1, 0, 'C')
     pdf.cell(30, 8, str(od.get('Add','')), 1, 0, 'C')
     pdf.cell(30, 8, str(od.get('AV','')), 1, 1, 'C')
-    
     pdf.cell(40, 8, "IZQUIERDO (OI)", 1)
     pdf.cell(30, 8, str(oi.get('Esf','')), 1, 0, 'C')
     pdf.cell(30, 8, str(oi.get('Cil','')), 1, 0, 'C')
     pdf.cell(30, 8, str(oi.get('Eje','')), 1, 0, 'C')
     pdf.cell(30, 8, str(oi.get('Add','')), 1, 0, 'C')
     pdf.cell(30, 8, str(oi.get('AV','')), 1, 1, 'C')
-    
     pdf.ln(5)
-    
-    # Detalles Técnicos
-    pdf.set_font("Arial", 'B', 11)
-    pdf.cell(0, 8, "DETALLES TÉCNICOS", ln=True)
+    pdf.set_font("Arial", 'B', 11); pdf.cell(0, 8, "DETALLES TÉCNICOS", ln=True)
     pdf.set_font("Arial", '', 11)
-    pdf.cell(90, 8, f"D.I.P: {data['dip']}", 0, 0)
-    pdf.cell(90, 8, f"Altura Focal: {data['altura']}", 0, 1)
-    pdf.cell(90, 8, f"Tipo Lente: {data['tipo_lente']}", 0, 0)
-    pdf.cell(90, 8, f"Material: {data['material']}", 0, 1)
-    pdf.ln(2)
-    pdf.multi_cell(0, 8, f"Tratamientos: {data['protecciones']}")
-    pdf.ln(2)
-    pdf.set_font("Arial", 'B', 11)
-    pdf.cell(0, 8, "Observaciones:", ln=True)
-    pdf.set_font("Arial", '', 11)
-    pdf.multi_cell(0, 8, data['observaciones'])
-    
+    pdf.cell(90, 8, f"D.I.P: {data['dip']}", 0, 0); pdf.cell(90, 8, f"Altura Focal: {data['altura']}", 0, 1)
+    pdf.cell(90, 8, f"Tipo Lente: {data['tipo_lente']}", 0, 0); pdf.cell(90, 8, f"Material: {data['material']}", 0, 1)
+    pdf.ln(2); pdf.multi_cell(0, 8, f"Tratamientos: {data['protecciones']}")
+    pdf.ln(2); pdf.set_font("Arial", 'B', 11); pdf.cell(0, 8, "Observaciones:", ln=True)
+    pdf.set_font("Arial", '', 11); pdf.multi_cell(0, 8, data['observaciones'])
     return bytes(pdf.output(dest='S'))
 
 def render_nueva_orden():
-    st.markdown("""
-    <div class="page-header">
-        <h1>📝 Generar Orden de Trabajo</h1>
-        <p>Centro técnico para la elaboración de lunas y montajes</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    tab_n, tab_h = st.tabs(["➕ Crear Nueva Orden", "🔍 Historial y Búsqueda"])
+    st.markdown("""<div class="page-header"><h1>📝 Gestión de Órdenes</h1><p>Administra las recetas técnicas</p></div>""", unsafe_allow_html=True)
+    tab_n, tab_h = st.tabs(["➕ Nueva Orden", "🔍 Historial"])
 
     with tab_n:
-        st.markdown("<div class='section-title'>👤 Selección de Paciente</div>", unsafe_allow_html=True)
-        
+        st.markdown("<div class='section-title'>👤 Datos del Paciente</div>", unsafe_allow_html=True)
         pacientes_dict = {}
         pacientes_nombres = {}
         try:
@@ -103,49 +72,43 @@ def render_nueva_orden():
             if res_p.data:
                 df_p = pd.DataFrame(res_p.data)
                 df_p["display"] = df_p["nombres"] + " " + df_p["apellidos"] + " (" + df_p["identificacion"] + ")"
-                
-                busc = st.text_input("🔍 Buscar paciente por nombre o cédula:", key="busc_orden")
-                if busc:
-                    df_p = df_p[df_p["display"].str.contains(busc, case=False)]
-                
+                busc = st.text_input("🔍 Buscar paciente:", key="busc_orden")
+                if busc: df_p = df_p[df_p["display"].str.contains(busc, case=False)]
                 pacientes_dict = dict(zip(df_p["id"], df_p["display"]))
                 pacientes_nombres = dict(zip(df_p["id"], df_p["nombres"] + " " + df_p["apellidos"]))
         except: pass
 
         paciente_id = st.selectbox("Confirmar Paciente:", options=list(pacientes_dict.keys()), format_func=lambda x: pacientes_dict.get(x, ""))
         
-        # Cargar Rx desde historia
         rx_od_v = {"Esfera": "", "Cilindro": "", "Eje": "", "Adición": "", "A.V.": ""}
         rx_oi_v = {"Esfera": "", "Cilindro": "", "Eje": "", "Adición": "", "A.V.": ""}
-        dip_v = ""
-        p_key = f"ord_{paciente_id}"
+        dip_v = ""; p_key = f"ord_{paciente_id}"
 
         if paciente_id:
             try:
                 res_h = supabase.table("historias_clinicas").select("*").eq("paciente_id", paciente_id).order("fecha", desc=True).limit(1).execute()
                 if res_h.data:
                     h = res_h.data[0]
-                    p_od = parse_rx_string(h.get("rx_od", ""))
-                    p_oi = parse_rx_string(h.get("rx_oi", ""))
+                    p_od = parse_rx_string(h.get("rx_od", "")); p_oi = parse_rx_string(h.get("rx_oi", ""))
                     rx_od_v.update(p_od); rx_oi_v.update(p_oi)
                     rx_od_v["A.V."] = h.get("rx_av_lej_od", ""); rx_oi_v["A.V."] = h.get("rx_av_lej_oi", "")
                     rx_od_v["Adición"] = h.get("rx_add", ""); rx_oi_v["Adición"] = h.get("rx_add", "")
                     dip_v = h.get("rx_dip", "")
-                    st.success(f"✅ Medidas cargadas de la historia del {h.get('fecha','')}")
+                    st.success(f"✅ Medidas cargadas automáticamente.")
             except: pass
 
         st.divider()
-        st.markdown("<div class='section-title'>📋 Cuadro de Medidas (Receta)</div>", unsafe_allow_html=True)
+        st.markdown("<div class='section-title'>📋 Cuadro de Medidas</div>", unsafe_allow_html=True)
         c1, c2 = st.columns(2)
         with c1:
-            st.subheader("👁️ Ojo Derecho (OD)")
+            st.subheader("OD")
             o_esf = st.text_input("Esf (OD)", value=str(rx_od_v["Esfera"]), key=f"esf_od_{p_key}")
             o_cil = st.text_input("Cil (OD)", value=str(rx_od_v["Cilindro"]), key=f"cil_od_{p_key}")
             o_eje = st.text_input("Eje (OD)", value=str(rx_od_v["Eje"]), key=f"eje_od_{p_key}")
             o_add = st.text_input("Add (OD)", value=str(rx_od_v["Adición"]), key=f"add_od_{p_key}")
             o_av  = st.text_input("AV (OD)", value=str(rx_od_v["A.V."]), key=f"av_od_{p_key}")
         with c2:
-            st.subheader("👁️ Ojo Izquierdo (OI)")
+            st.subheader("OI")
             i_esf = st.text_input("Esf (OI)", value=str(rx_oi_v["Esfera"]), key=f"esf_oi_{p_key}")
             i_cil = st.text_input("Cil (OI)", value=str(rx_oi_v["Cilindro"]), key=f"cil_oi_{p_key}")
             i_eje = st.text_input("Eje (OI)", value=str(rx_oi_v["Eje"]), key=f"eje_oi_{p_key}")
@@ -153,66 +116,68 @@ def render_nueva_orden():
             i_av  = st.text_input("AV (OI)", value=str(rx_oi_v["A.V."]), key=f"av_oi_{p_key}")
 
         st.divider()
-        st.markdown("<div class='section-title'>🔬 Especificaciones Técnicas</div>", unsafe_allow_html=True)
         d1, d2, d3 = st.columns(3)
         dip = d1.text_input("D.I.P.", value=str(dip_v), key=f"dip_{p_key}")
         altura = d2.text_input("Altura Focal", key=f"alt_{p_key}")
-        tipo = d3.selectbox("Tipo de Lente", ["Monofocal", "Bifocal", "Progresivo", "Lente de Contacto"], key=f"tipo_{p_key}")
+        tipo = d3.selectbox("Lente", ["Monofocal", "Bifocal", "Progresivo"], key=f"tipo_{p_key}")
 
         m1, m2 = st.columns(2)
-        material = m1.multiselect("Material", ["CR-39", "Policarbonato", "Alto Índice", "Transitions", "Photogray"], key=f"mat_{p_key}")
-        protecciones = m2.multiselect("Protecciones", ["Antirreflejo", "Blue Defense", "Hidrofóbico", "Tinte"], key=f"prot_{p_key}")
-        
-        obs = st.text_area("Observaciones para Laboratorio", key=f"obs_{p_key}")
+        material = m1.multiselect("Material", ["CR-39", "Policarbonato", "Alto Índice", "Transitions"], key=f"mat_{p_key}")
+        protecciones = m2.multiselect("Tratamientos", ["Antirreflejo", "Blue Defense", "Hidrofóbico"], key=f"prot_{p_key}")
+        obs = st.text_area("Observaciones", key=f"obs_{p_key}")
 
-        if st.button("💾 GUARDAR Y GENERAR PDF", type="primary", use_container_width=True):
-            if not paciente_id: st.error("⚠️ Elija un paciente.")
+        # BOTONES LADO A LADO
+        col_btn1, col_btn2 = st.columns([1, 1])
+        
+        # Estado de guardado en session_state
+        if f"saved_{p_key}" not in st.session_state:
+            st.session_state[f"saved_{p_key}"] = False
+
+        with col_btn1:
+            if st.button("💾 GUARDAR ORDEN", type="primary", use_container_width=True):
+                if not paciente_id: st.error("⚠️ Elija un paciente.")
+                else:
+                    nueva = {
+                        "paciente_id": paciente_id, "paciente_nombre": pacientes_nombres[paciente_id],
+                        "receta_od": {"Esf": o_esf, "Cil": o_cil, "Eje": o_eje, "Add": o_add, "AV": o_av},
+                        "receta_oi": {"Esf": i_esf, "Cil": i_cil, "Eje": i_eje, "Add": i_add, "AV": i_av},
+                        "dip": dip, "altura": altura, "tipo_lente": tipo,
+                        "material": ", ".join(material), "protecciones": ", ".join(protecciones),
+                        "observaciones": obs, "estado": "Pendiente",
+                        "sucursal": st.session_state.get("sucursal_activa"),
+                        "creado_por": st.session_state.get("user_login"), "creado_el": datetime.now().isoformat()
+                    }
+                    try:
+                        supabase.table("ordenes_trabajo").insert(nueva).execute()
+                        st.session_state[f"saved_{p_key}"] = True
+                        st.session_state[f"pdf_data_{p_key}"] = nueva
+                        st.success("✅ ¡Guardado! Ya puedes descargar el PDF.")
+                    except Exception as e: st.error(f"Error: {e}")
+
+        with col_btn2:
+            if st.session_state[f"saved_{p_key}"]:
+                pdf_bytes = generar_pdf_orden(st.session_state[f"pdf_data_{p_key}"])
+                st.download_button(
+                    label="📄 DESCARGAR PDF",
+                    data=pdf_bytes,
+                    file_name=f"Orden_{pacientes_nombres[paciente_id].replace(' ','_')}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True
+                )
             else:
-                nueva = {
-                    "paciente_id": paciente_id,
-                    "paciente_nombre": pacientes_nombres[paciente_id],
-                    "receta_od": {"Esf": o_esf, "Cil": o_cil, "Eje": o_eje, "Add": o_add, "AV": o_av},
-                    "receta_oi": {"Esf": i_esf, "Cil": i_cil, "Eje": i_eje, "Add": i_add, "AV": i_av},
-                    "dip": dip, "altura": altura, "tipo_lente": tipo,
-                    "material": ", ".join(material), "protecciones": ", ".join(protecciones),
-                    "observaciones": obs, "estado": "Pendiente",
-                    "sucursal": st.session_state.get("sucursal_activa"),
-                    "creado_por": st.session_state.get("user_login"),
-                    "creado_el": datetime.now().isoformat()
-                }
-                try:
-                    supabase.table("ordenes_trabajo").insert(nueva).execute()
-                    st.success("✅ Orden guardada correctamente.")
-                    
-                    # Generar PDF
-                    pdf_bytes = generar_pdf_orden(nueva)
-                    st.download_button(
-                        label="📄 Descargar Orden de Trabajo (PDF)",
-                        data=pdf_bytes,
-                        file_name=f"Orden_{pacientes_nombres[paciente_id].replace(' ','_')}.pdf",
-                        mime="application/pdf"
-                    )
-                    registrar_auditoria("Orden Generada", "Trabajos", f"Orden para {pacientes_nombres[paciente_id]}", st.session_state.user_login)
-                except Exception as e: st.error(f"Error: {e}")
+                st.button("📄 DESCARGAR PDF (Primero Guardar)", disabled=True, use_container_width=True)
 
     with tab_h:
-        st.markdown("<div class='section-title'>🔍 Historial de Órdenes</div>", unsafe_allow_html=True)
+        st.markdown("<div class='section-title'>🔍 Historial</div>", unsafe_allow_html=True)
         df_ord = cargar_ordenes_trabajo(st.session_state.get("sucursal_activa"))
         if not df_ord.empty:
             for _, r in df_ord.iterrows():
                 with st.expander(f"📄 #{r['id']} - {r['paciente_nombre']} ({r['creado_el'][:10]})"):
-                    c_a, c_b = st.columns(2)
                     rod = r.get("receta_od"); roi = r.get("receta_oi")
                     if not isinstance(rod, dict): rod = {}
                     if not isinstance(roi, dict): roi = {}
-                    c_a.write(f"**OD:** {rod.get('Esf','')} {rod.get('Cil','')} x {rod.get('Eje','')}")
-                    c_b.write(f"**OI:** {roi.get('Esf','')} {roi.get('Cil','')} x {roi.get('Eje','')}")
-                    st.write(f"**Lente:** {r.get('tipo_lente','—')} | **Material:** {r.get('material','—')}")
-                    st.info(f"Estado: {r['estado']}")
-                    if st.button(f"🗑️ Eliminar Orden #{r['id']}", key=f"del_{r['id']}", type="secondary"):
-                        try:
-                            supabase.table("ordenes_trabajo").delete().eq("id", r['id']).execute()
-                            st.success(f"Orden #{r['id']} eliminada.")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Error al eliminar: {e}")
+                    st.write(f"**OD:** {rod.get('Esf','')} {rod.get('Cil','')} x {rod.get('Eje','')}")
+                    st.write(f"**OI:** {roi.get('Esf','')} {roi.get('Cil','')} x {roi.get('Eje','')}")
+                    if st.button(f"🗑️ Eliminar #{r['id']}", key=f"del_{r['id']}"):
+                        supabase.table("ordenes_trabajo").delete().eq("id", r['id']).execute()
+                        st.rerun()
