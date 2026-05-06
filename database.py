@@ -231,12 +231,14 @@ def registrar_venta_directa(data: dict):
         # 2. Descontar stock (recorriendo los items de la venta)
         for item in data.get("detalles", []):
             p_id = item.get("id_ref")
+            cant_vendida = item.get("cantidad", 1)
             if p_id: # Solo si es un producto de inventario
                 # Consultar stock actual
-                curr = supabase.table("inventario").select("stock").eq("id", p_id).execute()
+                curr = supabase.table("inventario").select("cantidad_disponible").eq("id", p_id).execute()
                 if curr.data:
-                    nuevo_stock = max(0, float(curr.data[0]["stock"]) - 1)
-                    supabase.table("inventario").update({"stock": nuevo_stock}).eq("id", p_id).execute()
+                    stock_actual = float(curr.data[0].get("cantidad_disponible", 0))
+                    nuevo_stock = max(0, stock_actual - float(cant_vendida))
+                    supabase.table("inventario").update({"cantidad_disponible": nuevo_stock}).eq("id", p_id).execute()
         
         # 3. Auditoría
         registrar_auditoria("Venta Directa", "Ventas", f"Total: ${data['total']} | Cliente: {data.get('cliente')}", st.session_state.user_login, sucursal=data['sucursal'])
