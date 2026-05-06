@@ -83,40 +83,56 @@ def render_ventas():
         # 2. SECCIÓN PRODUCTOS
         st.markdown('<div class="invoice-box"><div class="invoice-header">Detalle de Productos</div></div>', unsafe_allow_html=True)
         
-        # Buscador de productos
+        # Buscador de productos con robustez ante nombres de columnas
         df_inv = cargar_inventario(sucursal_activa)
         if not df_inv.empty:
+            # Detectar nombres de columnas existentes
+            col_cod = "codigo" if "codigo" in df_inv.columns else ("id" if "id" in df_inv.columns else None)
+            col_nom = "nombre" if "nombre" in df_inv.columns else "producto"
+            col_pre = "precio_venta" if "precio_venta" in df_inv.columns else "pvp"
+
             # Crear lista de opciones para el buscador
-            opciones_inv = [f"{row['codigo']} | {row['nombre']} (${row['precio_venta']})" for _, row in df_inv.iterrows()]
+            opciones_inv = []
+            for _, row in df_inv.iterrows():
+                c = row.get(col_cod, "N/A")
+                n = row.get(col_nom, "Sin Nombre")
+                p = row.get(col_pre, 0.0)
+                opciones_inv.append(f"{c} | {n} (${p})")
+            
             prod_sel = st.selectbox("🔍 Buscar producto en inventario (Código o Nombre):", [""] + opciones_inv)
             
             if prod_sel:
                 cod_sel = prod_sel.split(" | ")[0]
-                producto = df_inv[df_inv["codigo"] == cod_sel].iloc[0]
+                # Buscar por código o por la cadena completa si falló el split
+                if col_cod:
+                    producto = df_inv[df_inv[col_cod].astype(str) == str(cod_sel)].iloc[0]
+                else:
+                    producto = df_inv.iloc[0] # Fallback
                 
                 # Botón para añadir al carrito
-                if st.button(f"➕ Añadir {producto['nombre']} al detalle", use_container_width=True):
+                if st.button(f"➕ Añadir {producto.get(col_nom, 'Producto')} al detalle", use_container_width=True):
                     # Verificar si ya está en el carrito para aumentar cantidad
                     existe = False
+                    p_id = producto.get("id")
                     for item in st.session_state.carrito_ventas:
-                        if item["id_ref"] == producto["id"]:
+                        if item["id_ref"] == p_id:
                             item["cantidad"] += 1
-                            item["total"] = item["cantidad"] * item["precio"]
+                            item["total"] = (item["cantidad"] * item["precio"]) - item["descuento"]
                             existe = True
                             break
                     
                     if not existe:
                         st.session_state.carrito_ventas.append({
-                            "id_ref": producto["id"],
-                            "codigo": producto["codigo"],
-                            "descripcion": producto["nombre"],
+                            "id_ref": p_id,
+                            "codigo": str(producto.get(col_cod, "N/A")),
+                            "descripcion": str(producto.get(col_nom, "Producto")),
                             "cantidad": 1,
-                            "precio": float(producto["precio_venta"]),
+                            "precio": float(producto.get(col_pre, 0.0)),
                             "descuento": 0.0,
-                            "total": float(producto["precio_venta"]),
-                            "iva_tipo": "15%" # Por defecto 15% en Ecuador actualmente
+                            "total": float(producto.get(col_pre, 0.0)),
+                            "iva_tipo": "15%"
                         })
-                    st.toast(f"Añadido: {producto['nombre']}")
+                    st.toast(f"Añadido: {producto.get(col_nom, 'Producto')}")
                     st.rerun()
 
         # Tabla de Detalles (Simulada con columnas)
