@@ -12,7 +12,6 @@ def render_nueva_orden():
     """, unsafe_allow_html=True)
 
     # 1. Búsqueda de Paciente (Obligatorio para la orden)
-    from vistas.clinica import _cargar_historias # Reusar lógica de carga si existe
     
     with st.container():
         st.markdown("<div class='section-title'>👤 Selección de Paciente</div>", unsafe_allow_html=True)
