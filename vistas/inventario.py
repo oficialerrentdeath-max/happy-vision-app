@@ -13,10 +13,28 @@ def render_inventario():
 
     sucursal_activa = st.session_state.get("sucursal_activa", "Matriz")
     
-    # CSS Refinado: Compacto y Profesional (Estilo Excel)
+    # CSS Refinado: Diseño Premium de Tabla
     st.markdown("""
         <style>
-        /* Ajuste solo para elementos en el área principal */
+        /* Estilo general de las filas */
+        .inventory-row {
+            padding: 4px 8px;
+            border-bottom: 1px solid #f1f5f9;
+            transition: background-color 0.2s ease;
+            display: flex;
+            align-items: center;
+        }
+        .inventory-row:hover {
+            background-color: #f8fafc !important;
+        }
+        .row-even {
+            background-color: #ffffff;
+        }
+        .row-odd {
+            background-color: #fafbfc;
+        }
+
+        /* Ajuste de celdas */
         [data-testid="stMain"] .cell-content {
             font-size: 14px;
             display: flex;
@@ -26,42 +44,41 @@ def render_inventario():
             margin: 0 !important;
         }
         
-        /* Botones estilo CAJA (Código y Acciones) */
+        /* Botones estilo CAJA */
         [data-testid="stMain"] div[data-testid="stButton"] > button {
             border: 1px solid #e2e8f0 !important;
             background: white !important;
             padding: 4px 12px !important;
             color: #1e293b !important;
-            font-size: 14px !important;
-            font-weight: 500 !important;
-            border-radius: 8px !important;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
-            height: 34px !important;
-            transition: all 0.2s ease;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            border-radius: 6px !important;
+            height: 32px !important;
         }
         [data-testid="stMain"] div[data-testid="stButton"] > button:hover {
             border-color: #3b82f6 !important;
             color: #3b82f6 !important;
-            background: #f8fafc !important;
         }
 
         /* Cabecera de Producto */
         .product-header-box {
-            background-color: #f8fafc;
-            border: 1px solid #e2e8f0;
+            background-color: #f1f5f9;
             border-radius: 8px;
-            padding: 10px;
+            padding: 12px;
             margin: 10px 0;
             text-align: center;
-            color: #1e293b;
-            font-size: 16px;
+            color: #0f172a;
+            font-weight: 700;
+            font-size: 15px;
+            border-left: 4px solid #3b82f6;
         }
 
-        hr { 
-            margin: 0 !important; 
-            opacity: 0.1; 
-            border: 0;
-            border-top: 1px solid #1e293b;
+        .header-label {
+            font-size: 13px;
+            font-weight: 800;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -98,15 +115,19 @@ def render_inventario():
     h = st.columns(cols_ratio)
     labels = ["CÓDIGO", "PRODUCTO", "CATEGORÍA", "MARCA", "PROVEEDOR", "COSTO", "PVP", "STOCK"]
     for i, label in enumerate(labels):
-        h[i].markdown(f"<p style='font-size:15px; font-weight:800; color:#64748b; margin:0;'>{label}</p>", unsafe_allow_html=True)
+        h[i].markdown(f"<p class='header-label'>{label}</p>", unsafe_allow_html=True)
     
-    st.markdown("<hr>", unsafe_allow_html=True)
+    st.markdown("<hr style='margin:10px 0; opacity:0.2;'>", unsafe_allow_html=True)
     
     # ── FILAS DE DATOS ─────────────────────────────────────────
-    for _, row in df_f.iterrows():
+    for idx, (_, row) in enumerate(df_f.iterrows()):
+        row_class = "row-odd" if idx % 2 == 0 else "row-even"
+        
+        # Iniciar contenedor de fila
+        st.markdown(f'<div class="{row_class}">', unsafe_allow_html=True)
         cols = st.columns(cols_ratio)
         
-        # 1. Código (Botón en Caja)
+        # 1. Código
         with cols[0]:
             if st.button(row.get('codigo_referencia') or "---", key=f"c_{row['id']}"):
                 st.session_state.inv_exp = row['id'] if st.session_state.get("inv_exp") != row['id'] else None
@@ -129,9 +150,9 @@ def render_inventario():
         stock = int(row.get('cantidad_disponible', 0))
         draw(stock, 7, bold=True, color="#ef4444" if stock <= 3 else "#22c55e")
 
-        # Acciones Expandidas (Limpieza de espacios)
+        # Acciones Expandidas
         if st.session_state.get("inv_exp") == row['id']:
-            st.markdown('<div style="margin-top: 10px;">', unsafe_allow_html=True)
+            st.markdown('<div style="padding: 15px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; margin: 10px 0;">', unsafe_allow_html=True)
             a1, a2, a3, a4 = st.columns([1.2, 1.2, 1.2, 1.2])
             
             if a1.button("➕ Stock", key=f"p_{row['id']}", use_container_width=True):
@@ -144,49 +165,26 @@ def render_inventario():
             if a4.button("🗑️ Borrar", key=f"d_{row['id']}", use_container_width=True):
                 eliminar_producto(row['id']); st.rerun()
             
-            # Recuadro con el nombre del producto (Cabecera)
-            st.markdown(f"""
-                <div class="product-header-box">
-                    📦 Gestionando: <b>{row.get('nombre', 'Sin nombre')}</b>
-                </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f'<div class="product-header-box">📦 Gestionando: {row.get("nombre", "Sin nombre")}</div>', unsafe_allow_html=True)
 
-            # Formulario de Edición Completo
             if st.session_state.get(f"ed_{row['id']}"):
                 with st.form(f"f_{row['id']}", border=False):
-                    # Fila 1: Datos de Identificación
                     c1, c2, c3 = st.columns([1, 1, 1])
                     n_cod = c1.text_input("Código", value=row.get('codigo_referencia', ''))
                     n_cat = c2.text_input("Categoría", value=row.get('categoria', ''))
                     n_mar = c3.text_input("Marca", value=row.get('marca', ''))
-                    
-                    # Fila 2: Detalles del Producto
                     c4, c5 = st.columns([2, 1])
                     n_nom = c4.text_input("Nombre / Producto", value=row.get('nombre', ''))
                     n_pro = c5.text_input("Proveedor", value=row.get('proveedor', ''))
-                    
-                    # Fila 3: Precios
                     c6, c7 = st.columns([1, 1])
                     n_cos = c6.number_input("Costo Compra ($)", value=float(row.get('costo_compra', 0)), step=0.01)
                     n_pvp = c7.number_input("PVP ($)", value=float(row.get('precio_venta', 0)), step=0.01)
-                    
                     if st.form_submit_button("💾 Guardar Cambios", use_container_width=True):
-                        guardar_producto({
-                            "id": row['id'], 
-                            "codigo_referencia": n_cod,
-                            "categoria": n_cat,
-                            "marca": n_mar,
-                            "nombre": n_nom,
-                            "proveedor": n_pro,
-                            "costo_compra": n_cos, 
-                            "precio_venta": n_pvp
-                        })
-                        st.session_state[f"ed_{row['id']}"] = False
-                        st.success("Producto actualizado")
-                        st.rerun()
+                        guardar_producto({"id": row['id'], "codigo_referencia": n_cod, "categoria": n_cat, "marca": n_mar, "nombre": n_nom, "proveedor": n_pro, "costo_compra": n_cos, "precio_venta": n_pvp})
+                        st.session_state[f"ed_{row['id']}"] = False; st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
         
-        st.markdown("<hr>", unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
 
     # Alerta de stock bajo
