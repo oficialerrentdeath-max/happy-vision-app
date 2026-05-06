@@ -127,61 +127,58 @@ def render_inventario():
         stock = int(row.get('cantidad_disponible', 0))
         draw(stock, 7, bold=True, color="#ef4444" if stock <= 3 else "#22c55e")
 
-        # Acciones Expandidas (Diseño idéntico a captura)
+        # Acciones Expandidas (Limpieza de espacios)
         if st.session_state.get("inv_exp") == row['id']:
-            with st.container():
-                st.markdown('<div style="padding: 15px 0;">', unsafe_allow_html=True)
-                a1, a2, a3, a4 = st.columns([1.2, 1.2, 1.2, 1.2])
-                
-                if a1.button("➕ Stock", key=f"p_{row['id']}", use_container_width=True):
-                    guardar_producto({"id": row['id'], "cantidad_disponible": stock+1}); st.rerun()
-                if a2.button("➖ Stock", key=f"m_{row['id']}", use_container_width=True):
-                    if stock > 0: guardar_producto({"id": row['id'], "cantidad_disponible": stock-1}); st.rerun()
-                if a3.button("✏️ Editar", key=f"e_{row['id']}", use_container_width=True):
-                    st.session_state[f"ed_{row['id']}"] = not st.session_state.get(f"ed_{row['id']}", False)
-                    st.rerun()
-                if a4.button("🗑️ Borrar", key=f"d_{row['id']}", use_container_width=True):
-                    eliminar_producto(row['id']); st.rerun()
+            st.markdown('<div style="margin-top: 10px;">', unsafe_allow_html=True)
+            a1, a2, a3, a4 = st.columns([1.2, 1.2, 1.2, 1.2])
+            
+            if a1.button("➕ Stock", key=f"p_{row['id']}", use_container_width=True):
+                guardar_producto({"id": row['id'], "cantidad_disponible": stock+1}); st.rerun()
+            if a2.button("➖ Stock", key=f"m_{row['id']}", use_container_width=True):
+                if stock > 0: guardar_producto({"id": row['id'], "cantidad_disponible": stock-1}); st.rerun()
+            if a3.button("✏️ Editar", key=f"e_{row['id']}", use_container_width=True):
+                st.session_state[f"ed_{row['id']}"] = not st.session_state.get(f"ed_{row['id']}", False)
+                st.rerun()
+            if a4.button("🗑️ Borrar", key=f"d_{row['id']}", use_container_width=True):
+                eliminar_producto(row['id']); st.rerun()
+            
+            # Formulario de Edición Completo
+            if st.session_state.get(f"ed_{row['id']}"):
+                st.markdown('<div class="edit-container">', unsafe_allow_html=True)
+                with st.form(f"f_{row['id']}", border=False):
+                    # Fila 1: Datos de Identificación
+                    c1, c2, c3 = st.columns([1, 1, 1])
+                    n_cod = c1.text_input("Código", value=row.get('codigo_referencia', ''))
+                    n_cat = c2.text_input("Categoría", value=row.get('categoria', ''))
+                    n_mar = c3.text_input("Marca", value=row.get('marca', ''))
+                    
+                    # Fila 2: Detalles del Producto
+                    c4, c5 = st.columns([2, 1])
+                    n_nom = c4.text_input("Nombre / Producto", value=row.get('nombre', ''))
+                    n_pro = c5.text_input("Proveedor", value=row.get('proveedor', ''))
+                    
+                    # Fila 3: Precios
+                    c6, c7 = st.columns([1, 1])
+                    n_cos = c6.number_input("Costo Compra ($)", value=float(row.get('costo_compra', 0)), step=0.01)
+                    n_pvp = c7.number_input("PVP ($)", value=float(row.get('precio_venta', 0)), step=0.01)
+                    
+                    if st.form_submit_button("💾 Guardar Cambios", use_container_width=True):
+                        guardar_producto({
+                            "id": row['id'], 
+                            "codigo_referencia": n_cod,
+                            "categoria": n_cat,
+                            "marca": n_mar,
+                            "nombre": n_nom,
+                            "proveedor": n_pro,
+                            "costo_compra": n_cos, 
+                            "precio_venta": n_pvp
+                        })
+                        st.session_state[f"ed_{row['id']}"] = False
+                        st.success("Producto actualizado")
+                        st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
-                
-                # Formulario de Edición Completo
-                if st.session_state.get(f"ed_{row['id']}"):
-                    st.markdown('<div class="edit-container">', unsafe_allow_html=True)
-                    with st.form(f"f_{row['id']}", border=False):
-                        # Fila 1: Datos de Identificación
-                        c1, c2, c3 = st.columns([1, 1, 1])
-                        n_cod = c1.text_input("Código", value=row.get('codigo_referencia', ''))
-                        n_cat = c2.text_input("Categoría", value=row.get('categoria', ''))
-                        n_mar = c3.text_input("Marca", value=row.get('marca', ''))
-                        
-                        # Fila 2: Detalles del Producto
-                        c4, c5 = st.columns([2, 1])
-                        n_nom = c4.text_input("Nombre / Producto", value=row.get('nombre', ''))
-                        n_pro = c5.text_input("Proveedor", value=row.get('proveedor', ''))
-                        
-                        # Fila 3: Precios
-                        c6, c7 = st.columns([1, 1])
-                        n_cos = c6.number_input("Costo Compra ($)", value=float(row.get('costo_compra', 0)), step=0.01)
-                        n_pvp = c7.number_input("PVP ($)", value=float(row.get('precio_venta', 0)), step=0.01)
-                        
-                        st.markdown("<br>", unsafe_allow_html=True)
-                        if st.form_submit_button("💾 Guardar Cambios", use_container_width=True):
-                            guardar_producto({
-                                "id": row['id'], 
-                                "codigo_referencia": n_cod,
-                                "categoria": n_cat,
-                                "marca": n_mar,
-                                "nombre": n_nom,
-                                "proveedor": n_pro,
-                                "costo_compra": n_cos, 
-                                "precio_venta": n_pvp
-                            })
-                            st.session_state[f"ed_{row['id']}"] = False
-                            st.success("Producto actualizado")
-                            st.rerun()
-                    st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
         
-        st.markdown("<hr>", unsafe_allow_html=True)
         st.markdown("<hr>", unsafe_allow_html=True)
 
 
