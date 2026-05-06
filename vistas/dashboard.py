@@ -34,8 +34,18 @@ def render_dashboard():
     m2.metric("En Laboratorio", en_lab, help="Trabajos que están actualmente en proceso")
     m3.metric("Listos p/ Entrega", listos, delta=f"{listos} clientes esperando" if listos > 0 else None)
     
-    # Alertas de Inventario
-    bajo_stock = len(df_inv[df_inv["stock"] <= df_inv["stock_minimo"]]) if not df_inv.empty else 0
+    # Alertas de Inventario (Robustez ante nombres de columnas)
+    bajo_stock = 0
+    if not df_inv.empty:
+        col_s = "cantidad_disponible" if "cantidad_disponible" in df_inv.columns else "stock"
+        col_m = "stock_minimo" if "stock_minimo" in df_inv.columns else None
+        
+        if col_m:
+            bajo_stock = len(df_inv[df_inv[col_s] <= df_inv[col_m]])
+        else:
+            # Fallback: Consideramos bajo stock si es <= 3
+            bajo_stock = len(df_inv[df_inv[col_s] <= 3])
+            
     m4.metric("Bajo Stock", bajo_stock, delta="Revisar" if bajo_stock > 0 else "OK", delta_color="inverse" if bajo_stock > 0 else "normal")
 
     st.divider()
@@ -56,12 +66,18 @@ def render_dashboard():
             st.info("Sin datos de órdenes aún.")
 
     with col_r:
-        st.markdown("### ⚠️ Alertas Críticas")
         # Mostrar productos con bajo stock
         if bajo_stock > 0:
-            df_alertas = df_inv[df_inv["stock"] <= df_inv["stock_minimo"]].head(5)
+            col_s = "cantidad_disponible" if "cantidad_disponible" in df_inv.columns else "stock"
+            col_m = "stock_minimo" if "stock_minimo" in df_inv.columns else None
+            
+            if col_m:
+                df_alertas = df_inv[df_inv[col_s] <= df_inv[col_m]].head(5)
+            else:
+                df_alertas = df_inv[df_inv[col_s] <= 3].head(5)
+                
             for _, row in df_alertas.iterrows():
-                st.error(f"**{row['nombre']}**\n\nQuedan solo **{row['stock']}** unidades.")
+                st.error(f"**{row.get('nombre', 'Producto')}**\n\nQuedan solo **{row.get(col_s, 0)}** unidades.")
         else:
             st.success("✅ Inventario saludable.")
             
