@@ -16,28 +16,31 @@ def parse_rx_string(rx_str):
     if len(parts) >= 3: res["Eje"] = parts[2]
     return res
 
-def generar_pdf_orden(data):
+def generar_pdf_orden(data, order_id="N/A"):
     pdf = FPDF()
     pdf.add_page()
     
-    # Logo
+    # Logo más grande
     try:
-        pdf.image("logo.png", 10, 8, 33)
+        pdf.image("logo.png", 10, 8, 45)
     except:
         pass
         
-    # Encabezado
+    # Encabezado con Número de Orden
     pdf.set_font("Arial", 'B', 16)
-    pdf.cell(0, 10, "ORDEN DE TRABAJO", ln=True, align='R')
+    pdf.cell(0, 10, f"ORDEN DE TRABAJO #{order_id}", ln=True, align='R')
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 10, "HAPPY VISION", ln=True, align='R')
     pdf.set_font("Arial", '', 10)
     pdf.cell(0, 10, f"Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}", ln=True, align='R')
-    pdf.ln(10)
+    pdf.ln(15)
+    
     pdf.set_fill_color(230, 230, 230)
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 10, f" PACIENTE: {data['paciente_nombre']}", ln=True, fill=True)
     pdf.ln(2)
+    
+    # Cuadro de Medidas
     pdf.set_font("Arial", 'B', 11)
     pdf.cell(40, 8, "OJO", 1, 0, 'C', True)
     pdf.cell(30, 8, "ESFERA", 1, 0, 'C', True)
@@ -45,6 +48,7 @@ def generar_pdf_orden(data):
     pdf.cell(30, 8, "EJE", 1, 0, 'C', True)
     pdf.cell(30, 8, "ADICION", 1, 0, 'C', True)
     pdf.cell(30, 8, "A.V.", 1, 1, 'C', True)
+    
     pdf.set_font("Arial", '', 11)
     od = data['receta_od']; oi = data['receta_oi']
     pdf.cell(40, 8, "DERECHO (OD)", 1)
@@ -53,12 +57,14 @@ def generar_pdf_orden(data):
     pdf.cell(30, 8, str(od.get('Eje','')), 1, 0, 'C')
     pdf.cell(30, 8, str(od.get('Add','')), 1, 0, 'C')
     pdf.cell(30, 8, str(od.get('AV','')), 1, 1, 'C')
+    
     pdf.cell(40, 8, "IZQUIERDO (OI)", 1)
     pdf.cell(30, 8, str(oi.get('Esf','')), 1, 0, 'C')
     pdf.cell(30, 8, str(oi.get('Cil','')), 1, 0, 'C')
     pdf.cell(30, 8, str(oi.get('Eje','')), 1, 0, 'C')
     pdf.cell(30, 8, str(oi.get('Add','')), 1, 0, 'C')
     pdf.cell(30, 8, str(oi.get('AV','')), 1, 1, 'C')
+    
     pdf.ln(5)
     pdf.set_font("Arial", 'B', 11); pdf.cell(0, 8, "DETALLES TÉCNICOS", ln=True)
     pdf.set_font("Arial", '', 11)
@@ -67,10 +73,11 @@ def generar_pdf_orden(data):
     pdf.ln(2); pdf.multi_cell(0, 8, f"Tratamientos: {data['protecciones']}")
     pdf.ln(2); pdf.set_font("Arial", 'B', 11); pdf.cell(0, 8, "Observaciones:", ln=True)
     pdf.set_font("Arial", '', 11); pdf.multi_cell(0, 8, data['observaciones'])
+    
     return bytes(pdf.output(dest='S'))
 
 def render_nueva_orden():
-    st.markdown("""<div class="page-header"><h1>📝 Gestión de Órdenes</h1><p>Administra las recetas técnicas</p></div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="page-header"><h1>📝 Gestión de Órdenes</h1><p>Centro técnico para la elaboración de lunas y montajes</p></div>""", unsafe_allow_html=True)
     tab_n, tab_h = st.tabs(["➕ Nueva Orden", "🔍 Historial"])
 
     with tab_n:
@@ -104,7 +111,7 @@ def render_nueva_orden():
                     rx_od_v["A.V."] = h.get("rx_av_lej_od", ""); rx_oi_v["A.V."] = h.get("rx_av_lej_oi", "")
                     rx_od_v["Adición"] = h.get("rx_add", ""); rx_oi_v["Adición"] = h.get("rx_add", "")
                     dip_v = h.get("rx_dip", "")
-                    st.success(f"✅ Medidas cargadas automáticamente.")
+                    st.success(f"✅ Medidas cargadas de la historia clínica.")
             except: pass
 
         st.divider()
@@ -130,18 +137,13 @@ def render_nueva_orden():
         dip = d1.text_input("D.I.P.", value=str(dip_v), key=f"dip_{p_key}")
         altura = d2.text_input("Altura Focal", key=f"alt_{p_key}")
         tipo = d3.selectbox("Lente", ["Monofocal", "Bifocal", "Progresivo"], key=f"tipo_{p_key}")
-
         m1, m2 = st.columns(2)
         material = m1.multiselect("Material", ["CR-39", "Policarbonato", "Alto Índice", "Transitions"], key=f"mat_{p_key}")
         protecciones = m2.multiselect("Tratamientos", ["Antirreflejo", "Blue Defense", "Hidrofóbico"], key=f"prot_{p_key}")
         obs = st.text_area("Observaciones", key=f"obs_{p_key}")
 
-        # BOTONES LADO A LADO
         col_btn1, col_btn2 = st.columns([1, 1])
-        
-        # Estado de guardado en session_state
-        if f"saved_{p_key}" not in st.session_state:
-            st.session_state[f"saved_{p_key}"] = False
+        if f"saved_{p_key}" not in st.session_state: st.session_state[f"saved_{p_key}"] = False
 
         with col_btn1:
             if st.button("💾 GUARDAR ORDEN", type="primary", use_container_width=True):
@@ -158,24 +160,26 @@ def render_nueva_orden():
                         "creado_por": st.session_state.get("user_login"), "creado_el": datetime.now().isoformat()
                     }
                     try:
-                        supabase.table("ordenes_trabajo").insert(nueva).execute()
+                        res = supabase.table("ordenes_trabajo").insert(nueva).execute()
                         st.session_state[f"saved_{p_key}"] = True
+                        st.session_state[f"order_id_{p_key}"] = res.data[0]['id']
                         st.session_state[f"pdf_data_{p_key}"] = nueva
-                        st.success("✅ ¡Guardado! Ya puedes descargar el PDF.")
+                        st.success(f"✅ Orden #{res.data[0]['id']} guardada.")
                     except Exception as e: st.error(f"Error: {e}")
 
         with col_btn2:
             if st.session_state[f"saved_{p_key}"]:
-                pdf_bytes = generar_pdf_orden(st.session_state[f"pdf_data_{p_key}"])
+                oid = st.session_state[f"order_id_{p_key}"]
+                pdf_bytes = generar_pdf_orden(st.session_state[f"pdf_data_{p_key}"], oid)
                 st.download_button(
-                    label="📄 DESCARGAR PDF",
+                    label=f"📄 DESCARGAR PDF #{oid}",
                     data=pdf_bytes,
-                    file_name=f"Orden_{pacientes_nombres[paciente_id].replace(' ','_')}.pdf",
+                    file_name=f"Orden_{oid}_{pacientes_nombres[paciente_id].replace(' ','_')}.pdf",
                     mime="application/pdf",
                     use_container_width=True
                 )
             else:
-                st.button("📄 DESCARGAR PDF (Primero Guardar)", disabled=True, use_container_width=True)
+                st.button("📄 DESCARGAR PDF", disabled=True, use_container_width=True)
 
     with tab_h:
         st.markdown("<div class='section-title'>🔍 Historial</div>", unsafe_allow_html=True)
