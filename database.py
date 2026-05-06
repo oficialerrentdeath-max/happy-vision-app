@@ -79,7 +79,7 @@ def cargar_inventario(sucursal: str = None) -> pd.DataFrame:
     """Carga el inventario de monturas."""
     try:
         if not supabase: return pd.DataFrame()
-        query = supabase.table("inventario_monturas").select("*")
+        query = supabase.table("inventario").select("*")
         if sucursal:
             query = query.eq("sucursal", sucursal)
         res = query.order("marca").execute()
@@ -93,9 +93,9 @@ def guardar_producto(data: dict):
     try:
         if not supabase: return
         if "id" in data:
-            supabase.table("inventario_monturas").update(data).eq("id", data["id"]).execute()
+            supabase.table("inventario").update(data).eq("id", data["id"]).execute()
         else:
-            supabase.table("inventario_monturas").insert(data).execute()
+            supabase.table("inventario").insert(data).execute()
     except Exception as e:
         print(f"Error guardar_producto: {e}")
 
