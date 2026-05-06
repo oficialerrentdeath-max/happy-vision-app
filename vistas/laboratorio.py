@@ -36,38 +36,45 @@ def render_laboratorio():
 
         for _, row in df_show.iterrows():
             with st.container():
+                # Obtener datos de pago (si existen)
+                pago = row.get('pagos_y_saldos', [{}])[0] if isinstance(row.get('pagos_y_saldos'), list) and len(row.get('pagos_y_saldos')) > 0 else {}
+                
+                estado_actual = row.get('estado_trabajo', 'Pendiente')
                 # Color basado en estado
-                bg_color = "#fefce8" if row['estado'] == "Pendiente" else "#f0f9ff"
-                border_color = "#fef08a" if row['estado'] == "Pendiente" else "#bae6fd"
-                if row['estado'] == "Listo para Entrega": bg_color, border_color = "#f0fdf4", "#bbf7d0"
-                if row['estado'] == "Entregado": bg_color, border_color = "#f8fafc", "#e2e8f0"
+                bg_color = "#fefce8" if estado_actual == "Pendiente" else "#f0f9ff"
+                border_color = "#fef08a" if estado_actual == "Pendiente" else "#bae6fd"
+                if estado_actual == "Listo para Entrega": bg_color, border_color = "#f0fdf4", "#bbf7d0"
+                if estado_actual == "Entregado": bg_color, border_color = "#f8fafc", "#e2e8f0"
 
                 st.markdown(f"""
                     <div style='background:{bg_color}; border:1px solid {border_color}; border-radius:15px; padding:20px; margin-bottom:15px;'>
                         <div style='display:flex; justify-content:space-between; align-items:start;'>
                             <div>
                                 <span style='background:#2563eb; color:white; padding:4px 10px; border-radius:20px; font-size:10px; font-weight:bold;'>ORDEN #{row['id']}</span>
-                                <h3 style='margin:10px 0 5px 0; color:#1e293b;'>👤 {row['paciente_nombre']}</h3>
-                                <p style='margin:0; font-size:13px; color:#64748b;'>🗓️ Creada el: {pd.to_datetime(row['creado_el']).strftime('%Y-%m-%d %H:%M')}</p>
+                                <h3 style='margin:10px 0 5px 0; color:#1e293b;'>👤 {row.get('paciente_nombre', 'Cliente')}</h3>
+                                <p style='margin:0; font-size:13px; color:#64748b;'>🗓️ Creada: {pd.to_datetime(row.get('creado_el')).strftime('%Y-%m-%d %H:%M') if row.get('creado_el') else 'N/A'}</p>
                             </div>
                             <div style='text-align:right;'>
                                 <p style='margin:0; font-size:11px; color:#64748b;'>ESTADO ACTUAL</p>
-                                <p style='margin:0; font-weight:bold; color:#2563eb; font-size:18px;'>{row['estado']}</p>
+                                <p style='margin:0; font-weight:bold; color:#2563eb; font-size:18px;'>{estado_actual}</p>
                             </div>
                         </div>
                         <div style='margin-top:15px; display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; background:rgba(255,255,255,0.5); padding:10px; border-radius:10px;'>
                              <div>
                                 <p style='margin:0; font-size:10px; color:#94a3b8;'>VALOR TOTAL</p>
-                                <p style='margin:0; font-weight:bold;'>${float(row['total_venta']):.2f}</p>
+                                <p style='margin:0; font-weight:bold;'>${float(pago.get('monto_total', 0)):.2f}</p>
                              </div>
                              <div>
                                 <p style='margin:0; font-size:10px; color:#94a3b8;'>ABONO</p>
-                                <p style='margin:0; font-weight:bold; color:#16a34a;'>${float(row['abono']):.2f}</p>
+                                <p style='margin:0; font-weight:bold; color:#16a34a;'>${float(pago.get('abono_inicial', 0)):.2f}</p>
                              </div>
                              <div>
                                 <p style='margin:0; font-size:10px; color:#94a3b8;'>SALDO PENDIENTE</p>
-                                <p style='margin:0; font-weight:bold; color:#ef4444;'>${float(row['saldo']):.2f}</p>
+                                <p style='margin:0; font-weight:bold; color:#ef4444;'>${float(pago.get('saldo_pendiente', 0)):.2f}</p>
                              </div>
+                        </div>
+                        <div style='margin-top:10px; font-size:12px; color:#475569;'>
+                            <b>Lente:</b> {row.get('tipo_lente_laboratorio', 'No especificado')} | <b>DP:</b> {row.get('distancia_pupilar', 'N/A')}mm
                         </div>
                     </div>
                 """, unsafe_allow_html=True)
@@ -75,15 +82,16 @@ def render_laboratorio():
                 # Acciones
                 ca1, ca2, ca3, ca4 = st.columns([2, 2, 1, 1])
                 with ca1:
-                    nuevo_e = st.selectbox("Cambiar Estado", ESTADOS, index=ESTADOS.index(row['estado']), key=f"est_{row['id']}")
-                    if nuevo_e != row['estado']:
+                    nuevo_e = st.selectbox("Cambiar Estado", ESTADOS, index=ESTADOS.index(estado_actual) if estado_actual in ESTADOS else 0, key=f"est_{row['id']}")
+                    if nuevo_e != estado_actual:
                         from database import actualizar_estado_orden
                         actualizar_estado_orden(row['id'], nuevo_e, st.session_state.user_login, sucursal_activa)
                         st.success(f"Estado actualizado a {nuevo_e}")
                         st.rerun()
                 with ca2:
                     if st.button("📄 Ver Receta", key=f"receta_{row['id']}", use_container_width=True):
-                        st.json(row['detalles_receta'])
+                        st.write(f"**OD:** {row.get('receta_od', 'N/A')}")
+                        st.write(f"**OI:** {row.get('receta_oi', 'N/A')}")
                 with ca3:
                     from utils.pdf import generar_pdf_ticket
                     ticket_bytes = generar_pdf_ticket(row.to_dict())
