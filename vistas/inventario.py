@@ -214,8 +214,11 @@ def render_inventario():
             if a3.button("✏️ Editar", key=f"e_{row['id']}", use_container_width=True):
                 st.session_state[f"ed_{row['id']}"] = not st.session_state.get(f"ed_{row['id']}", False)
                 st.rerun()
-            if a4.button("🗑️ Borrar", key=f"d_{row['id']}", use_container_width=True):
-                eliminar_producto(row['id']); st.rerun()
+            if st.session_state.get("user_role") == "Administrador":
+                if a4.button("🗑️ Borrar", key=f"d_{row['id']}", use_container_width=True):
+                    eliminar_producto(row['id']); st.rerun()
+            else:
+                a4.button("🗑️ Protegido", key=f"d_{row['id']}", use_container_width=True, disabled=True)
             
             st.markdown(f'<div class="product-header-box">📦 Gestionando: {row.get("nombre", "Sin nombre")}</div>', unsafe_allow_html=True)
 

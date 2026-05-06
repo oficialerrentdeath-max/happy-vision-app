@@ -194,6 +194,8 @@ def render_nueva_orden():
                     if not isinstance(roi, dict): roi = {}
                     st.write(f"**OD:** {rod.get('Esf','')} {rod.get('Cil','')} x {rod.get('Eje','')}")
                     st.write(f"**OI:** {roi.get('Esf','')} {roi.get('Cil','')} x {roi.get('Eje','')}")
-                    if st.button(f"🗑️ Eliminar #{r['id']}", key=f"del_{r['id']}"):
-                        supabase.table("ordenes_trabajo").delete().eq("id", r['id']).execute()
-                        st.rerun()
+                    # SOLO EL ADMIN PUEDE ELIMINAR
+                    if st.session_state.get("user_role") == "Administrador":
+                        if st.button(f"🗑️ Eliminar #{r['id']}", key=f"del_{r['id']}"):
+                            supabase.table("ordenes_trabajo").delete().eq("id", r['id']).execute()
+                            st.rerun()

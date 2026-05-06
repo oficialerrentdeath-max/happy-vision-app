@@ -763,25 +763,29 @@ def render_clinica():
                     st.session_state["editar_paciente_id"] = rp["id"]
                     st.session_state["clinica_buscar"] = rp.get("nombre","")
                     st.rerun()
-                if col_f.button("🗑️", key=f"rap_del_{rp['id']}", use_container_width=True, help="Eliminar paciente"):
-                    if n_hist > 0:
-                        st.error(f"❌ No puedes eliminar a **{display_name}** porque tiene {n_hist} historia(s) clínica(s). Elimínalas primero.")
-                    else:
-                        from database import eliminar_paciente, registrar_auditoria
-                        eliminar_paciente(rp["id"])
-                        registrar_auditoria(
-                            accion="Eliminar Paciente",
-                            entidad="Paciente",
-                            detalle=f"Paciente: {display_name} | Cédula: {rp.get('identificacion','')} | ID: {rp['id']}",
-                            usuario=st.session_state.get("user_login", ""),
-                            nombre_usuario=st.session_state.get("user_name", ""),
-                            sucursal=st.session_state.get("sucursal_activa", "")
-                        )
-                        st.session_state.df_pacientes = st.session_state.df_pacientes[
-                            st.session_state.df_pacientes["id"] != rp["id"]
-                        ]
-                        st.success(f"✅ Paciente **{display_name}** eliminado.")
-                        st.rerun()
+                # SOLO EL ADMIN PUEDE ELIMINAR PACIENTES
+                if st.session_state.get("user_role") == "Administrador":
+                    if col_f.button("🗑️", key=f"rap_del_{rp['id']}", use_container_width=True, help="Eliminar paciente"):
+                        if n_hist > 0:
+                            st.error(f"❌ No puedes eliminar a **{display_name}** porque tiene {n_hist} historia(s) clínica(s). Elimínalas primero.")
+                        else:
+                            from database import eliminar_paciente, registrar_auditoria
+                            eliminar_paciente(rp["id"])
+                            registrar_auditoria(
+                                accion="Eliminar Paciente",
+                                entidad="Paciente",
+                                detalle=f"Paciente: {display_name} | Cédula: {rp.get('identificacion','')} | ID: {rp['id']}",
+                                usuario=st.session_state.get("user_login", ""),
+                                nombre_usuario=st.session_state.get("user_name", ""),
+                                sucursal=st.session_state.get("sucursal_activa", "")
+                            )
+                            st.session_state.df_pacientes = st.session_state.df_pacientes[
+                                st.session_state.df_pacientes["id"] != rp["id"]
+                            ]
+                            st.success(f"✅ Paciente **{display_name}** eliminado.")
+                            st.rerun()
+                else:
+                    col_f.button("🔒", key=f"rap_del_{rp['id']}", use_container_width=True, help="Solo Administrador", disabled=True)
                 st.divider()
 
     # ── FORMULARIO DE NUEVA CONSULTA ─────────────────────────────────
