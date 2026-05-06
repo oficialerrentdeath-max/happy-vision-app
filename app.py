@@ -680,12 +680,14 @@ with st.sidebar:
     
     pages = {}
     for key, val in all_pages.items():
-        # El Administrador ve todo. Otros roles ven solo lo que tienen en 'accesos'.
-        if _role == "Administrador" or key in _accesos or key == "Inicio":
+        # El Administrador ve todo. Otros roles ven solo lo que tienen en 'accesos', excluyendo 'Inicio'.
+        if _role == "Administrador":
+            pages[key] = val
+        elif key in _accesos and key != "Inicio":
             pages[key] = val
 
     if st.session_state.page not in pages:
-        st.session_state.page = "Inicio"
+        st.session_state.page = "Pacientes" if "Pacientes" in pages else list(pages.keys())[0]
 
     for key, (icon, label) in pages.items():
         if key in ["Usuarios", "Configuracion"]: continue # Se mueven al pie del sidebar
