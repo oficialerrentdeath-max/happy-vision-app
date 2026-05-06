@@ -19,11 +19,21 @@ def parse_rx_string(rx_str):
 def generar_pdf_orden(data):
     pdf = FPDF()
     pdf.add_page()
+    
+    # Logo
+    try:
+        pdf.image("logo.png", 10, 8, 33)
+    except:
+        pass
+        
+    # Encabezado
     pdf.set_font("Arial", 'B', 16)
-    pdf.cell(200, 10, "ORDEN DE TRABAJO - HAPPY VISION", ln=True, align='C')
+    pdf.cell(0, 10, "ORDEN DE TRABAJO", ln=True, align='R')
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(0, 10, "HAPPY VISION", ln=True, align='R')
     pdf.set_font("Arial", '', 10)
-    pdf.cell(200, 10, f"Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}", ln=True, align='C')
-    pdf.ln(5)
+    pdf.cell(0, 10, f"Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}", ln=True, align='R')
+    pdf.ln(10)
     pdf.set_fill_color(230, 230, 230)
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 10, f" PACIENTE: {data['paciente_nombre']}", ln=True, fill=True)
