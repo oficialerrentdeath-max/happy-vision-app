@@ -55,6 +55,18 @@ def render_inventario():
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
+        /* Cabecera de Producto */
+        .product-header-box {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 10px 0;
+            text-align: center;
+            color: #1e293b;
+            font-size: 16px;
+        }
+
         hr { 
             margin: 0 !important; 
             opacity: 0.1; 
@@ -142,6 +154,13 @@ def render_inventario():
             if a4.button("🗑️ Borrar", key=f"d_{row['id']}", use_container_width=True):
                 eliminar_producto(row['id']); st.rerun()
             
+            # Recuadro con el nombre del producto (Cabecera)
+            st.markdown(f"""
+                <div class="product-header-box">
+                    📦 Gestionando: <b>{row.get('nombre', 'Sin nombre')}</b>
+                </div>
+            """, unsafe_allow_html=True)
+
             # Formulario de Edición Completo
             if st.session_state.get(f"ed_{row['id']}"):
                 st.markdown('<div class="edit-container">', unsafe_allow_html=True)
