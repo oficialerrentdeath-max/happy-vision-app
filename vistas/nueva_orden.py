@@ -35,45 +35,71 @@ def render_nueva_orden():
                     pacientes_dict = dict(zip(pacientes_df["id"], pacientes_df["paciente_nombre"]))
                     pacientes_nombres = dict(zip(pacientes_df["id"], pacientes_df["paciente_nombre"]))
                     
-                    paciente_id = st.selectbox("Confirmar Selección del Paciente:", 
-                                                options=list(pacientes_dict.keys()),
-                                                format_func=lambda x: pacientes_dict[x],
-                                                key="sel_paciente_orden")
-                else:
-                    st.warning("⚠️ No se encontraron pacientes con ese nombre.")
-                    paciente_id = None
-                    pacientes_nombres = {}
-            else:
-                st.info("No hay pacientes registrados en el sistema.")
-                paciente_id = None
-                pacientes_nombres = {}
-        except Exception as e:
-            st.error(f"Error al cargar pacientes: {e}")
-            paciente_id = None
-            pacientes_nombres = {}
+        paciente_id = st.selectbox("Confirmar Selección del Paciente:", 
+                                    options=list(pacientes_dict.keys()),
+                                    format_func=lambda x: pacientes_dict[x],
+                                    key="sel_paciente_orden")
+        
+        # --- NUEVA LÓGICA: CARGAR ÚLTIMA RX ---
+        ultima_rx_od = {"Esfera": "", "Cilindro": "", "Eje": "", "Adición": "", "A.V.": ""}
+        ultima_rx_oi = {"Esfera": "", "Cilindro": "", "Eje": "", "Adición": "", "A.V.": ""}
+        
+        if paciente_id:
+            try:
+                # Buscar la historia más reciente de este paciente
+                res_h = supabase.table("historias_clinicas")\
+                    .select("*")\
+                    .eq("id", paciente_id)\
+                    .order("fecha", desc=True)\
+                    .limit(1)\
+                    .execute()
+                
+                if res_h.data:
+                    h = res_h.data[0]
+                    st.info(f"💡 Se cargaron automáticamente las medidas de la última historia ({h.get('fecha','')})")
+                    
+                    # Intentar extraer datos de Rx (asumiendo formato guardado anteriormente)
+                    # En tu sistema, rx_od suele guardarse como string o dict.
+                    # Si viene de la historia clinica pro, extraemos los valores:
+                    ultima_rx_od = {
+                        "Esfera": h.get("rx_od_esf", h.get("rx_od", "")), 
+                        "Cilindro": h.get("rx_od_cil", ""), 
+                        "Eje": h.get("rx_od_eje", ""), 
+                        "Adición": h.get("rx_od_add", ""),
+                        "A.V.": h.get("rx_av_lej_od", "")
+                    }
+                    ultima_rx_oi = {
+                        "Esfera": h.get("rx_oi_esf", h.get("rx_oi", "")), 
+                        "Cilindro": h.get("rx_oi_cil", ""), 
+                        "Eje": h.get("rx_oi_eje", ""), 
+                        "Adición": h.get("rx_oi_add", ""),
+                        "A.V.": h.get("rx_av_lej_oi", "")
+                    }
+            except:
+                pass
 
         st.divider()
 
-        # FORMULARIO TIPO HISTORIA CLÍNICA
+        # FORMULARIO TIPO HISTORIA CLÍNICA (CON VALORES PRE-CARGADOS)
         st.markdown("<div class='section-title'>📋 Cuadro de Medidas (Receta)</div>", unsafe_allow_html=True)
         
         c1, c2 = st.columns(2)
         
         with c1:
             st.markdown("### 👁️ Ojo Derecho (OD)")
-            od_esf = st.text_input("Esfera (OD)", value="", placeholder="ej: -1.25", key="od_esf_n")
-            od_cil = st.text_input("Cilindro (OD)", value="", placeholder="ej: -0.50", key="od_cil_n")
-            od_eje = st.text_input("Eje (OD)", value="", placeholder="ej: 180", key="od_eje_n")
-            od_add = st.text_input("Adición (OD)", value="", placeholder="ej: +2.00", key="od_add_n")
-            od_av  = st.text_input("A.V. (OD)", value="", placeholder="ej: 20/20", key="od_av_n")
+            od_esf = st.text_input("Esfera (OD)", value=str(ultima_rx_od["Esfera"]), placeholder="ej: -1.25", key="od_esf_n")
+            od_cil = st.text_input("Cilindro (OD)", value=str(ultima_rx_od["Cilindro"]), placeholder="ej: -0.50", key="od_cil_n")
+            od_eje = st.text_input("Eje (OD)", value=str(ultima_rx_od["Eje"]), placeholder="ej: 180", key="od_eje_n")
+            od_add = st.text_input("Adición (OD)", value=str(ultima_rx_od["Adición"]), placeholder="ej: +2.00", key="od_add_n")
+            od_av  = st.text_input("A.V. (OD)", value=str(ultima_rx_od["A.V."]), placeholder="ej: 20/20", key="od_av_n")
 
         with c2:
             st.markdown("### 👁️ Ojo Izquierdo (OI)")
-            oi_esf = st.text_input("Esfera (OI)", value="", placeholder="ej: -1.00", key="oi_esf_n")
-            oi_cil = st.text_input("Cilindro (OI)", value="", placeholder="ej: -0.75", key="oi_cil_n")
-            oi_eje = st.text_input("Eje (OI)", value="", placeholder="ej: 170", key="oi_eje_n")
-            oi_add = st.text_input("Adición (OI)", value="", placeholder="ej: +2.00", key="oi_add_n")
-            oi_av  = st.text_input("A.V. (OI)", value="", placeholder="ej: 20/25", key="oi_av_n")
+            oi_esf = st.text_input("Esfera (OI)", value=str(ultima_rx_oi["Esfera"]), placeholder="ej: -1.00", key="oi_esf_n")
+            oi_cil = st.text_input("Cilindro (OI)", value=str(ultima_rx_oi["Cilindro"]), placeholder="ej: -0.75", key="oi_cil_n")
+            oi_eje = st.text_input("Eje (OI)", value=str(ultima_rx_oi["Eje"]), placeholder="ej: 170", key="oi_eje_n")
+            oi_add = st.text_input("Adición (OI)", value=str(ultima_rx_oi["Adición"]), placeholder="ej: +2.00", key="oi_add_n")
+            oi_av  = st.text_input("A.V. (OI)", value=str(ultima_rx_oi["A.V."]), placeholder="ej: 20/25", key="oi_av_n")
 
         st.divider()
         st.markdown("<div class='section-title'>🔬 Detalles Técnicos</div>", unsafe_allow_html=True)
