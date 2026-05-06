@@ -20,6 +20,7 @@ from vistas.usuarios  import render_usuarios
 from vistas.configuracion import render_configuracion
 from vistas.inventario import render_inventario
 from vistas.trabajos import render_trabajos
+from vistas.nueva_orden import render_nueva_orden
 from vistas.ventas import render_ventas
 from vistas.contabilidad import render_contabilidad
 from vistas.dashboard import render_dashboard
@@ -668,8 +669,9 @@ with st.sidebar:
     all_pages = {
         "Inicio":      ("🏠", "Inicio"),
         "Pacientes":   ("👥", "Pacientes"),
-        "Trabajos":    ("📋", "Trabajos"),
         "Ventas":      ("🛒", "Ventas"),
+        "Generar Orden": ("📝", "Generar Orden"),
+        "Trabajos":    ("📋", "Trabajos"),
         "Inventario":    ("📦", "Inventario"),
         "Contabilidad":  ("💰", "Contabilidad"),
         "Usuarios":      ("👤", "Gestion de Usuarios"),
@@ -766,6 +768,8 @@ elif page == "Pacientes":
     render_clinica()
 elif page == "Trabajos":
     render_trabajos()
+elif page == "Generar Orden":
+    render_nueva_orden()
 elif page == "Ventas":
     render_ventas()
 elif page == "Inventario":

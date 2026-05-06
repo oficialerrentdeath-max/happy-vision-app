@@ -120,20 +120,6 @@ def render_ventas():
             protecciones = st.multiselect("Protecciones / Tratamientos:", ["Antirreflejo (AR)", "Filtro Azul", "Fotocromático", "Tinte", "Polarizado"])
             incluye = st.multiselect("Accesorios Incluidos:", ["Paño", "Estuche", "Líquido Limpieza"], default=["Paño", "Estuche"])
 
-        # CUADRO DE MEDIDAS (RECETA)
-        st.markdown("### 📋 Cuadro de Medidas (Receta)")
-        m_col1, m_col2 = st.columns(2)
-        with m_col1:
-            st.markdown("**Ojo Derecho (OD)**")
-            od_esf = st.text_input("Esf (OD)", value="0.00", key="od_esf")
-            od_cil = st.text_input("Cil (OD)", value="", key="od_cil")
-            od_eje = st.text_input("Eje (OD)", value="", key="od_eje")
-        with m_col2:
-            st.markdown("**Ojo Izquierdo (OI)**")
-            oi_esf = st.text_input("Esf (OI)", value="0.00", key="oi_esf")
-            oi_cil = st.text_input("Cil (OI)", value="", key="oi_cil")
-            oi_eje = st.text_input("Eje (OI)", value="", key="oi_eje")
-        
         st.markdown("<br>", unsafe_allow_html=True)
         
         # PRECIOS Y COSTOS (MODO ADMIN OCULTO PARA TRABAJADORES)
