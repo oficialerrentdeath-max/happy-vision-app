@@ -74,7 +74,10 @@ def generar_pdf_orden(data, order_id="N/A"):
     pdf.ln(2); pdf.set_font("Arial", 'B', 11); pdf.cell(0, 8, "Observaciones:", ln=True)
     pdf.set_font("Arial", '', 11); pdf.multi_cell(0, 8, data['observaciones'])
     
-    return bytes(pdf.output(dest='S'))
+    out = pdf.output(dest='S')
+    if isinstance(out, str):
+        return out.encode('latin-1')
+    return bytes(out)
 
 def render_nueva_orden():
     st.markdown("""<div class="page-header"><h1>📝 Gestión de Órdenes</h1><p>Centro técnico para la elaboración de lunas y montajes</p></div>""", unsafe_allow_html=True)
