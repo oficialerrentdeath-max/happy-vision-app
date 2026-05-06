@@ -13,27 +13,25 @@ def render_inventario():
 
     sucursal_activa = st.session_state.get("sucursal_activa", "Matriz")
     
-    # CSS para que los botones de nombre de producto parezcan texto normal
+    # CSS para que los botones de las celdas parezcan texto normal y la fila sea "cliqueable"
     st.markdown("""
         <style>
-        .producto-btn button {
+        .grid-cell button {
             border: none !important;
             background: transparent !important;
             padding: 0 !important;
-            color: #1e293b !important;
-            font-weight: bold !important;
+            color: inherit !important;
             text-align: left !important;
             font-size: 13px !important;
             box-shadow: none !important;
-            display: inline !important;
+            width: 100% !important;
+            display: block !important;
+            height: auto !important;
+            min-height: 0 !important;
         }
-        .producto-btn button:hover {
+        .grid-cell button:hover {
             color: #2563eb !important;
-            text-decoration: underline !important;
-        }
-        .producto-btn button:active {
-            background: transparent !important;
-            color: #1d4ed8 !important;
+            background: #f1f5f9 !important;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -143,25 +141,26 @@ def render_inventario():
         stock = row.get('cantidad_disponible', 0)
         color_stock = "red" if stock <= 3 else "green"
         
-        cols[0].markdown(f"<span style='font-size:13px;'>{row.get('codigo_referencia', '')}</span>", unsafe_allow_html=True)
-        
-        # El nombre del producto es ahora el gatillo para expandir (envuelto en un div para el CSS)
-        with cols[1]:
-            st.markdown('<div class="producto-btn">', unsafe_allow_html=True)
-            if st.button(row.get('nombre', 'Sin nombre'), key=f"select_{row['id']}"):
-                if st.session_state.get("inventario_expanded") == row['id']:
-                    st.session_state.inventario_expanded = None
-                else:
-                    st.session_state.inventario_expanded = row['id']
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
-            
-        cols[2].markdown(f"<span style='font-size:13px;'>{row.get('categoria', '')}</span>", unsafe_allow_html=True)
-        cols[3].markdown(f"<span style='font-size:13px;'>{row.get('marca', '')}</span>", unsafe_allow_html=True)
-        cols[4].markdown(f"<span style='font-size:13px;'>{row.get('proveedor', '')}</span>", unsafe_allow_html=True)
-        cols[5].markdown(f"<span style='font-size:13px;'>${float(row.get('costo_compra', 0)):.2f}</span>", unsafe_allow_html=True)
-        cols[6].markdown(f"<span style='font-size:13px; color:#2563eb; font-weight:bold;'>${float(row.get('precio_venta', 0)):.2f}</span>", unsafe_allow_html=True)
-        cols[7].markdown(f"<span style='font-size:14px; font-weight:bold; color:{color_stock};'>{stock}</span>", unsafe_allow_html=True)
+        # Cada celda es ahora un botón invisible que activa la expansión de la fila
+        def grid_button(label, key, column_idx):
+            with cols[column_idx]:
+                st.markdown('<div class="grid-cell">', unsafe_allow_html=True)
+                if st.button(label, key=key):
+                    if st.session_state.get("inventario_expanded") == row['id']:
+                        st.session_state.inventario_expanded = None
+                    else:
+                        st.session_state.inventario_expanded = row['id']
+                    st.rerun()
+                st.markdown('</div>', unsafe_allow_html=True)
+
+        grid_button(str(row.get('codigo_referencia', '')), f"btn_cod_{row['id']}", 0)
+        grid_button(str(row.get('nombre', '')), f"btn_nom_{row['id']}", 1)
+        grid_button(str(row.get('categoria', '')), f"btn_cat_{row['id']}", 2)
+        grid_button(str(row.get('marca', '')), f"btn_mar_{row['id']}", 3)
+        grid_button(str(row.get('proveedor', '')), f"btn_pro_{row['id']}", 4)
+        grid_button(f"${float(row.get('costo_compra', 0)):.2f}", f"btn_cos_{row['id']}", 5)
+        grid_button(f"${float(row.get('precio_venta', 0)):.2f}", f"btn_pvp_{row['id']}", 6)
+        grid_button(str(stock), f"btn_stk_{row['id']}", 7)
                 
         # Opciones expandidas
         if st.session_state.get("inventario_expanded") == row['id']:
@@ -183,37 +182,51 @@ def render_inventario():
                             guardar_producto({"id": row['id'], "cantidad_disponible": stock - 1})
                             st.rerun()
                 with c3:
-                    with st.popover("✏️ Editar Producto", use_container_width=True):
-                        with st.form(f"edit_form_{row['id']}"):
-                            e_cod = st.text_input("Código", value=row.get('codigo_referencia', ''))
-                            e_nom = st.text_input("Producto", value=row.get('nombre', ''))
-                            cat_opciones = ["Monturas", "Lentes de Contacto", "Líquidos", "Accesorios", "Otros"]
-                            cat_actual = row.get('categoria', 'Monturas')
-                            if cat_actual not in cat_opciones: cat_actual = "Monturas"
-                            e_cat = st.selectbox("Categoría", cat_opciones, index=cat_opciones.index(cat_actual))
-                            e_marca = st.text_input("Marca", value=row.get('marca', ''))
-                            e_prov = st.text_input("Proveedor", value=row.get('proveedor', ''))
-                            e_costo = st.number_input("Costo", value=float(row.get('costo_compra', 0)))
-                            e_pvp = st.number_input("PVP", value=float(row.get('precio_venta', 0)))
-                            
-                            if st.form_submit_button("💾 Guardar Cambios"):
-                                guardar_producto({
-                                    "id": row['id'],
-                                    "codigo_referencia": e_cod,
-                                    "nombre": e_nom,
-                                    "categoria": e_cat,
-                                    "marca": e_marca,
-                                    "proveedor": e_prov,
-                                    "costo_compra": e_costo,
-                                    "precio_venta": e_pvp
-                                })
-                                st.rerun()
+                    if st.button("✏️ Editar Detalles", use_container_width=True):
+                        st.session_state[f"edit_mode_{row['id']}"] = not st.session_state.get(f"edit_mode_{row['id']}", False)
+                
                 with c4:
                     with st.popover("🗑️ Eliminar", use_container_width=True):
                         st.error("⚠️ ¿Eliminar permanentemente?")
                         if st.button("Sí, Eliminar", key=f"del_{row['id']}", type="primary", use_container_width=True):
                             eliminar_producto(row['id'])
                             st.session_state.inventario_expanded = None
+                            st.rerun()
+
+                # Formulario de edición que se despliega HACIA ABAJO (sin popover)
+                if st.session_state.get(f"edit_mode_{row['id']}"):
+                    st.markdown("---")
+                    with st.form(f"edit_form_{row['id']}"):
+                        st.write("**📝 Editar Información del Producto**")
+                        e1, e2, e3 = st.columns(3)
+                        e_cod = e1.text_input("Código", value=row.get('codigo_referencia', ''))
+                        e_nom = e2.text_input("Producto", value=row.get('nombre', ''))
+                        
+                        cat_opciones = ["Monturas", "Lentes de Contacto", "Líquidos", "Accesorios", "Otros"]
+                        cat_actual = row.get('categoria', 'Monturas')
+                        if cat_actual not in cat_opciones: cat_actual = "Monturas"
+                        e_cat = e3.selectbox("Categoría", cat_opciones, index=cat_opciones.index(cat_actual))
+                        
+                        e4, e5, e6 = st.columns(3)
+                        e_marca = e4.text_input("Marca", value=row.get('marca', ''))
+                        e_prov = e5.text_input("Proveedor", value=row.get('proveedor', ''))
+                        e_costo = e6.number_input("Costo", value=float(row.get('costo_compra', 0)))
+                        
+                        e7, e8 = st.columns(2)
+                        e_pvp = e7.number_input("PVP", value=float(row.get('precio_venta', 0)))
+                        
+                        if st.form_submit_button("💾 Guardar Cambios"):
+                            guardar_producto({
+                                "id": row['id'],
+                                "codigo_referencia": e_cod,
+                                "nombre": e_nom,
+                                "categoria": e_cat,
+                                "marca": e_marca,
+                                "proveedor": e_prov,
+                                "costo_compra": e_costo,
+                                "precio_venta": e_pvp
+                            })
+                            st.session_state[f"edit_mode_{row['id']}"] = False
                             st.rerun()
                             
         st.markdown("<hr style='margin: 0; padding: 0; border-top: 1px solid #f1f5f9;'>", unsafe_allow_html=True)
