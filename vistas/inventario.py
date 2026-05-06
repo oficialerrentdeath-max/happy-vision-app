@@ -17,7 +17,7 @@ def render_inventario():
     st.markdown("""
         <style>
         .cell-content {
-            font-size: 13px;
+            font-size: 14px;
             padding: 8px 0;
             display: flex;
             align-items: center;
@@ -35,7 +35,7 @@ def render_inventario():
             background: transparent !important;
             padding: 0 !important;
             color: #2563eb !important;
-            font-size: 13px !important;
+            font-size: 14px !important;
             font-weight: bold !important;
             text-decoration: underline !important;
             box-shadow: none !important;
@@ -84,7 +84,7 @@ def render_inventario():
     h = st.columns(cols_ratio)
     labels = ["CÓDIGO", "PRODUCTO", "CATEGORÍA", "MARCA", "PROVEEDOR", "COSTO", "PVP", "STOCK"]
     for i, label in enumerate(labels):
-        h[i].markdown(f"<p style='font-size:20px; font-weight:bold; color:#1e293b; margin:0;'>{label}</p>", unsafe_allow_html=True)
+        h[i].markdown(f"<p style='font-size:17px; font-weight:bold; color:#1e293b; margin:0;'>{label}</p>", unsafe_allow_html=True)
     
     st.markdown("<hr>", unsafe_allow_html=True)
     
