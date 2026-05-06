@@ -181,4 +181,6 @@ def render_inventario():
         stock_num = pd.to_numeric(df["cantidad_disponible"], errors='coerce').fillna(0)
         bajo_stock = df[stock_num <= 3]
         if not bajo_stock.empty:
-            st.warning(f"⚠️ **{len(bajo_stock)} producto(s) con stock ≤ 3:** " + ", ".join(bajo_stock["codigo_referencia"].astype(str).tolist()))
+            codigos = [str(x) for x in bajo_stock["codigo_referencia"].tolist() if pd.notna(x) and str(x).strip()]
+            codigos_str = ", ".join(codigos) if codigos else "Varios productos sin código"
+            st.warning(f"⚠️ **{len(bajo_stock)} producto(s) con stock ≤ 3:** {codigos_str}")
