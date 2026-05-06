@@ -392,11 +392,11 @@ def migrar_estructuras():
             res_u = supabase.table("usuarios").select("*").execute()
             if res_u.data:
                 for usr in res_u.data:
-                    if not usr.get("accesos"):
-                        # Asignar accesos base a usuarios antiguos
-                        default_acc = ["Pacientes", "Trabajos", "Ventas", "Inicio"]
+                    if not usr.get("accesos") or "Generar Orden" not in usr.get("accesos", []):
+                        # Asignar accesos base a usuarios antiguos incluyendo la nueva pestaña
+                        default_acc = ["Pacientes", "Generar Orden", "Trabajos", "Ventas", "Inicio"]
                         if "Administrador" in str(usr.get("role", "")):
-                            default_acc = ["Pacientes", "Trabajos", "Ventas", "Inventario", "Contabilidad", "Usuarios", "Configuracion", "Inicio"]
+                            default_acc = ["Pacientes", "Generar Orden", "Trabajos", "Ventas", "Inventario", "Contabilidad", "Usuarios", "Configuracion", "Inicio"]
                         supabase.table("usuarios").update({"accesos": default_acc}).eq("username", usr["username"]).execute()
         except Exception as ue:
             print(f"Error migrando permisos de usuarios: {ue}")

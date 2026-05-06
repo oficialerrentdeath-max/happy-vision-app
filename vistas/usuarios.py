@@ -82,8 +82,8 @@ def render_usuarios():
             st.markdown("### 🔑 Permisos de Acceso")
             nu_accesos = st.multiselect(
                 "Selecciona a qué módulos puede entrar este usuario:",
-                options=["Pacientes", "Trabajos", "Ventas", "Inventario", "Contabilidad", "Usuarios", "Configuracion"],
-                default=["Pacientes", "Trabajos", "Ventas"]
+                options=["Pacientes", "Generar Orden", "Trabajos", "Ventas", "Inventario", "Contabilidad", "Usuarios", "Configuracion"],
+                default=["Pacientes", "Generar Orden", "Trabajos", "Ventas"]
             )
             st.divider()
 
@@ -223,8 +223,8 @@ def render_usuarios():
                     current_accesos = data.get("accesos", ["Pacientes", "Trabajos", "Ventas"])
                     en_accesos = st.multiselect(
                         "Selecciona a qué módulos puede entrar este usuario:",
-                        options=["Pacientes", "Trabajos", "Ventas", "Inventario", "Contabilidad", "Usuarios", "Configuracion"],
-                        default=[a for a in current_accesos if a in ["Pacientes", "Trabajos", "Ventas", "Inventario", "Contabilidad", "Usuarios", "Configuracion"]]
+                        options=["Pacientes", "Generar Orden", "Trabajos", "Ventas", "Inventario", "Contabilidad", "Usuarios", "Configuracion"],
+                        default=[a for a in current_accesos if a in ["Pacientes", "Generar Orden", "Trabajos", "Ventas", "Inventario", "Contabilidad", "Usuarios", "Configuracion"]]
                     )
                     st.divider()
 
