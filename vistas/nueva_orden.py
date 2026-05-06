@@ -17,13 +17,14 @@ def render_nueva_orden():
         st.markdown("<div class='section-title'>👤 Datos del Paciente</div>", unsafe_allow_html=True)
         
         # Selección de Paciente (Buscador Inteligente)
+        pacientes_dict = {}
+        pacientes_nombres = {}
+        
         try:
-            # Consultamos solo las columnas que sabemos que existen
             res_p = supabase.table("historias_clinicas").select("id, paciente_nombre").execute()
             if res_p.data:
                 pacientes_df = pd.DataFrame(res_p.data)
                 
-                # Filtro dinámico por nombre
                 filtro = st.text_input("🔍 Escribe el nombre del paciente:", placeholder="Buscar...")
                 
                 if filtro:
@@ -34,10 +35,16 @@ def render_nueva_orden():
                 if not pacientes_df.empty:
                     pacientes_dict = dict(zip(pacientes_df["id"], pacientes_df["paciente_nombre"]))
                     pacientes_nombres = dict(zip(pacientes_df["id"], pacientes_df["paciente_nombre"]))
-                    
+                else:
+                    st.warning("⚠️ No se encontraron pacientes con ese nombre.")
+            else:
+                st.info("No hay pacientes registrados en el sistema.")
+        except Exception as e:
+            st.error(f"Error al cargar pacientes: {e}")
+
         paciente_id = st.selectbox("Confirmar Selección del Paciente:", 
                                     options=list(pacientes_dict.keys()),
-                                    format_func=lambda x: pacientes_dict[x],
+                                    format_func=lambda x: pacientes_dict.get(x, ""),
                                     key="sel_paciente_orden")
         
         # --- NUEVA LÓGICA: CARGAR ÚLTIMA RX ---
