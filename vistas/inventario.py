@@ -109,6 +109,51 @@ def render_inventario():
     # ── TABLA PRINCIPAL ────────────────────────────────────────
     df = cargar_inventario(sucursal_activa)
 
+    # Botón temporal para sincronizar costos reales si faltan
+    with st.sidebar:
+        if st.button("🔄 Sincronizar Costos Reales"):
+            datos_reales = [
+                {"cod": "COS9857", "nom": "Armazon TR90", "marca": "COSTU", "costo": 4.62, "pvp": 25.00, "stock": 1},
+                {"cod": "MA6988", "nom": "Armazon Acetato", "marca": "MAUROS", "costo": 10.10, "pvp": 25.00, "stock": 1},
+                {"cod": "VI703", "nom": "Armazon Acetato", "marca": "SEVEN VISION", "costo": 8.50, "pvp": 25.00, "stock": 1},
+                {"cod": "Paño", "nom": "Paño de Microfibra", "marca": "S/M", "costo": 0.81, "pvp": 1.50, "stock": 4},
+                {"cod": "Estuches", "nom": "Estuches Duros Normales", "marca": "S/M", "costo": 2.60, "pvp": 3.00, "stock": 3},
+                {"cod": "A3", "nom": "Plaquetas Suaves", "marca": "S/M", "costo": 3.13, "pvp": 5.00, "stock": 6},
+                {"cod": "G19", "nom": "Plaquetas Silicona", "marca": "S/M", "costo": 2.09, "pvp": 4.00, "stock": 6},
+                {"cod": "A04", "nom": "Plaquetas Duras", "marca": "S/M", "costo": 0.83, "pvp": 3.00, "stock": 6},
+            ]
+            
+            puntos_actualizados = 0
+            for item in datos_reales:
+                # Buscar si el producto ya existe por código
+                match = df[df["codigo_referencia"] == item["cod"]]
+                if not match.empty:
+                    product_id = match.iloc[0]["id"]
+                    guardar_producto({
+                        "id": product_id,
+                        "marca": item["marca"],
+                        "costo_compra": item["costo"],
+                        "precio_venta": item["pvp"],
+                        "cantidad_disponible": item["stock"]
+                    })
+                    puntos_actualizados += 1
+                else:
+                    # Si no existe, lo creamos
+                    guardar_producto({
+                        "codigo_referencia": item["cod"],
+                        "nombre": item["nom"],
+                        "marca": item["marca"],
+                        "costo_compra": item["costo"],
+                        "precio_venta": item["pvp"],
+                        "cantidad_disponible": item["stock"],
+                        "sucursal": sucursal_activa,
+                        "categoria": "Monturas" if "Armazon" in item["nom"] else "Otros"
+                    })
+                    puntos_actualizados += 1
+            
+            st.success(f"✅ Se han actualizado/creado {puntos_actualizados} productos con sus costos reales.")
+            st.rerun()
+
     if df.empty:
         st.info("📭 No hay productos registrados. Agrega el primero con el formulario de arriba.")
         return
