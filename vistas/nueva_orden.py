@@ -152,7 +152,16 @@ def render_nueva_orden():
             if st.button("💾 GUARDAR ORDEN", type="primary", use_container_width=True):
                 if not paciente_id: st.error("⚠️ Elija un paciente.")
                 else:
+                    # CÁLCULO DE ID SECUENCIAL INTELIGENTE
+                    try:
+                        res_max = supabase.table("ordenes_trabajo").select("id").order("id", desc=True).limit(1).execute()
+                        max_id = res_max.data[0]['id'] if res_max.data else 0
+                        nuevo_id = int(max_id) + 1
+                    except:
+                        nuevo_id = 1
+
                     nueva = {
+                        "id": nuevo_id,
                         "paciente_id": paciente_id, "paciente_nombre": pacientes_nombres[paciente_id],
                         "receta_od": {"Esf": o_esf, "Cil": o_cil, "Eje": o_eje, "Add": o_add, "AV": o_av},
                         "receta_oi": {"Esf": i_esf, "Cil": i_cil, "Eje": i_eje, "Add": i_add, "AV": i_av},
@@ -165,9 +174,9 @@ def render_nueva_orden():
                     try:
                         res = supabase.table("ordenes_trabajo").insert(nueva).execute()
                         st.session_state[f"saved_{p_key}"] = True
-                        st.session_state[f"order_id_{p_key}"] = res.data[0]['id']
+                        st.session_state[f"order_id_{p_key}"] = nuevo_id
                         st.session_state[f"pdf_data_{p_key}"] = nueva
-                        st.success(f"✅ Orden #{res.data[0]['id']} guardada.")
+                        st.success(f"✅ Orden #{nuevo_id} guardada.")
                     except Exception as e: st.error(f"Error: {e}")
 
         with col_btn2:
