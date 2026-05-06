@@ -13,25 +13,48 @@ def render_inventario():
 
     sucursal_activa = st.session_state.get("sucursal_activa", "Matriz")
     
-    # CSS para que los botones de las celdas parezcan texto normal y la fila sea "cliqueable"
+    # CSS para que toda la fila sea cliqueable sin parecer un botón
     st.markdown("""
         <style>
-        .grid-cell button {
-            border: none !important;
-            background: transparent !important;
-            padding: 0 !important;
-            color: inherit !important;
-            text-align: left !important;
-            font-size: 13px !important;
-            box-shadow: none !important;
-            width: 100% !important;
-            display: block !important;
-            height: auto !important;
-            min-height: 0 !important;
+        .row-container {
+            position: relative;
+            transition: background-color 0.2s;
+            border-bottom: 1px solid #f1f5f9;
         }
-        .grid-cell button:hover {
-            color: #2563eb !important;
-            background: #f1f5f9 !important;
+        .row-container:hover {
+            background-color: #f8fafc;
+        }
+        /* El botón invisible que cubre toda la fila */
+        .overlay-btn {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+        }
+        .overlay-btn button {
+            width: 1000px !important; /* Lo suficientemente ancho para cubrir todas las columnas */
+            height: 100% !important;
+            background: transparent !important;
+            border: none !important;
+            color: transparent !important;
+            cursor: pointer !important;
+            box-shadow: none !important;
+        }
+        .overlay-btn button:hover, .overlay-btn button:active, .overlay-btn button:focus {
+            background: transparent !important;
+            border: none !important;
+            color: transparent !important;
+            box-shadow: none !important;
+        }
+        /* Ajuste de z-index para que el texto se vea pero el botón capte el clic */
+        .cell-content {
+            position: relative;
+            z-index: 1;
+            padding: 8px 0;
+            font-size: 13px;
+            pointer-events: none; /* Deja que el clic pase al botón invisible */
         }
         </style>
     """, unsafe_allow_html=True)
@@ -141,26 +164,39 @@ def render_inventario():
         stock = row.get('cantidad_disponible', 0)
         color_stock = "red" if stock <= 3 else "green"
         
-        # Cada celda es ahora un botón invisible que activa la expansión de la fila
-        def grid_button(label, key, column_idx):
-            with cols[column_idx]:
-                st.markdown('<div class="grid-cell">', unsafe_allow_html=True)
-                if st.button(label, key=key):
-                    if st.session_state.get("inventario_expanded") == row['id']:
-                        st.session_state.inventario_expanded = None
-                    else:
-                        st.session_state.inventario_expanded = row['id']
-                    st.rerun()
-                st.markdown('</div>', unsafe_allow_html=True)
+        # Contenedor de la fila con el botón invisible encima
+        st.markdown('<div class="row-container">', unsafe_allow_html=True)
+        
+        # El botón invisible "Maestro" que cubre la fila
+        cols_btn = st.columns([1, 0.001]) # Un pequeño truco para poner el botón al inicio
+        with cols_btn[0]:
+            st.markdown('<div class="overlay-btn">', unsafe_allow_html=True)
+            if st.button("", key=f"row_click_{row['id']}"):
+                if st.session_state.get("inventario_expanded") == row['id']:
+                    st.session_state.inventario_expanded = None
+                else:
+                    st.session_state.inventario_expanded = row['id']
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
 
-        grid_button(str(row.get('codigo_referencia', '')), f"btn_cod_{row['id']}", 0)
-        grid_button(str(row.get('nombre', '')), f"btn_nom_{row['id']}", 1)
-        grid_button(str(row.get('categoria', '')), f"btn_cat_{row['id']}", 2)
-        grid_button(str(row.get('marca', '')), f"btn_mar_{row['id']}", 3)
-        grid_button(str(row.get('proveedor', '')), f"btn_pro_{row['id']}", 4)
-        grid_button(f"${float(row.get('costo_compra', 0)):.2f}", f"btn_cos_{row['id']}", 5)
-        grid_button(f"${float(row.get('precio_venta', 0)):.2f}", f"btn_pvp_{row['id']}", 6)
-        grid_button(str(stock), f"btn_stk_{row['id']}", 7)
+        # Las columnas de datos (con pointer-events: none para que el clic llegue al botón de arriba)
+        cols = st.columns(cols_ratio)
+        
+        def render_cell(content, col_idx, bold=False, color=None):
+            style = f"font-weight:bold; color:{color};" if bold and color else ("font-weight:bold;" if bold else "")
+            with cols[col_idx]:
+                st.markdown(f'<div class="cell-content" style="{style}">{content}</div>', unsafe_allow_html=True)
+
+        render_cell(row.get('codigo_referencia', ''), 0)
+        render_cell(row.get('nombre', ''), 1, bold=True)
+        render_cell(row.get('categoria', ''), 2)
+        render_cell(row.get('marca', ''), 3)
+        render_cell(row.get('proveedor', ''), 4)
+        render_cell(f"${float(row.get('costo_compra', 0)):.2f}", 5)
+        render_cell(f"${float(row.get('precio_venta', 0)):.2f}", 6, color="#2563eb")
+        render_cell(stock, 7, bold=True, color=color_stock)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
                 
         # Opciones expandidas
         if st.session_state.get("inventario_expanded") == row['id']:
