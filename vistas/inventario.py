@@ -45,16 +45,6 @@ def render_inventario():
             background: #f8fafc !important;
         }
 
-        /* Contenedor de edición */
-        .edit-container {
-            background-color: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 15px 0;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-
         /* Cabecera de Producto */
         .product-header-box {
             background-color: #f8fafc;
@@ -163,7 +153,6 @@ def render_inventario():
 
             # Formulario de Edición Completo
             if st.session_state.get(f"ed_{row['id']}"):
-                st.markdown('<div class="edit-container">', unsafe_allow_html=True)
                 with st.form(f"f_{row['id']}", border=False):
                     # Fila 1: Datos de Identificación
                     c1, c2, c3 = st.columns([1, 1, 1])
@@ -195,7 +184,6 @@ def render_inventario():
                         st.session_state[f"ed_{row['id']}"] = False
                         st.success("Producto actualizado")
                         st.rerun()
-                st.markdown('</div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
         
         st.markdown("<hr>", unsafe_allow_html=True)
