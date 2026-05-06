@@ -16,7 +16,7 @@ def render_inventario():
     # CSS Refinado: Compacto y Profesional (Estilo Excel)
     st.markdown("""
         <style>
-        /* Ajuste solo para elementos en el área principal (no afecta al sidebar) */
+        /* Ajuste solo para elementos en el área principal */
         [data-testid="stMain"] .cell-content {
             font-size: 14px;
             display: flex;
@@ -24,39 +24,38 @@ def render_inventario():
             height: 34px;
             color: #334155;
             margin: 0 !important;
-            padding: 0 !important;
         }
-        /* Reset de botones SOLO en el área de la tabla */
-        [data-testid="stMain"] div[data-testid="stButton"] {
-            margin: 0 !important;
-            padding: 0 !important;
-            height: 34px !important;
-            display: flex !important;
-            align-items: center !important;
-        }
-        [data-testid="stMain"] div[data-testid="stButton"] > button {
+        
+        /* Botones tipo ENLACE (Código y Acciones) */
+        .st-link-btn div[data-testid="stButton"] > button {
             border: none !important;
             background: transparent !important;
             padding: 0 !important;
-            margin: 0 !important;
             color: #2563eb !important;
             font-size: 14px !important;
-            font-weight: bold !important;
+            font-weight: 500 !important;
             text-decoration: underline !important;
             box-shadow: none !important;
-            height: 34px !important;
-            line-height: 34px !important;
-            width: auto !important;
             text-align: left !important;
         }
-        [data-testid="stMain"] div[data-testid="stButton"] > button:hover {
+        .st-link-btn div[data-testid="stButton"] > button:hover {
             color: #1d4ed8 !important;
             background: transparent !important;
-            text-decoration: underline !important;
         }
+
+        /* Contenedor de edición */
+        .edit-container {
+            background-color: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 10px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
         hr { 
             margin: 4px 0 !important; 
-            opacity: 0.2; 
+            opacity: 0.15; 
             border: 0;
             border-top: 1px solid #e2e8f0;
         }
@@ -68,12 +67,6 @@ def render_inventario():
 
     if df.empty:
         st.info("📭 No hay productos registrados.")
-        # Formulario para agregar el primero
-        with st.expander("➕ Agregar Primer Producto", expanded=True):
-            with st.form("new_first"):
-                c1, c2 = st.columns(2); n_cod = c1.text_input("Código"); n_mar = c2.text_input("Marca")
-                if st.form_submit_button("Guardar"):
-                    guardar_producto({"codigo_referencia": n_cod, "marca": n_mar, "sucursal": sucursal_activa}); st.rerun()
         return
 
     # Normalización de columnas
@@ -97,12 +90,11 @@ def render_inventario():
     st.markdown("---")
     
     # ── ENCABEZADOS ────────────────────────────────────────────
-    # Ratios: Código(1.2), Producto(3.2), Cat(1.2), Marca(1.2), Prov(1.8), Costo(0.9), PVP(0.9), Stock(0.9)
     cols_ratio = [1.2, 3.2, 1.2, 1.2, 1.8, 0.9, 0.9, 0.9]
     h = st.columns(cols_ratio)
     labels = ["CÓDIGO", "PRODUCTO", "CATEGORÍA", "MARCA", "PROVEEDOR", "COSTO", "PVP", "STOCK"]
     for i, label in enumerate(labels):
-        h[i].markdown(f"<p style='font-size:17px; font-weight:bold; color:#1e293b; margin:0;'>{label}</p>", unsafe_allow_html=True)
+        h[i].markdown(f"<p style='font-size:16px; font-weight:bold; color:#64748b; margin:0;'>{label}</p>", unsafe_allow_html=True)
     
     st.markdown("<hr>", unsafe_allow_html=True)
     
@@ -110,15 +102,16 @@ def render_inventario():
     for _, row in df_f.iterrows():
         cols = st.columns(cols_ratio)
         
-        # 1. Código (Botón directo alineado)
+        # 1. Código (Estilo Enlace)
         with cols[0]:
+            st.markdown('<div class="st-link-btn">', unsafe_allow_html=True)
             if st.button(row.get('codigo_referencia') or "---", key=f"c_{row['id']}"):
                 st.session_state.inv_exp = row['id'] if st.session_state.get("inv_exp") != row['id'] else None
                 st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
 
-        # Función de dibujo alineada
         def draw(val, idx, bold=False, color=None, is_money=False):
-            style = f"font-weight:bold;" if bold else ""
+            style = f"font-weight:600;" if bold else ""
             if color: style += f"color:{color};"
             display = f"${float(val):.2f}" if is_money else str(val)
             with cols[idx]:
@@ -132,32 +125,46 @@ def render_inventario():
         draw(row.get('precio_venta', 0), 6, is_money=True, color="#2563eb", bold=True)
         
         stock = int(row.get('cantidad_disponible', 0))
-        draw(stock, 7, bold=True, color="red" if stock <= 3 else "green")
+        draw(stock, 7, bold=True, color="#ef4444" if stock <= 3 else "#22c55e")
 
-        # Acciones Expandidas
+        # Acciones Expandidas (Diseño solicitado)
         if st.session_state.get("inv_exp") == row['id']:
             with st.container():
-                st.markdown(f"<div style='background:#f1f5f9; border-radius:4px; padding:10px; margin:5px 0;'>", unsafe_allow_html=True)
-                a1, a2, a3, a4 = st.columns(4)
-                if a1.button("➕ Stock", key=f"p_{row['id']}", use_container_width=True):
-                    guardar_producto({"id": row['id'], "cantidad_disponible": stock+1}); st.rerun()
-                if a2.button("➖ Stock", key=f"m_{row['id']}", use_container_width=True):
-                    if stock > 0: guardar_producto({"id": row['id'], "cantidad_disponible": stock-1}); st.rerun()
-                if a3.button("✏️ Editar", key=f"e_{row['id']}", use_container_width=True):
-                    st.session_state[f"ed_{row['id']}"] = not st.session_state.get(f"ed_{row['id']}", False)
-                if a4.button("🗑️ Borrar", key=f"d_{row['id']}", use_container_width=True):
-                    eliminar_producto(row['id']); st.rerun()
+                st.markdown('<div class="st-link-btn" style="padding: 10px 0;">', unsafe_allow_html=True)
+                a1, a2, a3, a4 = st.columns([1, 1, 1, 1])
                 
+                if a1.button("➕ Stock", key=f"p_{row['id']}"):
+                    guardar_producto({"id": row['id'], "cantidad_disponible": stock+1}); st.rerun()
+                if a2.button("➖ Stock", key=f"m_{row['id']}"):
+                    if stock > 0: guardar_producto({"id": row['id'], "cantidad_disponible": stock-1}); st.rerun()
+                if a3.button("✏️ Editar", key=f"e_{row['id']}"):
+                    st.session_state[f"ed_{row['id']}"] = not st.session_state.get(f"ed_{row['id']}", False)
+                    st.rerun()
+                if a4.button("🗑️ Borrar", key=f"d_{row['id']}"):
+                    eliminar_producto(row['id']); st.rerun()
+                st.markdown('</div>', unsafe_allow_html=True)
+                
+                # Formulario de Edición (Costo, PVP, Nombre)
                 if st.session_state.get(f"ed_{row['id']}"):
-                    with st.form(f"f_{row['id']}"):
-                        e1, e2, e3 = st.columns(3)
-                        n_c = e1.number_input("Costo", value=float(row.get('cost_compra', row.get('costo_compra', 0))))
-                        n_p = e2.number_input("PVP", value=float(row.get('precio_venta', 0)))
+                    st.markdown('<div class="edit-container">', unsafe_allow_html=True)
+                    with st.form(f"f_{row['id']}", border=False):
+                        e1, e2, e3 = st.columns([1, 1, 2])
+                        n_c = e1.number_input("Costo", value=float(row.get('costo_compra', 0)), step=0.1)
+                        n_p = e2.number_input("PVP", value=float(row.get('precio_venta', 0)), step=0.1)
                         n_n = e3.text_input("Nombre", value=row.get('nombre', ''))
+                        
                         if st.form_submit_button("Guardar"):
-                            guardar_producto({"id": row['id'], "costo_compra": n_c, "precio_venta": n_p, "nombre": n_n})
-                            st.session_state[f"ed_{row['id']}"] = False; st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
+                            guardar_producto({
+                                "id": row['id'], 
+                                "costo_compra": n_c, 
+                                "precio_venta": n_p, 
+                                "nombre": n_n
+                            })
+                            st.session_state[f"ed_{row['id']}"] = False
+                            st.rerun()
+                    st.markdown('</div>', unsafe_allow_html=True)
+        
+        st.markdown("<hr>", unsafe_allow_html=True)
         st.markdown("<hr>", unsafe_allow_html=True)
 
 
