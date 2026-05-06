@@ -81,7 +81,7 @@ def generar_pdf_orden(data):
     pdf.set_font("Arial", '', 11)
     pdf.multi_cell(0, 8, data['observaciones'])
     
-    return pdf.output(dest='S')
+    return bytes(pdf.output(dest='S'))
 
 def render_nueva_orden():
     st.markdown("""
