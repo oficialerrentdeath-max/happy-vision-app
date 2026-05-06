@@ -209,3 +209,10 @@ def render_nueva_orden():
                     c_b.write(f"**OI:** {roi.get('Esf','')} {roi.get('Cil','')} x {roi.get('Eje','')}")
                     st.write(f"**Lente:** {r.get('tipo_lente','—')} | **Material:** {r.get('material','—')}")
                     st.info(f"Estado: {r['estado']}")
+                    if st.button(f"🗑️ Eliminar Orden #{r['id']}", key=f"del_{r['id']}", type="secondary"):
+                        try:
+                            supabase.table("ordenes_trabajo").delete().eq("id", r['id']).execute()
+                            st.success(f"Orden #{r['id']} eliminada.")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error al eliminar: {e}")
