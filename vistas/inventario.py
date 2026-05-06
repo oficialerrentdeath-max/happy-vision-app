@@ -176,6 +176,8 @@ def render_inventario():
 
 
     # Alerta de stock bajo
-    bajo_stock = df[df["cantidad_disponible"] <= 3]
-    if not bajo_stock.empty:
-        st.warning(f"⚠️ **{len(bajo_stock)} producto(s) con stock ≤ 3:** " + ", ".join(bajo_stock["codigo_referencia"].astype(str).tolist()))
+    if not df.empty:
+        stock_num = pd.to_numeric(df["cantidad_disponible"], errors='coerce').fillna(0)
+        bajo_stock = df[stock_num <= 3]
+        if not bajo_stock.empty:
+            st.warning(f"⚠️ **{len(bajo_stock)} producto(s) con stock ≤ 3:** " + ", ".join(bajo_stock["codigo_referencia"].astype(str).tolist()))
