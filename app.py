@@ -678,6 +678,7 @@ with st.sidebar:
         st.session_state.page = "Inicio"
 
     for key, (icon, label) in pages.items():
+        if key in ["Usuarios", "Configuracion"]: continue # Se mueven abajo
         if st.button(f"{icon}  {label}", key=f"nav_{key}", use_container_width=True):
             st.session_state.page = key
             st.rerun()
@@ -718,6 +719,16 @@ with st.sidebar:
     if len(st.session_state.get("sucursales_asignadas", [])) > 1 or st.session_state.get("user_role") == "Administrador":
         if st.button("🏠 Cambiar Sucursal", use_container_width=True):
             st.session_state.sucursal_activa = None
+            st.rerun()
+            
+    # ── BOTONES DE ADMINISTRACIÓN AL FINAL ─────────────────────
+    if _role == "Administrador":
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("👤 Gestion de Usuarios", key="nav_Usuarios_foot", use_container_width=True):
+            st.session_state.page = "Usuarios"
+            st.rerun()
+        if st.button("⚙️ Configuracion", key="nav_Config_foot", use_container_width=True):
+            st.session_state.page = "Configuracion"
             st.rerun()
             
     if st.button("Cerrar Sesion", use_container_width=True):
