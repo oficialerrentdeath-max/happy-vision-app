@@ -16,41 +16,48 @@ def render_inventario():
     # CSS Refinado: Compacto y Profesional (Estilo Excel)
     st.markdown("""
         <style>
+        /* Ajuste global para que todo en la fila mida lo mismo */
         .cell-content {
             font-size: 14px;
-            padding: 8px 0;
             display: flex;
             align-items: center;
-            min-height: 38px;
+            height: 34px; /* Altura reducida para que sea compacto */
             color: #334155;
+            margin: 0 !important;
+            padding: 0 !important;
         }
-        .code-btn {
-            padding: 8px 0;
-            display: flex;
-            align-items: center;
-            min-height: 38px;
+        /* Reset total del botón de Streamlit */
+        div[data-testid="stButton"] {
+            margin: 0 !important;
+            padding: 0 !important;
+            height: 34px !important;
+            display: flex !important;
+            align-items: center !important;
         }
-        .code-btn div[data-testid="stButton"] > button {
+        div[data-testid="stButton"] > button {
             border: none !important;
             background: transparent !important;
             padding: 0 !important;
+            margin: 0 !important;
             color: #2563eb !important;
             font-size: 14px !important;
             font-weight: bold !important;
             text-decoration: underline !important;
             box-shadow: none !important;
-            min-height: 0 !important;
+            height: 34px !important;
+            line-height: 34px !important;
+            width: auto !important;
+            text-align: left !important;
+        }
+        div[data-testid="stButton"] > button:hover {
+            color: #1d4ed8 !important;
+            background: transparent !important;
         }
         hr { 
-            margin: 2px 0 !important; 
-            opacity: 0.25; /* Línea más visible */
+            margin: 4px 0 !important; 
+            opacity: 0.2; 
             border: 0;
             border-top: 1px solid #e2e8f0;
-        }
-        /* Efecto al pasar el mouse para identificar la fila */
-        .stColumns:hover {
-            background-color: #f8fafc;
-            border-radius: 4px;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -102,14 +109,13 @@ def render_inventario():
     for _, row in df_f.iterrows():
         cols = st.columns(cols_ratio)
         
-        # Código Interactuable
+        # 1. Código (Botón directo alineado)
         with cols[0]:
-            st.markdown('<div class="code-btn">', unsafe_allow_html=True)
             if st.button(row.get('codigo_referencia') or "---", key=f"c_{row['id']}"):
                 st.session_state.inv_exp = row['id'] if st.session_state.get("inv_exp") != row['id'] else None
                 st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
 
+        # Función de dibujo alineada
         def draw(val, idx, bold=False, color=None, is_money=False):
             style = f"font-weight:bold;" if bold else ""
             if color: style += f"color:{color};"
