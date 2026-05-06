@@ -61,7 +61,7 @@ def render_usuarios():
     st.markdown("""
     <div class="page-header">
         <h1>👤 Gestión de Usuarios</h1>
-        <p>Crea y administra los optometristas del sistema (Supabase)</p>
+        <p>Crea y administra los optometristas y vendedores (Supabase)</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -79,6 +79,14 @@ def render_usuarios():
             nu_username = nc1.text_input("Nombre de usuario (login) *", placeholder="ej: anthonny")
             nu_password = nc2.text_input("Contraseña *", type="password", placeholder="••••••••")
 
+            st.markdown("### 🔑 Permisos de Acceso")
+            nu_accesos = st.multiselect(
+                "Selecciona a qué módulos puede entrar este usuario:",
+                options=["Pacientes", "Trabajos", "Ventas", "Inventario", "Contabilidad", "Usuarios", "Configuracion"],
+                default=["Pacientes", "Trabajos", "Ventas"]
+            )
+            st.divider()
+
             nd1, nd2, nd3 = st.columns(3)
             nu_nombre   = nd1.text_input("Nombre Completo *", placeholder="Dr. Juan Pérez")
             nu_cargo    = nd2.text_input("Cargo / Título", placeholder="Optometrista", value="Optometrista")
@@ -86,7 +94,7 @@ def render_usuarios():
 
             ne1, ne2, ne3 = st.columns(3)
             nu_telefono = ne1.text_input("Teléfono", placeholder="+593 98 765 4321")
-            nu_role     = ne2.selectbox("Rol en el sistema", ["Optometrista", "Administrador"])
+            nu_role     = ne2.selectbox("Rol en el sistema", ["Vendedor", "Optometrista", "Administrador"])
             nu_activo   = ne3.checkbox("Activo (Permitir acceso)", value=True)
 
             from database import cargar_sucursales
@@ -97,7 +105,7 @@ def render_usuarios():
             nu_sucursales = st.multiselect(
                 "¿A qué sucursales tendrá acceso este usuario?",
                 options=sucursales_disponibles,
-                default=["Matriz"] if nu_role == "Optometrista" else sucursales_disponibles
+                default=["Matriz"]
             )
 
             st.caption("Firma para el certificado PDF (opcional)")
@@ -134,6 +142,7 @@ def render_usuarios():
                         "registro":  nu_registro.strip(),
                         "telefono":  nu_telefono.strip(),
                         "sucursales_asignadas": nu_sucursales,
+                        "accesos":   nu_accesos,
                         "firma_base64": firma_b64
                     }
                     
@@ -208,7 +217,17 @@ def render_usuarios():
             # --- FORMULARIO DE EDICIÓN ---
             if st.session_state.get("edit_usr_target") == username:
                 with st.form(f"form_edit_{username}"):
-                    st.markdown(f"#### ✏️ Editando: `{username}`")
+                    st.markdown("#### ✏️ Editando: `{username}`")
+                    
+                    st.markdown("### 🔑 Permisos de Acceso")
+                    current_accesos = data.get("accesos", ["Pacientes", "Trabajos", "Ventas"])
+                    en_accesos = st.multiselect(
+                        "Selecciona a qué módulos puede entrar este usuario:",
+                        options=["Pacientes", "Trabajos", "Ventas", "Inventario", "Contabilidad", "Usuarios", "Configuracion"],
+                        default=[a for a in current_accesos if a in ["Pacientes", "Trabajos", "Ventas", "Inventario", "Contabilidad", "Usuarios", "Configuracion"]]
+                    )
+                    st.divider()
+
                     e1, e2, e3 = st.columns([1, 1, 1])
                     en_username = e1.text_input("Usuario (Login)", value=username)
                     en_nombre = e2.text_input("Nombre Completo", value=data.get("nombre", ""))
@@ -216,8 +235,8 @@ def render_usuarios():
                     # Limpiar rol para el selectbox
                     raw_role = data.get("role", "Optometrista")
                     current_clean_role = str(raw_role).replace("INACTIVO:", "")
-                    en_role   = e3.selectbox("Rol", ["Optometrista", "Administrador"], 
-                                           index=0 if current_clean_role=="Optometrista" else 1)
+                    en_role   = e3.selectbox("Rol", ["Vendedor", "Optometrista", "Administrador"], 
+                                           index=0 if current_clean_role=="Vendedor" else (1 if current_clean_role=="Optometrista" else 2))
                     
                     e3_2, e4 = st.columns(2)
                     en_cargo    = e3_2.text_input("Cargo / Título", value=data.get("cargo", ""))
@@ -240,8 +259,8 @@ def render_usuarios():
                         options=sucursales_disponibles,
                         default=[s for s in current_sucursales if s in sucursales_disponibles]
                     )
-                    
-                    st.caption("Firma (opcional - subir para reemplazar)")
+
+                    st.markdown("---")
                     en_firma = st.file_uploader("Nueva firma", type=["png", "jpg", "jpeg"], key=f"edit_firma_{username}")
 
                     eb1, eb2 = st.columns([1, 1])
@@ -253,6 +272,7 @@ def render_usuarios():
                         data["registro"] = en_registro.strip()
                         data["telefono"] = en_telefono.strip()
                         data["sucursales_asignadas"] = en_sucursales
+                        data["accesos"] = en_accesos
                         if en_password.strip():
                             data["password"] = en_password.strip()
                         

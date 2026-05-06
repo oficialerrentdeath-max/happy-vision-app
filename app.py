@@ -19,10 +19,10 @@ from vistas.clinica   import render_clinica
 from vistas.usuarios  import render_usuarios
 from vistas.configuracion import render_configuracion
 from vistas.inventario import render_inventario
-from vistas.laboratorio import render_laboratorio
+from vistas.trabajos import render_trabajos
+from vistas.ventas import render_ventas
 from vistas.contabilidad import render_contabilidad
 from vistas.dashboard import render_dashboard
-from vistas.ventas import render_ventas
 from database import cargar_sucursales
 
 
@@ -534,6 +534,7 @@ if not st.session_state.logged_in:
                         st.session_state.user_registro = ud.get("registro", "")
                         st.session_state.user_telefono = ud.get("telefono", "")
                         st.session_state.user_firma    = ud.get("firma_base64", "")
+                        st.session_state.user_accesos  = ud.get("accesos", ["Pacientes", "Trabajos", "Ventas"])
                         
                         # AUDITORÍA: Inicio de sesión
                         from database import registrar_auditoria
@@ -661,24 +662,31 @@ with st.sidebar:
     st.markdown("<p style='color:#475569; font-size:10px; text-transform:uppercase; letter-spacing:1.5px; margin:0 0 10px 0;'>Navegacion</p>", unsafe_allow_html=True)
 
     _role = st.session_state.user_role
-    # Navegacion simplificada
-    pages = {
+    _accesos = st.session_state.get("user_accesos", ["Inicio", "Pacientes", "Trabajos", "Ventas"])
+    
+    # Navegacion dinámica basada en permisos
+    all_pages = {
         "Inicio":      ("🏠", "Inicio"),
         "Pacientes":   ("👥", "Pacientes"),
         "Trabajos":    ("📋", "Trabajos"),
         "Ventas":      ("🛒", "Ventas"),
+        "Inventario":    ("📦", "Inventario"),
+        "Contabilidad":  ("💰", "Contabilidad"),
+        "Usuarios":      ("👤", "Gestion de Usuarios"),
+        "Configuracion": ("⚙️", "Configuracion"),
     }
-    if _role == "Administrador":
-        pages["Inventario"]    = ("📦", "Inventario")
-        pages["Contabilidad"]  = ("💰", "Contabilidad")
-        pages["Usuarios"]      = ("👤", "Gestion de Usuarios")
-        pages["Configuracion"] = ("⚙️", "Configuracion")
+    
+    pages = {}
+    for key, val in all_pages.items():
+        # El Administrador ve todo. Otros roles ven solo lo que tienen en 'accesos'.
+        if _role == "Administrador" or key in _accesos or key == "Inicio":
+            pages[key] = val
 
     if st.session_state.page not in pages:
         st.session_state.page = "Inicio"
 
     for key, (icon, label) in pages.items():
-        if key in ["Usuarios", "Configuracion"]: continue # Se mueven abajo
+        if key in ["Usuarios", "Configuracion"]: continue # Se mueven al pie del sidebar
         if st.button(f"{icon}  {label}", key=f"nav_{key}", use_container_width=True):
             st.session_state.page = key
             st.rerun()
@@ -722,12 +730,12 @@ with st.sidebar:
             st.rerun()
             
     # ── BOTONES DE ADMINISTRACIÓN AL FINAL ─────────────────────
-    if _role == "Administrador":
+    if _role == "Administrador" or "Usuarios" in _accesos or "Configuracion" in _accesos:
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("👤 Gestion de Usuarios", key="nav_Usuarios_foot", use_container_width=True):
+        if (_role == "Administrador" or "Usuarios" in _accesos) and st.button("👤 Gestion de Usuarios", key="nav_Usuarios_foot", use_container_width=True):
             st.session_state.page = "Usuarios"
             st.rerun()
-        if st.button("⚙️ Configuracion", key="nav_Config_foot", use_container_width=True):
+        if (_role == "Administrador" or "Configuracion" in _accesos) and st.button("⚙️ Configuracion", key="nav_Config_foot", use_container_width=True):
             st.session_state.page = "Configuracion"
             st.rerun()
             
@@ -757,7 +765,7 @@ if page == "Inicio":
 elif page == "Pacientes":
     render_clinica()
 elif page == "Trabajos":
-    render_laboratorio()
+    render_trabajos()
 elif page == "Ventas":
     render_ventas()
 elif page == "Inventario":

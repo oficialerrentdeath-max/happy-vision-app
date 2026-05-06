@@ -124,19 +124,15 @@ def cargar_ordenes_trabajo(sucursal: str = None) -> pd.DataFrame:
         print(f"Error cargar_ordenes_trabajo: {e}")
         return pd.DataFrame()
 
-def guardar_orden_trabajo(orden_data: dict, pago_data: dict):
-    """Guarda una orden de trabajo y su pago inicial de forma vinculada."""
+def guardar_orden_trabajo(orden_data: dict):
+    """Guarda una orden de trabajo técnica y su estado financiero."""
     try:
         if not supabase: return None
-        # 1. Insertar Orden
-        res_o = supabase.table("ordenes_trabajo").insert(orden_data).execute()
-        if res_o.data:
-            nueva_id = res_o.data[0]["id"]
-            # 2. Insertar Pago
-            pago_data["orden_id"] = nueva_id
-            supabase.table("pagos_y_saldos").insert(pago_data).execute()
-            
-            registrar_auditoria("Nueva Orden", "Trabajos", f"Orden #{nueva_id} | Paciente ID: {orden_data.get('paciente_id')}", st.session_state.user_login, sucursal=orden_data.get("sucursal"))
+        # Insertar Orden con todos los campos técnicos (receta, etc)
+        res = supabase.table("ordenes_trabajo").insert(orden_data).execute()
+        if res.data:
+            nueva_id = res.data[0]["id"]
+            registrar_auditoria("Nueva Orden Óptica", "Laboratorio", f"Orden #{nueva_id} | Paciente: {orden_data.get('paciente_nombre')}", st.session_state.user_login, sucursal=orden_data.get("sucursal"))
             return nueva_id
         return None
     except Exception as e:
@@ -222,30 +218,43 @@ def actualizar_historia(historia_id: int, data: dict):
     except Exception as e: print(f"Error actualizar_historia: {e}")
 
 def registrar_venta_directa(data: dict):
-    """Registra una venta de productos de inventario y descuenta stock."""
+    """Registra una venta detallada (incluyendo costos para admin) y descuenta stock."""
     try:
         if not supabase: return None
-        # 1. Registrar la venta en la tabla 'ventas'
+        # 1. Registrar la venta en la tabla 'ventas' (ahora incluye costo_total para rentabilidad)
         res = supabase.table("ventas").insert(data).execute()
         
-        # 2. Descontar stock (recorriendo los items de la venta)
+        # 2. Descontar stock de monturas si aplica
         for item in data.get("detalles", []):
-            p_id = item.get("id_ref")
-            cant_vendida = item.get("cantidad", 1)
-            if p_id: # Solo si es un producto de inventario
-                # Consultar stock actual
+            p_id = item.get("id_armazon") # ID del armazón del inventario
+            if p_id:
                 curr = supabase.table("inventario").select("cantidad_disponible").eq("id", p_id).execute()
                 if curr.data:
                     stock_actual = float(curr.data[0].get("cantidad_disponible", 0))
-                    nuevo_stock = max(0, stock_actual - float(cant_vendida))
+                    nuevo_stock = max(0, stock_actual - 1)
                     supabase.table("inventario").update({"cantidad_disponible": nuevo_stock}).eq("id", p_id).execute()
         
-        # 3. Auditoría
-        registrar_auditoria("Venta Directa", "Ventas", f"Total: ${data['total']} | Cliente: {data.get('cliente')}", st.session_state.user_login, sucursal=data['sucursal'])
+        # 3. Auditoría detallada
+        costo = data.get('costo_total', 0)
+        ganancia = float(data['total']) - float(costo)
+        registrar_auditoria("Venta Óptica", "Ventas", f"Total: ${data['total']} | Ganancia: ${ganancia:.2f} | Cliente: {data.get('cliente')}", st.session_state.user_login, sucursal=data['sucursal'])
         return res.data[0] if res.data else True
     except Exception as e:
         print(f"Error registrar_venta_directa: {e}")
         return None
+
+def cargar_ventas_historial(sucursal: str = None) -> pd.DataFrame:
+    """Carga el historial completo de ventas para análisis de rentabilidad."""
+    try:
+        if not supabase: return pd.DataFrame()
+        query = supabase.table("ventas").select("*")
+        if sucursal and sucursal != "Todas":
+            query = query.eq("sucursal", sucursal)
+        res = query.order("fecha", desc=True).execute()
+        return pd.DataFrame(res.data) if res.data else pd.DataFrame()
+    except Exception as e:
+        print(f"Error cargar_ventas_historial: {e}")
+        return pd.DataFrame()
 
 def registrar_pago_saldo(orden_id: int, monto: float, metodo: str, usuario: str, sucursal: str):
     """Registra el pago de un saldo pendiente de una orden de trabajo."""
@@ -378,6 +387,20 @@ def migrar_estructuras():
             df_h.loc[df_h['sucursal'].isna(), 'sucursal'] = 'Matriz'
             st.session_state.df_historias = df_h[HISTORIAS_COLS]
             
+        # 3. Migrar Usuarios (Nuevos Permisos)
+        try:
+            res_u = supabase.table("usuarios").select("*").execute()
+            if res_u.data:
+                for usr in res_u.data:
+                    if not usr.get("accesos"):
+                        # Asignar accesos base a usuarios antiguos
+                        default_acc = ["Pacientes", "Trabajos", "Ventas", "Inicio"]
+                        if "Administrador" in str(usr.get("role", "")):
+                            default_acc = ["Pacientes", "Trabajos", "Ventas", "Inventario", "Contabilidad", "Usuarios", "Configuracion", "Inicio"]
+                        supabase.table("usuarios").update({"accesos": default_acc}).eq("username", usr["username"]).execute()
+        except Exception as ue:
+            print(f"Error migrando permisos de usuarios: {ue}")
+
         print("Migración de estructuras completada exitosamente.")
     except Exception as e:
         print(f"Error en migración: {e}")
@@ -471,3 +494,35 @@ def eliminar_sucursal(s_id):
         supabase.table("sucursales").delete().eq("id", s_id).execute()
     except Exception as e:
         print(f"Error eliminar_sucursal: {e}")
+
+def cargar_ordenes_trabajo(sucursal: str = None) -> pd.DataFrame:
+    """Carga todas las órdenes de trabajo desde Supabase."""
+    try:
+        if not supabase: return pd.DataFrame()
+        query = supabase.table("ordenes_trabajo").select("*")
+        if sucursal and sucursal != "Todas":
+            query = query.eq("sucursal", sucursal)
+        res = query.order("creado_el", desc=True).execute()
+        return pd.DataFrame(res.data) if res.data else pd.DataFrame()
+    except Exception as e:
+        print(f"Error cargar_ordenes_trabajo: {e}")
+        return pd.DataFrame()
+
+def actualizar_estado_orden(orden_id: int, nuevo_estado: str, usuario: str, sucursal: str):
+    """Actualiza el estado de una orden de trabajo (ej: Pendiente -> Listo)."""
+    try:
+        if not supabase: return
+        supabase.table("ordenes_trabajo").update({"estado": nuevo_estado}).eq("id", orden_id).execute()
+        registrar_auditoria("Cambio de Estado", "Orden de Trabajo", f"Orden #{orden_id} pasó a {nuevo_estado}", usuario, sucursal=sucursal)
+    except Exception as e:
+        print(f"Error actualizar_estado_orden: {e}")
+
+def cargar_orden_trabajo_detallada(orden_id: int):
+    """Carga una orden específica con todos sus detalles."""
+    try:
+        if not supabase: return None
+        res = supabase.table("ordenes_trabajo").select("*").eq("id", orden_id).execute()
+        return res.data[0] if res.data else None
+    except Exception as e:
+        print(f"Error cargar_orden_trabajo_detallada: {e}")
+        return None

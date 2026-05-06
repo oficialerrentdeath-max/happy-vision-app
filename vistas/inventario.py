@@ -33,6 +33,10 @@ def render_inventario():
         .row-odd {
             background-color: #fafbfc;
         }
+        .row-low-stock {
+            background-color: #fff1f2 !important; /* Rojo suave */
+            border-left: 4px solid #ef4444 !important;
+        }
 
         /* Ajuste de celdas */
         [data-testid="stMain"] .cell-content {
@@ -164,7 +168,12 @@ def render_inventario():
     
     # ── FILAS DE DATOS ─────────────────────────────────────────
     for idx, (_, row) in enumerate(df_f.iterrows()):
+        # Lógica de Stock Bajo
+        stock_val = float(row.get("cantidad_disponible", 0))
+        is_low = stock_val <= 3
+        
         row_class = "row-odd" if idx % 2 == 0 else "row-even"
+        if is_low: row_class = "row-low-stock"
         
         # Iniciar contenedor de fila
         st.markdown(f'<div class="{row_class}">', unsafe_allow_html=True)

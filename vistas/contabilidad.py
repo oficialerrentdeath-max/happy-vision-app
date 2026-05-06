@@ -1,134 +1,111 @@
 import streamlit as st
 import pandas as pd
-from datetime import date
-from database import obtener_estado_caja, abrir_caja, registrar_gasto, obtener_resumen_dia, cerrar_caja, cargar_sucursales
+from datetime import date, datetime
+from database import obtener_estado_caja, abrir_caja, registrar_gasto, obtener_resumen_dia, cerrar_caja, cargar_sucursales, cargar_ventas_historial
 
 def render_contabilidad():
     st.markdown("""
+        <style>
+        .metric-card {
+            background-color: white;
+            border: 1px solid #e2e8f0;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .profit-text { color: #16a34a; font-weight: bold; font-size: 24px; }
+        .revenue-text { color: #00458e; font-weight: bold; font-size: 24px; }
+        .cost-text { color: #dc2626; font-weight: bold; font-size: 24px; }
+        </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
         <div class="page-header">
-            <h1 style='margin:0; color:#1e293b;'>💰 Contabilidad y Caja</h1>
-            <p style='margin:5px 0 0 0; color:#64748b;'>Control de flujo de caja, gastos y cierres diarios</p>
+            <h1 style='margin:0; color:#1e293b;'>💰 Gestión Financiera y Rentabilidad</h1>
+            <p style='margin:5px 0 0 0; color:#64748b;'>Control de caja diaria y análisis de ganancias netas</p>
         </div>
     """, unsafe_allow_html=True)
 
     sucursal = st.session_state.get("sucursal_activa", "Matriz")
+    es_admin = st.session_state.get("user_role") == "Administrador"
     hoy = date.today().strftime("%Y-%m-%d")
     
-    tabs = st.tabs(["💵 Caja Diaria", "🌍 Reporte Global (Admin)"])
+    tabs = st.tabs(["💵 Caja Diaria", "📈 Rentabilidad y Reportes"])
     
     with tabs[0]:
-        # 1. Verificar Estado de Caja
+        # --- Lógica de Caja Diaria (Existente pero estilizada) ---
         caja = obtener_estado_caja(sucursal, hoy)
-    
         if not caja:
-            # PANTALLA DE APERTURA
-            st.warning(f"🚨 La caja de hoy ({hoy}) en **{sucursal}** aún no ha sido abierta.")
-            with st.form("apertura_caja"):
-                st.subheader("Apertura de Caja")
-                monto_ini = st.number_input("Monto Inicial en Efectivo (Base para cambio)", min_value=0.0, value=0.0, format="%.2f")
-                if st.form_submit_button("🔓 Abrir Caja Ahora", use_container_width=True):
-                    abrir_caja({
-                        "fecha": hoy,
-                        "sucursal": sucursal,
-                        "monto_apertura": monto_ini,
-                        "estado": "Abierta",
-                        "abierta_por": st.session_state.user_login
-                    })
-                    st.success("Caja abierta correctamente.")
-                    st.rerun()
-        
-        elif caja["estado"] == "Cerrada":
-            st.success(f"✅ La caja de hoy ya fue cerrada por **{caja.get('cerrada_por')}**.")
-            st.metric("Balance Final", f"${float(caja['monto_cierre']):.2f}")
-            if st.button("🔄 Ver Detalles del Cierre"):
-                 st.json(caja)
-                 
+            st.warning(f"🚨 Caja Cerrada para **{sucursal}**. Ábrela para empezar a registrar.")
+            if st.button("🔓 Abrir Caja Hoy"):
+                abrir_caja({"fecha": hoy, "sucursal": sucursal, "monto_apertura": 0, "estado": "Abierta", "abierta_por": st.session_state.user_login})
+                st.rerun()
         else:
-            # PANTALLA DE CAJA ABIERTA (DURANTE EL DÍA)
             col1, col2 = st.columns([1, 2])
-            
             with col1:
-                st.markdown("### 💸 Registrar Gasto")
-                with st.form("form_gasto", clear_on_submit=True):
-                    cat = st.selectbox("Categoría", ["Alquiler", "Luz/Servicios", "Insumos Óptica", "Publicidad", "Sueldos", "Varios"])
-                    desc = st.text_input("Descripción", placeholder="Ej: Pago de luz local centro")
-                    monto_g = st.number_input("Monto ($)", min_value=0.0, format="%.2f")
-                    if st.form_submit_button("Registrar Salida", use_container_width=True):
-                        if monto_g > 0:
-                            registrar_gasto({
-                                "fecha": hoy,
-                                "sucursal": sucursal,
-                                "categoria": cat,
-                                "descripcion": desc,
-                                "monto": monto_g,
-                                "usuario": st.session_state.user_login
-                            })
-                            st.success("Gasto registrado.")
-                            st.rerun()
-
+                st.subheader("💸 Gastos")
+                with st.form("gasto_r"):
+                    cat = st.selectbox("Categoría", ["Lunas/Lab", "Armazones", "Sueldos", "Servicios", "Otros"])
+                    monto = st.number_input("Monto ($)", min_value=0.0)
+                    if st.form_submit_button("Registrar Gasto"):
+                        registrar_gasto({"fecha": hoy, "sucursal": sucursal, "categoria": cat, "monto": monto, "usuario": st.session_state.user_login})
+                        st.rerun()
             with col2:
-                st.markdown("### 📊 Resumen en Tiempo Real")
-                resumen = obtener_resumen_dia(sucursal, hoy)
-                
-                mc1, mc2, mc3 = st.columns(3)
-                mc1.metric("Efectivo (Ventas)", f"${resumen['Efectivo']:.2f}")
-                mc2.metric("Tarjetas / Transf.", f"${resumen['Tarjeta'] + resumen['Transferencia']:.2f}")
-                mc3.metric("Gastos Hoy", f"-${resumen['Gastos']:.2f}", delta_color="inverse")
-                
-                # Cálculo de Balance
-                base = float(caja["monto_apertura"])
-                total_esperado = base + resumen["Efectivo"] - resumen["Gastos"]
-                
-                st.markdown(f"""
-                    <div style='background:#f8fafc; border:2px dashed #cbd5e1; border-radius:15px; padding:20px; text-align:center; margin-top:20px;'>
-                        <p style='margin:0; color:#64748b; font-size:14px;'>TOTAL EFECTIVO ESPERADO EN CAJA</p>
-                        <h2 style='margin:5px 0; color:#0f172a;'>${total_esperado:.2f}</h2>
-                        <p style='margin:0; color:#94a3b8; font-size:11px;'>(Base: ${base:.2f} + Ventas: ${resumen['Efectivo']:.2f} - Gastos: ${resumen['Gastos']:.2f})</p>
-                    </div>
-                """, unsafe_allow_html=True)
-                
-                st.divider()
-                if st.button("🔒 Realizar CIERRE DE CAJA", type="primary", use_container_width=True):
-                    with st.form("cierre_final"):
-                        st.subheader("Confirmar Cierre")
-                        m_final = st.number_input("Monto Físico en Efectivo (Conteo real)", value=total_esperado)
-                        st.info("Al cerrar, ya no se podrán registrar más ventas o gastos por hoy.")
-                        if st.form_submit_button("Confirmar y Cerrar Día"):
-                            cerrar_caja(caja["id"], {
-                                "monto_cierre": m_final,
-                                "ventas_efectivo": resumen["Efectivo"],
-                                "ventas_tarjeta": resumen["Tarjeta"],
-                                "ventas_transf": resumen["Transferencia"],
-                                "gastos_totales": resumen["Gastos"],
-                                "estado": "Cerrada",
-                                "cerrada_por": st.session_state.user_login,
-                                "sucursal": sucursal
-                            })
-                            st.success("Caja cerrada. ¡Buen trabajo!")
-                            st.rerun()
+                res = obtener_resumen_dia(sucursal, hoy)
+                st.metric("Ventas Hoy (Efectivo)", f"${res['Efectivo']:.2f}")
+                st.metric("Total Gastos Hoy", f"-${res['Gastos']:.2f}")
 
     with tabs[1]:
-        if st.session_state.user_role != "Administrador":
-            st.error("Acceso restringido al Administrador General.")
+        if not es_admin:
+            st.error("🔒 El reporte de rentabilidad solo es visible para el Administrador.")
         else:
-            st.markdown("### 📈 Rendimiento de todas las Sucursales")
-            df_s = cargar_sucursales()
-            sedes = df_s["nombre"].tolist() if not df_s.empty else ["Matriz"]
+            st.subheader("📊 Análisis de Ganancias Reales")
             
-            resumen_global = []
-            for s in sedes:
-                r = obtener_resumen_dia(s, hoy)
-                est = obtener_estado_caja(s, hoy)
-                resumen_global.append({
-                    "Sucursal": s,
-                    "Estado": est["estado"] if est else "Sin Abrir",
-                    "Ventas Totales": r["Efectivo"] + r["Tarjeta"] + r["Transferencia"],
-                    "Gastos": r["Gastos"],
-                    "Neto": (r["Efectivo"] + r["Tarjeta"] + r["Transferencia"]) - r["Gastos"]
-                })
+            # Filtros de tiempo
+            c_f1, c_f2, c_f3 = st.columns(3)
+            suc_sel = c_f1.selectbox("Sucursal:", ["Todas"] + cargar_sucursales()["nombre"].tolist())
+            mes_sel = c_f2.selectbox("Mes:", ["Todos", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"], index=datetime.now().month)
+            anio_sel = c_f3.selectbox("Año:", [2024, 2025, 2026], index=0)
+
+            # Cargar datos
+            df_v = cargar_ventas_historial(suc_sel)
             
-            df_res = pd.DataFrame(resumen_global)
-            st.dataframe(df_res, use_container_width=True, hide_index=True)
-            
-            # Gráfico simple de barras
-            st.bar_chart(df_res.set_index("Sucursal")[["Ventas Totales", "Gastos"]])
+            if df_v.empty:
+                st.info("No hay datos de ventas para este periodo.")
+            else:
+                # Procesar fechas para filtros
+                df_v['fecha_dt'] = pd.to_datetime(df_v['fecha'])
+                df_v['mes_nombre'] = df_v['fecha_dt'].dt.month_name()
+                
+                # Traducir meses si es necesario o filtrar por número
+                meses_map = {"Enero":1, "Febrero":2, "Marzo":3, "Abril":4, "Mayo":5, "Junio":6, "Julio":7, "Agosto":8, "Septiembre":9, "Octubre":10, "Noviembre":11, "Diciembre":12}
+                
+                df_f = df_v[df_v['fecha_dt'].dt.year == anio_sel]
+                if mes_sel != "Todos":
+                    df_f = df_f[df_f['fecha_dt'].dt.month == meses_map[mes_sel]]
+
+                # KPIs de Rentabilidad
+                ingresos = df_f['total'].astype(float).sum()
+                costos = df_f['costo_total'].astype(float).sum()
+                ganancia = ingresos - costos
+                
+                kpi1, kpi2, kpi3 = st.columns(3)
+                with kpi1:
+                    st.markdown(f'<div class="metric-card">Ingresos Brutos<br><span class="revenue-text">${ingresos:,.2f}</span></div>', unsafe_allow_html=True)
+                with kpi2:
+                    st.markdown(f'<div class="metric-card">Costos (Lab/Material)<br><span class="cost-text">${costos:,.2f}</span></div>', unsafe_allow_html=True)
+                with kpi3:
+                    st.markdown(f'<div class="metric-card">GANANCIA NETA<br><span class="profit-text">${ganancia:,.2f}</span></div>', unsafe_allow_html=True)
+
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                # Gráfico de Ganancia por Día
+                st.write("### 📈 Tendencia de Ganancia Diaria")
+                df_f['fecha_dia'] = df_f['fecha_dt'].dt.date
+                df_daily = df_f.groupby('fecha_dia').agg({'total': 'sum', 'costo_total': 'sum'}).reset_index()
+                df_daily['Ganancia'] = df_daily['total'] - df_daily['costo_total']
+                st.area_chart(df_daily.set_index('fecha_dia')[['total', 'Ganancia']])
+
+                # Detalle de Ventas
+                with st.expander("📝 Ver desglose de transacciones"):
+                    st.dataframe(df_f[['fecha', 'cliente', 'total', 'costo_total', 'metodo_pago', 'sucursal']], use_container_width=True)
