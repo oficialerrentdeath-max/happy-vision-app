@@ -168,16 +168,18 @@ def render_nueva_orden():
                     except Exception as e: st.error(f"Error: {e}")
 
         with col_btn2:
-            if st.session_state[f"saved_{p_key}"]:
-                oid = st.session_state[f"order_id_{p_key}"]
-                pdf_bytes = generar_pdf_orden(st.session_state[f"pdf_data_{p_key}"], oid)
-                st.download_button(
-                    label=f"📄 DESCARGAR PDF #{oid}",
-                    data=pdf_bytes,
-                    file_name=f"Orden_{oid}_{pacientes_nombres[paciente_id].replace(' ','_')}.pdf",
-                    mime="application/pdf",
-                    use_container_width=True
-                )
+            if st.session_state.get(f"saved_{p_key}"):
+                oid = st.session_state.get(f"order_id_{p_key}", "N/A")
+                pdata = st.session_state.get(f"pdf_data_{p_key}")
+                if pdata:
+                    pdf_bytes = generar_pdf_orden(pdata, oid)
+                    st.download_button(
+                        label=f"📄 DESCARGAR PDF #{oid}",
+                        data=pdf_bytes,
+                        file_name=f"Orden_{oid}_{pacientes_nombres.get(paciente_id, 'Orden').replace(' ','_')}.pdf",
+                        mime="application/pdf",
+                        use_container_width=True
+                    )
             else:
                 st.button("📄 DESCARGAR PDF", disabled=True, use_container_width=True)
 
