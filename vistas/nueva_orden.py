@@ -169,8 +169,12 @@ def render_nueva_orden():
             for _, row in df_ord.iterrows():
                 with st.expander(f"📄 Orden #{row['id']} - {row['paciente_nombre']} ({row['creado_el'][:10]})"):
                     c_a, c_b = st.columns(2)
-                    rod = row.get("receta_od", {})
-                    roi = row.get("receta_oi", {})
+                    rod = row.get("receta_od")
+                    roi = row.get("receta_oi")
+                    
+                    if not isinstance(rod, dict): rod = {}
+                    if not isinstance(roi, dict): roi = {}
+                    
                     c_a.markdown(f"**OD:** Esf: {rod.get('Esf','')} | Cil: {rod.get('Cil','')} | Eje: {rod.get('Eje','')}")
                     c_b.markdown(f"**OI:** Esf: {roi.get('Esf','')} | Cil: {roi.get('Cil','')} | Eje: {roi.get('Eje','')}")
                     st.markdown(f"**Material:** {row.get('material','—')} | **Tratamientos:** {row.get('protecciones','—')}")
