@@ -97,10 +97,53 @@ def render_inventario():
         if col not in df.columns:
             df[col] = default
 
-    # Buscador y Filtros
-    f1, f2 = st.columns([3, 1])
-    busq = f1.text_input("🔍 Buscar por código, marca o producto...", label_visibility="collapsed")
+    # Buscador, Filtros y Botón de Agregar
+    f1, f2, f3 = st.columns([2.5, 1, 1])
+    busq = f1.text_input("🔍 Buscar por código, marca o producto...", label_visibility="collapsed", placeholder="Buscar...")
     f_cat = f2.selectbox("Categoría", ["Todas"] + sorted(df["categoria"].unique().tolist()), label_visibility="collapsed")
+    
+    if f3.button("➕ Nuevo Producto", type="primary", use_container_width=True):
+        st.session_state.show_add_form = not st.session_state.get("show_add_form", False)
+
+    # Formulario para Agregar Producto
+    if st.session_state.get("show_add_form"):
+        st.markdown('<div class="edit-container" style="background:#f0f7ff; border-color:#3b82f6;">', unsafe_allow_html=True)
+        st.subheader("🆕 Registrar Nuevo Producto")
+        with st.form("form_nuevo_prod", border=False):
+            c1, c2, c3 = st.columns(3)
+            n_cod = c1.text_input("Código de Referencia*")
+            n_cat = c2.text_input("Categoría (Ej: Monturas, Accesorios)")
+            n_mar = c3.text_input("Marca")
+            
+            c4, c5 = st.columns([2, 1])
+            n_nom = c4.text_input("Nombre / Descripción del Producto*")
+            n_pro = c5.text_input("Proveedor")
+            
+            c6, c7, c8 = st.columns(3)
+            n_cos = c6.number_input("Costo Compra ($)", min_value=0.0, step=0.01)
+            n_pvp = c7.number_input("Precio de Venta ($)", min_value=0.0, step=0.01)
+            n_stock = c8.number_input("Stock Inicial", min_value=0, step=1)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.form_submit_button("🚀 Guardar Producto en Inventario", use_container_width=True):
+                if not n_cod or not n_nom:
+                    st.error("Código y Nombre son obligatorios.")
+                else:
+                    guardar_producto({
+                        "codigo_referencia": n_cod,
+                        "nombre": n_nom,
+                        "categoria": n_cat,
+                        "marca": n_mar,
+                        "proveedor": n_pro,
+                        "costo_compra": n_cos,
+                        "precio_venta": n_pvp,
+                        "cantidad_disponible": n_stock,
+                        "sucursal": sucursal_activa
+                    })
+                    st.session_state.show_add_form = False
+                    st.success(f"Producto {n_nom} registrado con éxito.")
+                    st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
     df_f = df.copy()
     if busq:
