@@ -16,25 +16,42 @@ def render_nueva_orden():
     with tab_nueva:
         st.markdown("<div class='section-title'>👤 Datos del Paciente</div>", unsafe_allow_html=True)
         
-        # Selección de Paciente (Buscador mejorado)
+        # Selección de Paciente (Buscador Inteligente)
         try:
             res_p = supabase.table("historias_clinicas").select("id, paciente_nombre, identificacion").execute()
             if res_p.data:
                 pacientes_df = pd.DataFrame(res_p.data)
-                pacientes_df["display"] = pacientes_df["paciente_nombre"] + " (" + pacientes_df["identificacion"] + ")"
-                pacientes_dict = dict(zip(pacientes_df["id"], pacientes_df["display"]))
-                pacientes_nombres = dict(zip(pacientes_df["id"], pacientes_df["paciente_nombre"]))
+                
+                # Filtro dinámico
+                filtro = st.text_input("🔍 Escribe el nombre o cédula del paciente:", placeholder="Buscar...")
+                
+                if filtro:
+                    pacientes_df = pacientes_df[
+                        pacientes_df["paciente_nombre"].str.contains(filtro, case=False, na=False) |
+                        pacientes_df["identificacion"].str.contains(filtro, case=False, na=False)
+                    ]
+                
+                if not pacientes_df.empty:
+                    pacientes_df["display"] = pacientes_df["paciente_nombre"] + " (" + pacientes_df["identificacion"] + ")"
+                    pacientes_dict = dict(zip(pacientes_df["id"], pacientes_df["display"]))
+                    pacientes_nombres = dict(zip(pacientes_df["id"], pacientes_df["paciente_nombre"]))
+                    
+                    paciente_id = st.selectbox("Confirmar Selección del Paciente:", 
+                                                options=list(pacientes_dict.keys()),
+                                                format_func=lambda x: pacientes_dict[x],
+                                                key="sel_paciente_orden")
+                else:
+                    st.warning("⚠️ No se encontraron pacientes con ese nombre/cédula.")
+                    paciente_id = None
+                    pacientes_nombres = {}
             else:
-                pacientes_dict = {}
+                st.info("No hay pacientes registrados en el sistema.")
+                paciente_id = None
                 pacientes_nombres = {}
-        except:
-            pacientes_dict = {}
+        except Exception as e:
+            st.error(f"Error al cargar pacientes: {e}")
+            paciente_id = None
             pacientes_nombres = {}
-
-        paciente_id = st.selectbox("Buscar Paciente:", 
-                                    options=list(pacientes_dict.keys()),
-                                    format_func=lambda x: pacientes_dict[x],
-                                    key="sel_paciente_orden")
 
         st.divider()
 
