@@ -66,6 +66,11 @@ def render_ventas():
     if "carrito_ventas" not in st.session_state:
         st.session_state.carrito_ventas = []
 
+    # Inicialización de variables para evitar NameError
+    armazon_sel = ""
+    producto = None
+    od_esf = od_cil = od_eje = oi_esf = oi_cil = oi_eje = ""
+    
     tab1, tab2 = st.tabs(["🛒 Nueva Venta / Configurador", "💰 Cobro de Saldos"])
 
     with tab1:
