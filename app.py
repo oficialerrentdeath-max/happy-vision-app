@@ -22,6 +22,7 @@ from vistas.inventario import render_inventario
 from vistas.trabajos import render_trabajos
 from vistas.nueva_orden import render_nueva_orden
 from vistas.ventas import render_ventas
+from vistas.facturacion import render_facturacion
 from vistas.contabilidad import render_contabilidad
 from vistas.dashboard import render_dashboard
 from database import cargar_sucursales
@@ -669,7 +670,8 @@ with st.sidebar:
     all_pages = {
         "Inicio":      ("🏠", "Inicio"),
         "Pacientes":   ("👥", "Pacientes"),
-        "Ventas":      ("🛒", "Ventas"),
+        "Ventas":      ("🏪", "Registro de Ventas"),
+        "Facturación":   ("🧾", "Facturación (SRI)"),
         "Generar Orden": ("📝", "Generar Orden"),
         "Trabajos":    ("📋", "Trabajos"),
         "Inventario":    ("📦", "Inventario"),
@@ -774,6 +776,8 @@ elif page == "Generar Orden":
     render_nueva_orden()
 elif page == "Ventas":
     render_ventas()
+elif page == "Facturación":
+    render_facturacion()
 elif page == "Inventario":
     render_inventario()
 elif page == "Contabilidad":

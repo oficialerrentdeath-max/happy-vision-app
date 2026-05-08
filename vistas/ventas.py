@@ -55,8 +55,8 @@ def render_ventas():
 
     st.markdown("""
         <div class="page-header">
-            <h1 style='margin:0; color:#1e293b;'>🧾 Facturación y Ventas</h1>
-            <p style='margin:5px 0 0 0; color:#64748b;'>Configurador óptico y registro de ventas</p>
+            <h1 style='margin:0; color:#1e293b;'>🏪 Registro de Ventas (Interno)</h1>
+            <p style='margin:5px 0 0 0; color:#64748b;'>Control de ingresos, configurador óptico y saldos</p>
         </div>
     """, unsafe_allow_html=True)
 
@@ -155,7 +155,7 @@ def render_ventas():
         else:
             st.info("💡 Completa la configuración para calcular el total.")
 
-        if st.button("➕ AGREGAR TRABAJO COMPLETO AL CARRITO", type="primary", use_container_width=True):
+        if st.button("➕ REGISTRAR VENTA EN CAJA E HISTORIAL", type="primary", use_container_width=True):
             if armazon_sel or precio_lentes > 0:
                 # Armazón
                 detalles_txt = f"Lunas {tipo_luna} {material} - " + ", ".join(protecciones)
@@ -204,7 +204,7 @@ def render_ventas():
             abono = c_p2.number_input("Abono Inicial ($):", min_value=0.0, max_value=total_v, value=total_v)
             saldo = total_v - abono
             
-            if st.button("🚀 FINALIZAR VENTA Y GENERAR ORDEN", type="primary", use_container_width=True):
+            if st.button("🚀 FINALIZAR Y REGISTRAR INGRESO", type="primary", use_container_width=True):
                 if not razon_social:
                     st.error("Falta el nombre del cliente.")
                 else:
