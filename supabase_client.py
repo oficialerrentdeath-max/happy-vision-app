@@ -8,7 +8,7 @@ except ImportError:
     supabase = None
 
 # Bucket name from environment variables (as defined in .env)
-SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET")
+SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "happy-vision")
 
 def _ensure_client() -> bool:
     """Check that Supabase client and bucket are configured."""
