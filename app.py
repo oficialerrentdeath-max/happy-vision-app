@@ -22,6 +22,7 @@ from vistas.inventario import render_inventario
 from vistas.trabajos import render_trabajos
 from vistas.nueva_orden import render_nueva_orden
 from vistas.ventas import render_ventas
+from vistas.citas import render_citas
 from vistas.facturacion import render_facturacion
 from vistas.contabilidad import render_contabilidad
 from vistas.dashboard import render_dashboard
@@ -670,6 +671,7 @@ with st.sidebar:
     all_pages = {
         "Inicio":      ("🏠", "Inicio"),
         "Pacientes":   ("👥", "Pacientes"),
+        "Citas":       ("📅", "Citas"),
         "Ventas":      ("🏪", "Registro de Ventas"),
         "Facturación":   ("🧾", "Facturación (SRI)"),
         "Generar Orden": ("📝", "Generar Orden"),
@@ -774,6 +776,8 @@ elif page == "Trabajos":
     render_trabajos()
 elif page == "Generar Orden":
     render_nueva_orden()
+elif page == "Citas":
+    render_citas()
 elif page == "Ventas":
     render_ventas()
 elif page == "Facturación":

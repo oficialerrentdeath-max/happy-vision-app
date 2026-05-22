@@ -542,3 +542,54 @@ def cargar_orden_trabajo_detallada(orden_id: int):
     except Exception as e:
         print(f"Error cargar_orden_trabajo_detallada: {e}")
         return None
+
+# ══════════════════════════════════════════════════════════════
+# CITAS
+# ══════════════════════════════════════════════════════════════
+def cargar_citas_hoy(sucursal: str = None) -> pd.DataFrame:
+    """Carga las citas agendadas para el día actual."""
+    try:
+        if not supabase: return pd.DataFrame()
+        hoy = pd.Timestamp.now().strftime("%Y-%m-%d")
+        query = supabase.table("citas").select("*").eq("fecha", hoy)
+        if sucursal and sucursal != "Todas":
+            query = query.eq("sucursal", sucursal)
+        res = query.order("hora").execute()
+        return pd.DataFrame(res.data) if res.data else pd.DataFrame()
+    except Exception as e:
+        print(f"Error cargar_citas_hoy: {e}")
+        return pd.DataFrame()
+
+def cargar_todas_citas(sucursal: str = None) -> pd.DataFrame:
+    """Carga todas las citas."""
+    try:
+        if not supabase: return pd.DataFrame()
+        query = supabase.table("citas").select("*")
+        if sucursal and sucursal != "Todas":
+            query = query.eq("sucursal", sucursal)
+        res = query.order("fecha").order("hora").execute()
+        return pd.DataFrame(res.data) if res.data else pd.DataFrame()
+    except Exception as e:
+        print(f"Error cargar_todas_citas: {e}")
+        return pd.DataFrame()
+
+def guardar_cita(data: dict):
+    """Guarda o actualiza una cita en la base de datos."""
+    try:
+        if not supabase: return
+        if "id" in data and data["id"]:
+            supabase.table("citas").update(data).eq("id", data["id"]).execute()
+        else:
+            supabase.table("citas").insert(data).execute()
+        registrar_auditoria("Agendar Cita", "Citas", f"Cita {data.get('motivo', '')} para {data.get('paciente_nombre', '')}", st.session_state.user_login, sucursal=data.get("sucursal", ""))
+    except Exception as e:
+        print(f"Error guardar_cita: {e}")
+
+def eliminar_cita(cita_id: int):
+    """Elimina una cita."""
+    try:
+        if not supabase: return
+        supabase.table("citas").delete().eq("id", cita_id).execute()
+        registrar_auditoria("Eliminar Cita", "Citas", f"Cita eliminada ID: {cita_id}", st.session_state.user_login, sucursal=st.session_state.get("sucursal_activa", ""))
+    except Exception as e:
+        print(f"Error eliminar_cita: {e}")

@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from database import cargar_ventas_historial
+from utils.sri import generar_xml_factura, generar_clave_acceso
+from utils.correo import enviar_factura_correo
 
 def render_facturacion():
     st.markdown("""
@@ -104,8 +106,49 @@ def render_facturacion():
 
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("🚀 EMITIR FACTURA ELECTRÓNICA", type="primary", use_container_width=True):
-            st.success("✅ Factura generada y enviada al SRI (Simulación).")
-            st.balloons()
+            if 'v_data' not in locals():
+                st.error("⚠️ Debes seleccionar una venta primero.")
+            else:
+                with st.spinner("Generando XML y enviando..."):
+                    # 1. Preparar datos
+                    datos_factura = {
+                        "cliente": razon_social,
+                        "identificacion": identificacion,
+                        "total": v_data.get('total', 0),
+                        "secuencial": secuencial or "000000001",
+                    }
+                    
+                    # 2. Generar Clave de Acceso
+                    clave = generar_clave_acceso(
+                        datetime.now(), "01", "1724219463001", "1", 
+                        establecimiento.replace("-","") if establecimiento else "001001", 
+                        secuencial or "000000001", 
+                        "12345678", "1"
+                    )
+                    datos_factura["clave_acceso"] = clave
+                    
+                    # 3. Generar XML
+                    xml_str = generar_xml_factura(datos_factura)
+                    
+                    # Guardar temporalmente para adjuntar
+                    ruta_xml = f"factura_{clave}.xml"
+                    with open(ruta_xml, "w", encoding="utf-8") as f:
+                        f.write(xml_str)
+                        
+                    ruta_pdf = f"factura_{clave}.pdf"
+                    with open(ruta_pdf, "w", encoding="utf-8") as f:
+                        f.write(f"RIDE PDF DE LA FACTURA {clave}")
+                        
+                    # 4. Enviar correo
+                    if email:
+                        enviado, msj = enviar_factura_correo(email, razon_social, ruta_xml, ruta_pdf)
+                        if enviado:
+                            st.success(f"📧 Correo preparado/enviado a {email}")
+                        else:
+                            st.warning(f"Aviso de correo: {msj}")
+                            
+                    st.success(f"✅ Factura generada y procesada. Clave de Acceso: {clave}")
+                    st.balloons()
 
     with tab2:
         st.subheader("🔍 Historial de Facturas Emitidas")
