@@ -497,10 +497,27 @@ if not st.session_state.logged_in:
         st.markdown('<div class="login-wrapper">', unsafe_allow_html=True)
         
         # Carga de Logo en Base64 para inyección HTML
-        # Load logo from Supabase storage (private bucket)
-        from supabase_client import public_url
-        logo_url = public_url("logos/logo.png")
-        logo_html = f'<img src="{logo_url}" width="220"/>' if logo_url else ''
+        logo_html = ""
+        # 1. Intentar leer el logo local para máxima confiabilidad
+        logo_path = "logo.png" if os.path.exists("logo.png") else ("logo.jpg" if os.path.exists("logo.jpg") else None)
+        
+        if logo_path:
+            try:
+                import base64
+                with open(logo_path, "rb") as f:
+                    bin_str = base64.b64encode(f.read()).decode()
+                ext = logo_path.split('.')[-1].lower()
+                mime = "jpeg" if ext == "jpg" else ext
+                logo_html = f'<img src="data:image/{mime};base64,{bin_str}" width="220"/>'
+            except Exception:
+                pass
+                
+        # 2. Si no hay logo local, intentar desde Supabase o Caché
+        if not logo_html:
+            from supabase_client import public_url
+            logo_url = st.session_state.get('logo_url') or public_url("logos/logo.png")
+            if logo_url:
+                logo_html = f'<img src="{logo_url}" width="220"/>'
 
         st.markdown(f"""
             <div class="glass-card">
@@ -640,37 +657,58 @@ if st.session_state.get("logged_in") and not st.session_state.get("sucursal_acti
 # SIDEBAR
 # ══════════════════════════════════════════════════════════════
 with st.sidebar:
-    if os.path.exists("logo.png") or os.path.exists("logo.jpg"):
-        logo_path = "logo.png" if os.path.exists("logo.png") else "logo.jpg"
+    if 'show_logo_uploader' not in st.session_state:
+        st.session_state.show_logo_uploader = False
+
+    logo_path_local = "logo.png" if os.path.exists("logo.png") else ("logo.jpg" if os.path.exists("logo.jpg") else None)
+    logo_to_show = st.session_state.get('logo_url') or logo_path_local
+    
+    if not logo_to_show:
+        from supabase_client import public_url
+        logo_to_show = public_url("logos/logo.png")
+        if logo_to_show:
+            st.session_state.logo_url = logo_to_show
+
+    if logo_to_show:
         st.markdown("<style>[data-testid='stSidebar'] img { filter: brightness(0); padding-bottom: 0px !important; margin-top: -55px !important; }</style>", unsafe_allow_html=True)
-        st.image(logo_path, use_container_width=True)
+        st.image(logo_to_show, use_container_width=True)
+        
+        # Botón de edición debajo del logo
+        col1, col2, col3 = st.columns([1, 4, 1])
+        with col2:
+            if st.button("✏️ Editar logo", use_container_width=True, help="Haz clic para cambiar el logo"):
+                st.session_state.show_logo_uploader = not st.session_state.show_logo_uploader
+                st.rerun()
     else:
-        # Upload logo to Supabase if not present locally
-        uploaded_file = st.file_uploader("📤 Subir logo", type=["png", "jpg", "jpeg"])
+        st.session_state.show_logo_uploader = True
+        st.markdown("""
+        <div class="logo-container">
+            <p class="logo-hint">📌 Esperando el logo...</p>
+            <p style='color:#475569; font-size:12px; margin-top:8px;'>Sube un logo para comenzar.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    if st.session_state.show_logo_uploader:
+        uploaded_file = st.file_uploader("📤 Sube tu nuevo logo", type=["png", "jpg", "jpeg"], key="logo_upload_sb")
         if uploaded_file:
-            # Save temporarily
             import tempfile
-            with tempfile.NamedTemporaryFile(delete=False, suffix=uploaded_file.name) as tmp:
+            from supabase_client import upload_image, public_url
+            
+            file_ext = uploaded_file.name.split('.')[-1].lower()
+            local_save_name = f"logo.{file_ext}"
+            with open(local_save_name, "wb") as f:
+                f.write(uploaded_file.getvalue())
+                
+            with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_ext}") as tmp:
                 tmp.write(uploaded_file.getvalue())
                 tmp_path = tmp.name
-            # Upload to Supabase bucket 'logos/'
-            from supabase_client import upload_image, public_url
-            remote_path = f"logos/{uploaded_file.name}"
-            upload_image(tmp_path, remote_path)
-            logo_url = public_url(remote_path)
-            if logo_url:
-                st.image(logo_url, use_column_width=True)
-            else:
-                st.warning("No se pudo cargar el logo.")
-        else:
-            st.markdown("""
-            <div class="logo-container">
-                <p class="logo-hint">📌 Esperando el logo...</p>
-                <p style='color:#475569; font-size:12px; margin-top:8px;'>
-                   Guárdalo como <strong>logo.png</strong> en la carpeta del proyecto.
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
+                
+            remote_path = "logos/logo.png"
+            if upload_image(tmp_path, remote_path):
+                st.session_state.logo_url = public_url(remote_path)
+            
+            st.session_state.show_logo_uploader = False
+            st.rerun()
 
     st.markdown("<div class='fancy-divider'></div>", unsafe_allow_html=True)
 
