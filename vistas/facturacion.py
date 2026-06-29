@@ -2,8 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from database import cargar_ventas_historial
-from utils.sri import generar_xml_factura, generar_clave_acceso
-from utils.correo import enviar_factura_correo
+from utils import sri, correo
 
 def render_facturacion():
     st.markdown("""
@@ -106,51 +105,67 @@ def render_facturacion():
 
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("🚀 EMITIR FACTURA ELECTRÓNICA", type="primary", use_container_width=True):
-            if 'v_data' not in locals():
-                st.error("⚠️ Debes seleccionar una venta primero.")
-            else:
-                with st.spinner("Generando XML y enviando..."):
-                    # 1. Preparar datos
-                    datos_factura = {
-                        "cliente": razon_social,
-                        "identificacion": identificacion,
-                        "total": v_data.get('total', 0),
-                        "secuencial": secuencial or "000000001",
-                    }
-                    
-                    # 2. Generar Clave de Acceso
-                    clave = generar_clave_acceso(
-                        datetime.now(), "01", "1724219463001", "1", 
-                        establecimiento.replace("-","") if establecimiento else "001001", 
-                        secuencial or "000000001", 
-                        "12345678", "1"
+            try:
+                # Preparar datos del comprobante
+                datos = {
+                    "razon_social": razon_social,
+                    "identificacion": identificacion,
+                    "cliente": razon_social,
+                    "ruc_emisor": "1724219463001",
+                    "establecimiento": establecimiento.split('-')[0] if '-' in establecimiento else establecimiento,
+                    "punto_emision": establecimiento.split('-')[1] if '-' in establecimiento else "001",
+                    "secuencial": secuencial.zfill(9),
+                    "direccion_matriz": direccion,
+                    "direccion_establecimiento": direccion,
+                    "subtotal": 0.0,
+                    "iva": 0.0,
+                    "total": 0.0,
+                    "items": [
+                        {
+                            "codigo": "SERV001",
+                            "descripcion": "Servicios Ópticos",
+                            "cantidad": 1,
+                            "precio": 0.0,
+                            "descuento": 0.0,
+                            "precio_total": 0.0,
+                        }
+                    ],
+                }
+                # Generar XML y firmar
+                xml_raw = sri.generar_xml_factura(datos)
+                xml_firmado = sri.firmar_xml_xades(xml_raw, p12_path="firma.p12", password="")
+                # Enviar a SRI (recepción)
+                resp = sri.enviar_sri_recepcion(xml_firmado)
+                if resp.get("estado") == 200:
+                    # Autorizar comprobante
+                    clave = sri.generar_clave_acceso(
+                        fecha_emision=datetime.now().strftime("%d%m%Y"),
+                        tipo_comprobante="01",
+                        ruc=datos["ruc_emisor"],
+                        ambiente="2",
+                        numero_secuencial=datos["secuencial"],
+                        codigo_numerico="12345678",
                     )
-                    datos_factura["clave_acceso"] = clave
-                    
-                    # 3. Generar XML
-                    xml_str = generar_xml_factura(datos_factura)
-                    
-                    # Guardar temporalmente para adjuntar
-                    ruta_xml = f"factura_{clave}.xml"
-                    with open(ruta_xml, "w", encoding="utf-8") as f:
-                        f.write(xml_str)
-                        
-                    ruta_pdf = f"factura_{clave}.pdf"
-                    with open(ruta_pdf, "w", encoding="utf-8") as f:
-                        f.write(f"RIDE PDF DE LA FACTURA {clave}")
-                        
-                    # 4. Enviar correo
-                    if email:
-                        enviado, msj = enviar_factura_correo(email, razon_social, ruta_xml, ruta_pdf)
-                        if enviado:
-                            st.success(f"📧 Correo preparado/enviado a {email}")
-                        else:
-                            st.warning(f"Aviso de correo: {msj}")
-                            
-                    st.success(f"✅ Factura generada y procesada. Clave de Acceso: {clave}")
-                    st.balloons()
+                    auth = sri.autorizar_sri_comprobante(clave)
+                    # Generar PDF RIDE
+                    pdf_bytes = correo.crear_pdf_ride(xml_firmado)
+                    # Enviar email al cliente
+                    enviado = correo.enviar_email(
+                        destino=email,
+                        asunto="Factura Electrónica - Happy Vision",
+                        cuerpo="Adjunto encontrará su factura electrónica y el RIDE.",
+                        adjuntos=[("factura.xml", xml_firmado.encode("utf-8")), ("RIDE.pdf", pdf_bytes)],
+                    )
+                    if enviado:
+                        st.success("✅ Factura emitida, autorizada y enviada por email.")
+                    else:
+                        st.error("⚠️ Factura generada, pero falló el envío de email.")
+                else:
+                    st.error(f"❌ Error al enviar al SRI: {resp.get('texto')}")
+            except Exception as e:
+                st.error(f"❌ Ocurrió un error durante la facturación: {e}")
+            st.balloons()
 
     with tab2:
         st.subheader("🔍 Historial de Facturas Emitidas")
         st.info("Aquí se mostrarán los comprobantes autorizados por el SRI.")
-        # Lógica para cargar facturas reales de la base de datos...

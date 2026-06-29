@@ -1,56 +1,59 @@
 import smtplib
+import os
+from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.mime.application import MIMEApplication
+from email import encoders
 
-def enviar_factura_correo(destinatario, cliente_nombre, ruta_xml, ruta_pdf):
+def enviar_email(destino: str, asunto: str, cuerpo: str, adjuntos: list[tuple[str, bytes]]) -> bool:
+    """Envía un email vía SMTP.
+    Params:
+        destino: dirección de correo del cliente.
+        asunto: asunto del mensaje.
+        cuerpo: texto plano o HTML.
+        adjuntos: lista de (nombre_archivo, contenido_bytes).
+    Returns:
+        True si el envío fue exitoso, False en caso contrario.
     """
-    Envía la factura (XML y RIDE en PDF) por correo electrónico.
-    """
-    remitente = "tu_correo@gmail.com"
-    password = "tu_password_app"
-    
-    msg = MIMEMultipart()
-    msg['From'] = remitente
-    msg['To'] = destinatario
-    msg['Subject'] = "Happy Vision - Factura Electrónica"
-    
-    cuerpo = f"""
-    Estimado(a) {cliente_nombre},
-    
-    Adjunto encontrará su factura electrónica en formato XML y PDF (RIDE).
-    Gracias por preferir Happy Vision.
-    
-    Atentamente,
-    El equipo de Happy Vision
-    """
-    msg.attach(MIMEText(cuerpo, 'plain'))
-    
-    # Adjuntar XML
+    # Configuración del servidor SMTP – usar variables de entorno para credenciales
+    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_pass = os.getenv("SMTP_PASS")
+
+    if not smtp_user or not smtp_pass:
+        raise RuntimeError("Credenciales SMTP no configuradas en variables de entorno.")
+
+    mensaje = MIMEMultipart()
+    mensaje["From"] = smtp_user
+    mensaje["To"] = destino
+    mensaje["Subject"] = asunto
+    mensaje.attach(MIMEText(cuerpo, "plain"))
+
+    for nombre, contenido in adjuntos:
+        parte = MIMEBase("application", "octet-stream")
+        parte.set_payload(contenido)
+        encoders.encode_base64(parte)
+        parte.add_header("Content-Disposition", f"attachment; filename={nombre}")
+        mensaje.attach(parte)
+
     try:
-        with open(ruta_xml, "rb") as f:
-            adjunto_xml = MIMEApplication(f.read(), _subtype="xml")
-            adjunto_xml.add_header('Content-Disposition', 'attachment', filename="factura.xml")
-            msg.attach(adjunto_xml)
+        with smtplib.SMTP(smtp_host, smtp_port) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.send_message(mensaje)
+        return True
     except Exception as e:
-        print(f"Error adjuntando XML: {e}")
-        
-    # Adjuntar PDF
-    try:
-        with open(ruta_pdf, "rb") as f:
-            adjunto_pdf = MIMEApplication(f.read(), _subtype="pdf")
-            adjunto_pdf.add_header('Content-Disposition', 'attachment', filename="factura.pdf")
-            msg.attach(adjunto_pdf)
-    except Exception as e:
-        print(f"Error adjuntando PDF: {e}")
-        
-    # Enviar correo (Se asume servidor Gmail para el ejemplo)
-    try:
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
-        # server.login(remitente, password) # Descomentar y configurar con credenciales reales
-        # server.send_message(msg)
-        server.quit()
-        return True, "Correo enviado simulado (falta configuración de credenciales)."
-    except Exception as e:
-        return False, str(e)
+        print(f"Error enviando email: {e}")
+        return False
+
+# Helper para crear el PDF del RIDE (simplificado, usando fpdf)
+def crear_pdf_ride(xml_str: str, nombre_archivo: str = "RIDE.pdf") -> bytes:
+    from fpdf import FPDF
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Helvetica", size=12)
+    pdf.multi_cell(0, 10, txt=xml_str)
+    return pdf.output(dest="S").encode("latin1")
+
+__all__ = ["enviar_email", "crear_pdf_ride"]

@@ -638,33 +638,42 @@ def cargar_todas_citas(sucursal: str = None) -> pd.DataFrame:
         print(f"Error cargar_todas_citas: {e}")
         return pd.DataFrame()
 
+# Alias para compatibilidad con rama cloud
+cargar_citas = cargar_todas_citas
+
 def guardar_cita(data: dict):
     """Guarda o actualiza una cita en la base de datos."""
     try:
-        if not supabase: return
+        if not supabase: return None
         if "id" in data and data["id"]:
-            supabase.table("citas").update(data).eq("id", data["id"]).execute()
+            res = supabase.table("citas").update(data).eq("id", data["id"]).execute()
         else:
-            supabase.table("citas").insert(data).execute()
+            res = supabase.table("citas").insert(data).execute()
         try:
             cargar_todas_citas.clear()
             cargar_citas_hoy.clear()
         except:
             pass
-        registrar_auditoria("Agendar Cita", "Citas", f"Cita {data.get('motivo', '')} para {data.get('paciente_nombre', '')}", st.session_state.user_login, sucursal=data.get("sucursal", ""))
+        registrar_auditoria("Agendar Cita", "Citas", f"Cita {data.get('motivo', '')} para {data.get('paciente_nombre', '')}", st.session_state.get("user_login", "desconocido"), sucursal=data.get("sucursal", ""))
+        if res.data:
+            return res.data[0].get("id")
+        return True
     except Exception as e:
         print(f"Error guardar_cita: {e}")
+        return None
 
-def eliminar_cita(cita_id: int):
+def eliminar_cita(cita_id: int, sucursal: str = "Matriz"):
     """Elimina una cita."""
     try:
-        if not supabase: return
+        if not supabase: return False
         supabase.table("citas").delete().eq("id", cita_id).execute()
         try:
             cargar_todas_citas.clear()
             cargar_citas_hoy.clear()
         except:
             pass
-        registrar_auditoria("Eliminar Cita", "Citas", f"Cita eliminada ID: {cita_id}", st.session_state.user_login, sucursal=st.session_state.get("sucursal_activa", ""))
+        registrar_auditoria("Eliminar Cita", "Citas", f"Cita eliminada ID: {cita_id}", st.session_state.get("user_login", "desconocido"), sucursal=sucursal)
+        return True
     except Exception as e:
         print(f"Error eliminar_cita: {e}")
+        return False

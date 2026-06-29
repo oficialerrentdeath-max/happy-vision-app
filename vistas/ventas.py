@@ -148,11 +148,20 @@ def render_ventas():
         # PRECIOS Y COSTOS (MODO ADMIN OCULTO PARA TRABAJADORES)
         p1, p2 = st.columns(2)
         precio_lentes = p1.number_input("Precio Venta Lunas ($):", min_value=0.0, value=precio_sugerido)
-        costo_lentes = 0.0
+        
+        # Fallback de costos automáticos para lunas (laboratorio)
+        COSTOS_LUNAS = {
+            "CR39 (Resina)": 5.0,
+            "Policarbonato": 12.0,
+            "Alto Índice": 25.0,
+            "Mineral": 8.0
+        }
+        costo_sugerido_lab = COSTOS_LUNAS.get(material, 0.0) + (len(protecciones) * 2.0)
         
         if es_admin:
-            costo_lentes = p2.number_input("Costo Laboratorio (Lunas) ($):", min_value=0.0, help="Solo visible para Administrador")
+            costo_lentes = p2.number_input("Costo Laboratorio (Lunas) ($):", min_value=0.0, value=costo_sugerido_lab, help="Solo visible para Administrador")
         else:
+            costo_lentes = costo_sugerido_lab
             st.info("💡 Completa la configuración para calcular el total.")
 
         if st.button("➕ REGISTRAR VENTA EN CAJA E HISTORIAL", type="primary", use_container_width=True):
@@ -162,7 +171,7 @@ def render_ventas():
                 if armazon_sel:
                     detalles_txt = f"Armazón {producto['nombre']} + " + detalles_txt
                 
-                # Calcular Costo Total si es admin
+                # Calcular Costo Total
                 costo_total = costo_lentes
                 if armazon_sel:
                     costo_total += float(producto.get("costo_compra", 0))
@@ -213,7 +222,7 @@ def render_ventas():
                         "cliente": razon_social,
                         "identificacion": identificacion,
                         "total": total_v,
-                        "costo_total": sum(i.get("costo", 0) for i in st.session_state.carrito_ventas) if es_admin else 0,
+                        "costo_total": sum(i.get("costo", 0) for i in st.session_state.carrito_ventas),
                         "abono": abono,
                         "saldo": saldo,
                         "metodo_pago": metodo,
@@ -226,7 +235,6 @@ def render_ventas():
                     res = registrar_venta_directa(venta_data)
                     
                     # 2. Crear Órdenes de Trabajo (Si hay lunas)
-                    from database import guardar_orden_trabajo
                     for item in st.session_state.carrito_ventas:
                         if "receta" in item:
                             orden_data = {
@@ -239,7 +247,8 @@ def render_ventas():
                                 "abono": abono,
                                 "total_venta": total_v
                             }
-                            if orden_data: guardar_orden_trabajo(orden_data)
+                            # Guardar en tabla ordenes_trabajo
+                            guardar_orden_trabajo(orden_data)
                     
                     st.success("Venta y Orden generadas correctamente.")
                     st.session_state.carrito_ventas = []
