@@ -80,13 +80,18 @@ def render_dashboard():
     """, unsafe_allow_html=True)
 
     sucursal = st.session_state.get("sucursal_activa", "Matriz")
-    
-    # Habilitamos las pestañas gerenciales para todos los roles (facilita la consulta al propietario/directivos)
-    tabs = st.tabs(["🏠 Panel Operativo Diario", "📊 Inteligencia de Negocios (BI)"])
-    with tabs[0]:
+    es_admin = st.session_state.get("user_role") == "Administrador"
+
+    if es_admin:
+        # Administrador tiene acceso a la analítica de negocios avanzada
+        tabs = st.tabs(["🏠 Panel Operativo Diario", "📊 Inteligencia de Negocios (BI)"])
+        with tabs[0]:
+            render_panel_operativo(sucursal)
+        with tabs[1]:
+            render_bi_dashboard(sucursal)
+    else:
+        # Colaboradores o roles menores solo ven la operativa del día a día
         render_panel_operativo(sucursal)
-    with tabs[1]:
-        render_bi_dashboard(sucursal)
 
 
 def render_panel_operativo(sucursal):
