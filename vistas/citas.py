@@ -2,7 +2,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
-from database import cargar_todas_citas, guardar_cita, eliminar_cita
+from database import cargar_todas_citas, guardar_cita, eliminar_cita, cargar_optometristas
 from utils import wa_link
 
 def render_lista_citas(df_mostrar, key_prefix):
@@ -171,7 +171,19 @@ def render_citas():
         c5, c6 = st.columns(2)
         motivo = c5.text_input("Motivo de la Cita", value="Control de Rutina" if pre_sel_name else "")
         es_admin = st.session_state.get("user_role") == "Administrador"
-        optometrista = c6.text_input("Optometrista Asignado", value=st.session_state.get("user_name", ""), disabled=not es_admin)
+        
+        current_user = st.session_state.get("user_name", "")
+        
+        if es_admin:
+            lista_opt = cargar_optometristas()
+            if current_user and current_user not in lista_opt:
+                lista_opt.append(current_user)
+            lista_opt = sorted(list(set(lista_opt)))
+            
+            default_index = lista_opt.index(current_user) if current_user in lista_opt else 0
+            optometrista = c6.selectbox("Optometrista Asignado", lista_opt, index=default_index if lista_opt else 0)
+        else:
+            optometrista = c6.text_input("Optometrista Asignado", value=current_user, disabled=True)
         
         if st.button("Agendar Cita", type="primary", use_container_width=True):
             if not paciente_nombre:

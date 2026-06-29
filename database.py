@@ -80,6 +80,30 @@ def cargar_auditoria(limit: int = 500) -> pd.DataFrame:
         print(f"Error cargar_auditoria: {e}")
         return pd.DataFrame()
 
+def cargar_sucursales() -> pd.DataFrame:
+    """Carga todas las sucursales disponibles desde Supabase."""
+    try:
+        if not supabase: return pd.DataFrame()
+        res = supabase.table("sucursales").select("*").order("nombre").execute()
+        return pd.DataFrame(res.data) if res.data else pd.DataFrame()
+    except Exception as e:
+        print(f"Error cargar_sucursales: {e}")
+        return pd.DataFrame()
+
+@cache_data(ttl=600, show_spinner=False)
+def cargar_optometristas() -> list:
+    """Carga la lista de nombres de usuarios (optometristas) activos."""
+    try:
+        if not supabase: return []
+        res = supabase.table("usuarios").select("nombre").execute()
+        if res.data:
+            nombres = [u["nombre"] for u in res.data if str(u.get("nombre")).strip()]
+            return sorted(list(set(nombres)))
+        return []
+    except Exception as e:
+        print(f"Error cargar_optometristas: {e}")
+        return []
+
 # ══════════════════════════════════════════════════════════════
 # INVENTARIO (MONTURAS)
 # ══════════════════════════════════════════════════════════════
