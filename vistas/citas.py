@@ -238,20 +238,20 @@ def render_citas():
         
         st.markdown(f"""
         <div class="kpi-grid">
-            <div class="kpi-card">
-                <div class="kpi-icon">🕒</div>
-                <div class="kpi-value">{pendientes_hoy}</div>
-                <div class="kpi-label">Pendientes Hoy</div>
+            <div style="background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); border: 1px solid #fed7aa; border-radius: 16px; padding: 20px; text-align: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03); transition: transform 0.2s;">
+                <div style="font-size: 1.8rem; margin-bottom: 6px;">🕒</div>
+                <div style="font-size: 2.2rem; font-weight: 800; color: #c2410c; line-height: 1;">{pendientes_hoy}</div>
+                <div style="font-size: 0.85rem; font-weight: 700; color: #ea580c; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 8px;">Pendientes Hoy</div>
             </div>
-            <div class="kpi-card">
-                <div class="kpi-icon">✅</div>
-                <div class="kpi-value-green">{atendidas_hoy}</div>
-                <div class="kpi-label">Atendidas Hoy</div>
+            <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1px solid #bbf7d0; border-radius: 16px; padding: 20px; text-align: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03); transition: transform 0.2s;">
+                <div style="font-size: 1.8rem; margin-bottom: 6px;">✅</div>
+                <div style="font-size: 2.2rem; font-weight: 800; color: #15803d; line-height: 1;">{atendidas_hoy}</div>
+                <div style="font-size: 0.85rem; font-weight: 700; color: #16a34a; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 8px;">Atendidas Hoy</div>
             </div>
-            <div class="kpi-card">
-                <div class="kpi-icon">❌</div>
-                <div class="kpi-value-red">{canceladas_hoy}</div>
-                <div class="kpi-label">Canceladas Hoy</div>
+            <div style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); border: 1px solid #fecaca; border-radius: 16px; padding: 20px; text-align: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03); transition: transform 0.2s;">
+                <div style="font-size: 1.8rem; margin-bottom: 6px;">❌</div>
+                <div style="font-size: 2.2rem; font-weight: 800; color: #b91c1c; line-height: 1;">{canceladas_hoy}</div>
+                <div style="font-size: 0.85rem; font-weight: 700; color: #dc2626; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 8px;">Canceladas Hoy</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
