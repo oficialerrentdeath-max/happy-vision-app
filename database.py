@@ -609,6 +609,7 @@ def cargar_orden_trabajo_detallada(orden_id: int):
 # ══════════════════════════════════════════════════════════════
 # CITAS
 # ══════════════════════════════════════════════════════════════
+@cache_data(ttl=300, show_spinner=False)
 def cargar_citas_hoy(sucursal: str = None) -> pd.DataFrame:
     """Carga las citas agendadas para el día actual."""
     try:
@@ -623,6 +624,7 @@ def cargar_citas_hoy(sucursal: str = None) -> pd.DataFrame:
         print(f"Error cargar_citas_hoy: {e}")
         return pd.DataFrame()
 
+@cache_data(ttl=300, show_spinner=False)
 def cargar_todas_citas(sucursal: str = None) -> pd.DataFrame:
     """Carga todas las citas."""
     try:
@@ -644,6 +646,11 @@ def guardar_cita(data: dict):
             supabase.table("citas").update(data).eq("id", data["id"]).execute()
         else:
             supabase.table("citas").insert(data).execute()
+        try:
+            cargar_todas_citas.clear()
+            cargar_citas_hoy.clear()
+        except:
+            pass
         registrar_auditoria("Agendar Cita", "Citas", f"Cita {data.get('motivo', '')} para {data.get('paciente_nombre', '')}", st.session_state.user_login, sucursal=data.get("sucursal", ""))
     except Exception as e:
         print(f"Error guardar_cita: {e}")
@@ -653,6 +660,11 @@ def eliminar_cita(cita_id: int):
     try:
         if not supabase: return
         supabase.table("citas").delete().eq("id", cita_id).execute()
+        try:
+            cargar_todas_citas.clear()
+            cargar_citas_hoy.clear()
+        except:
+            pass
         registrar_auditoria("Eliminar Cita", "Citas", f"Cita eliminada ID: {cita_id}", st.session_state.user_login, sucursal=st.session_state.get("sucursal_activa", ""))
     except Exception as e:
         print(f"Error eliminar_cita: {e}")

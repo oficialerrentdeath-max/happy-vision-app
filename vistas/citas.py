@@ -2,6 +2,95 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from database import cargar_todas_citas, guardar_cita, eliminar_cita
+from utils import wa_link
+
+def render_lista_citas(df_mostrar, key_prefix):
+    """Renderiza una lista de citas formateada como tarjetas de diseño premium."""
+    if df_mostrar.empty:
+        st.info("No hay citas registradas en esta sección.")
+        return
+        
+    filtro_estado = st.selectbox("Filtrar por estado", ["Todas", "Pendiente", "Atendido", "Cancelado"], key=f"filter_{key_prefix}")
+    if filtro_estado != "Todas":
+        df_final = df_mostrar[df_mostrar["estado"] == filtro_estado]
+    else:
+        df_final = df_mostrar
+        
+    if df_final.empty:
+        st.info(f"No hay citas con el estado: {filtro_estado}")
+        return
+        
+    # Renderizar tarjetas
+    for idx, cita in df_final.iterrows():
+        estado = cita["estado"]
+        badge_class = "badge-yellow" if estado == "Pendiente" else "badge-green" if estado == "Atendido" else "badge-red"
+        
+        hora_str = cita['hora']
+        try:
+            # Intentar formatear a formato de 12 horas para mayor claridad visual
+            hora_str = datetime.strptime(cita['hora'], "%H:%M:%S").strftime("%I:%M %p")
+        except:
+            try:
+                hora_str = datetime.strptime(cita['hora'], "%H:%M").strftime("%I:%M %p")
+            except:
+                pass
+                
+        card_html = f"""
+        <div style="background: white; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 1.15rem; font-weight: 700; color: #0f172a;">⏰ {hora_str} &nbsp;&nbsp;|&nbsp;&nbsp; 👤 {cita['paciente_nombre']}</span>
+                <span class="badge {badge_class}">{estado}</span>
+            </div>
+            <div style="font-size: 0.9rem; color: #475569; margin-bottom: 10px;">
+                📅 <b>Fecha:</b> {cita['fecha']} &nbsp;&nbsp;•&nbsp;&nbsp; 👨‍⚕️ <b>Optometrista:</b> {cita.get('optometrista', 'N/A')}
+            </div>
+            <div style="font-size: 0.9rem; color: #64748b;">
+                📝 <b>Motivo:</b> {cita.get('motivo', 'N/A')} &nbsp;&nbsp;•&nbsp;&nbsp; 📞 <b>Teléfono:</b> {cita.get('telefono', 'N/A')}
+            </div>
+        </div>
+        """
+        st.markdown(card_html, unsafe_allow_html=True)
+        
+        # Acciones para cada cita
+        c1, c2, c3, _ = st.columns([1.2, 1.2, 2.2, 3.4])
+        
+        if estado == "Pendiente":
+            if c1.button("✅ Atendido", key=f"atender_{key_prefix}_{cita['id']}", use_container_width=True):
+                cita_update = cita.to_dict()
+                cita_update["estado"] = "Atendido"
+                cita_update.pop("fecha_parsed", None)
+                guardar_cita(cita_update)
+                st.success(f"Cita marcada como Atendida.")
+                st.rerun()
+            if c2.button("❌ Cancelar", key=f"cancelar_{key_prefix}_{cita['id']}", use_container_width=True):
+                cita_update = cita.to_dict()
+                cita_update["estado"] = "Cancelado"
+                cita_update.pop("fecha_parsed", None)
+                guardar_cita(cita_update)
+                st.warning(f"Cita marcada como Cancelada.")
+                st.rerun()
+        else:
+            if c1.button("🗑️ Eliminar", key=f"eliminar_{key_prefix}_{cita['id']}", use_container_width=True):
+                eliminar_cita(cita["id"])
+                st.success("Cita eliminada correctamente.")
+                st.rerun()
+                
+        if cita.get("telefono"):
+            # Generar recordatorio amistoso en español para enviar por WhatsApp
+            msg = (
+                f"Hola, {cita['paciente_nombre']}! 👁️✨\n\n"
+                f"Le recordamos su próxima cita de optometría en *Happy Vision*:\n"
+                f"📅 *Fecha:* {cita['fecha']}\n"
+                f"⏰ *Hora:* {hora_str}\n"
+                f"🏢 *Sucursal:* {cita.get('sucursal', 'Matriz')}\n"
+                f"👨‍⚕️ *Optometrista:* {cita.get('optometrista', '')}\n\n"
+                f"Por favor, confirme su asistencia respondiendo a este mensaje. ¡Le esperamos!"
+            )
+            link = wa_link(cita["telefono"], msg)
+            c3.link_button("💬 Recordatorio WA", link, use_container_width=True)
+            
+        st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
+
 
 def render_citas():
     st.markdown("""
@@ -12,76 +101,136 @@ def render_citas():
     """, unsafe_allow_html=True)
 
     sucursal = st.session_state.get("sucursal_activa", "Matriz")
+    df_pacientes = st.session_state.get("df_pacientes")
     
-    # Formularios para Nueva Cita
+    # ── FORMULARIO PARA NUEVA CITA ────────────────────────────
     with st.expander("➕ Agendar Nueva Cita", expanded=False):
-        with st.form("form_nueva_cita"):
-            c1, c2 = st.columns(2)
-            fecha = c1.date_input("Fecha de la Cita")
-            hora = c2.time_input("Hora de la Cita")
-            
-            c3, c4 = st.columns(2)
-            paciente = c3.text_input("Nombre del Paciente")
-            telefono = c4.text_input("Teléfono (Opcional)")
-            
-            motivo = st.text_input("Motivo de la Cita")
-            optometrista = st.text_input("Optometrista Asignado", value=st.session_state.get("user_name", ""))
-            
-            submit = st.form_submit_button("Agendar Cita", type="primary")
-            
-            if submit:
-                if not paciente:
-                    st.error("El nombre del paciente es obligatorio.")
-                else:
-                    nueva_cita = {
-                        "fecha": fecha.strftime("%Y-%m-%d"),
-                        "hora": hora.strftime("%H:%M:%S"),
-                        "paciente_nombre": paciente,
-                        "telefono": telefono,
-                        "motivo": motivo,
-                        "optometrista": optometrista,
-                        "sucursal": sucursal,
-                        "estado": "Pendiente"
-                    }
-                    guardar_cita(nueva_cita)
-                    st.success("Cita agendada correctamente.")
-                    st.rerun()
+        c1, c2 = st.columns(2)
+        fecha = c1.date_input("Fecha de la Cita")
+        hora = c2.time_input("Hora de la Cita")
+        
+        opcion_paciente = st.radio("Tipo de Registro de Paciente", ["Paciente Registrado", "Nuevo Paciente (Sin registrar)"], horizontal=True)
+        
+        paciente_nombre = ""
+        telefono = ""
+        
+        if opcion_paciente == "Paciente Registrado" and df_pacientes is not None and not df_pacientes.empty:
+            # Filtrar pacientes que tengan un nombre válido
+            df_p_valid = df_pacientes[df_pacientes["nombre"].str.strip() != ""]
+            if not df_p_valid.empty:
+                df_p_sorted = df_p_valid.sort_values(by="nombre")
+                
+                # Crear etiquetas del selector "Nombre (C.I. / Teléfono)"
+                pacientes_list = []
+                paciente_map = {}
+                for _, prow in df_p_sorted.iterrows():
+                    label = f"{prow['nombre']}"
+                    if prow.get('identificacion'):
+                        label += f" - {prow['identificacion']}"
+                    elif prow.get('telefono'):
+                        label += f" - {prow['telefono']}"
+                    pacientes_list.append(label)
+                    paciente_map[label] = prow
                     
-    st.divider()
+                paciente_sel = st.selectbox("Seleccione el Paciente", pacientes_list)
+                if paciente_sel:
+                    selected_p = paciente_map[paciente_sel]
+                    paciente_nombre = selected_p["nombre"]
+                    telefono = selected_p.get("telefono", "")
+            else:
+                st.info("No hay pacientes registrados con nombres válidos.")
+                opcion_paciente = "Nuevo Paciente (Sin registrar)"
+        
+        if opcion_paciente == "Nuevo Paciente (Sin registrar)" or df_pacientes is None or df_pacientes.empty:
+            c3, c4 = st.columns(2)
+            paciente_nombre = c3.text_input("Nombre del Paciente", value=paciente_nombre)
+            telefono = c4.text_input("Teléfono (Opcional)", value=telefono)
+        else:
+            c3, c4 = st.columns(2)
+            st.text_input("Nombre del Paciente", value=paciente_nombre, disabled=True)
+            st.text_input("Teléfono (Opcional)", value=telefono, disabled=True)
+            
+        c5, c6 = st.columns(2)
+        motivo = c5.text_input("Motivo de la Cita")
+        optometrista = c6.text_input("Optometrista Asignado", value=st.session_state.get("user_name", ""))
+        
+        if st.button("Agendar Cita", type="primary", use_container_width=True):
+            if not paciente_nombre:
+                st.error("El nombre del paciente es obligatorio.")
+            else:
+                nueva_cita = {
+                    "fecha": fecha.strftime("%Y-%m-%d"),
+                    "hora": hora.strftime("%H:%M:%S"),
+                    "paciente_nombre": paciente_nombre,
+                    "telefono": telefono,
+                    "motivo": motivo,
+                    "optometrista": optometrista,
+                    "sucursal": sucursal,
+                    "estado": "Pendiente"
+                }
+                guardar_cita(nueva_cita)
+                st.success("Cita agendada correctamente.")
+                st.rerun()
+                
+    st.markdown("<br>", unsafe_allow_html=True)
     
-    # Visualización de Citas
-    st.subheader("📋 Citas Agendadas")
+    # ── CONTROL Y METRICAS DE HOY ─────────────────────────────
     df_citas = cargar_todas_citas(sucursal)
     
     if not df_citas.empty:
-        # Filtrar citas
-        filtro_estado = st.selectbox("Filtrar por estado", ["Todas", "Pendiente", "Atendido", "Cancelado"])
-        if filtro_estado != "Todas":
-            df_mostrar = df_citas[df_citas["estado"] == filtro_estado]
-        else:
-            df_mostrar = df_citas
+        hoy_str = datetime.now().strftime("%Y-%m-%d")
+        citas_hoy = df_citas[df_citas["fecha"] == hoy_str]
+        
+        pendientes_hoy = len(citas_hoy[citas_hoy["estado"] == "Pendiente"])
+        atendidas_hoy = len(citas_hoy[citas_hoy["estado"] == "Atendido"])
+        canceladas_hoy = len(citas_hoy[citas_hoy["estado"] == "Cancelado"])
+        
+        st.markdown(f"""
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-icon">🕒</div>
+                <div class="kpi-value">{pendientes_hoy}</div>
+                <div class="kpi-label">Pendientes Hoy</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon">✅</div>
+                <div class="kpi-value-green">{atendidas_hoy}</div>
+                <div class="kpi-label">Atendidas Hoy</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon">❌</div>
+                <div class="kpi-value-red">{canceladas_hoy}</div>
+                <div class="kpi-label">Canceladas Hoy</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # ── SEPARACIÓN POR PESTAÑAS TEMPORALES ────────────────────
+        # Parsear fechas para organizar por pestañas
+        df_citas["fecha_parsed"] = pd.to_datetime(df_citas["fecha"]).dt.date
+        hoy_date = datetime.now().date()
+        
+        df_hoy = df_citas[df_citas["fecha_parsed"] == hoy_date]
+        df_proximas = df_citas[df_citas["fecha_parsed"] > hoy_date]
+        df_historial = df_citas[df_citas["fecha_parsed"] < hoy_date]
+        
+        tab_hoy, tab_proximas, tab_historial = st.tabs([
+            f"📅 Hoy ({len(df_hoy)})", 
+            f"🚀 Próximas ({len(df_proximas)})", 
+            f"⏳ Historial ({len(df_historial)})"
+        ])
+        
+        with tab_hoy:
+            st.markdown("<h4 style='color:#1e293b; margin-top:10px;'>Citas Programadas para Hoy</h4>", unsafe_allow_html=True)
+            render_lista_citas(df_hoy, "hoy")
             
-        if not df_mostrar.empty:
-            for idx, cita in df_mostrar.iterrows():
-                estado_color = "green" if cita["estado"] == "Atendido" else "red" if cita["estado"] == "Cancelado" else "orange"
-                st.markdown(f"### {cita['hora']} - {cita['paciente_nombre']}")
-                st.markdown(f"**Fecha:** {cita['fecha']} | **Optometrista:** {cita.get('optometrista', '')} | **Estado:** <span style='color:{estado_color}'>{cita['estado']}</span>", unsafe_allow_html=True)
-                st.write(f"**Motivo:** {cita.get('motivo', 'N/A')} | **Teléfono:** {cita.get('telefono', 'N/A')}")
-                
-                c1, c2, c3 = st.columns([1, 1, 4])
-                if cita["estado"] == "Pendiente":
-                    if c1.button("✅ Atendido", key=f"atender_{cita['id']}"):
-                        cita_update = cita.to_dict()
-                        cita_update["estado"] = "Atendido"
-                        guardar_cita(cita_update)
-                        st.rerun()
-                    if c2.button("❌ Cancelar", key=f"cancelar_{cita['id']}"):
-                        cita_update = cita.to_dict()
-                        cita_update["estado"] = "Cancelado"
-                        guardar_cita(cita_update)
-                        st.rerun()
-                st.divider()
-        else:
-            st.info(f"No hay citas con el estado: {filtro_estado}")
+        with tab_proximas:
+            st.markdown("<h4 style='color:#1e293b; margin-top:10px;'>Citas Planificadas (Futuras)</h4>", unsafe_allow_html=True)
+            render_lista_citas(df_proximas, "proximas")
+            
+        with tab_historial:
+            st.markdown("<h4 style='color:#1e293b; margin-top:10px;'>Registro Histórico de Citas</h4>", unsafe_allow_html=True)
+            render_lista_citas(df_historial, "historial")
+            
     else:
         st.info("No hay citas registradas en esta sucursal.")
