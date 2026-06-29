@@ -650,8 +650,8 @@ def guardar_cita(data: dict):
         else:
             res = supabase.table("citas").insert(data).execute()
         try:
-            cargar_todas_citas.clear()
-            cargar_citas_hoy.clear()
+            import streamlit as st
+            st.cache_data.clear()
         except:
             pass
         registrar_auditoria("Agendar Cita", "Citas", f"Cita {data.get('motivo', '')} para {data.get('paciente_nombre', '')}", st.session_state.get("user_login", "desconocido"), sucursal=data.get("sucursal", ""))
@@ -668,11 +668,11 @@ def eliminar_cita(cita_id: int, sucursal: str = "Matriz"):
         if not supabase: return False
         supabase.table("citas").delete().eq("id", cita_id).execute()
         try:
-            cargar_todas_citas.clear()
-            cargar_citas_hoy.clear()
+            import streamlit as st
+            st.cache_data.clear()
         except:
             pass
-        registrar_auditoria("Eliminar Cita", "Citas", f"Cita eliminada ID: {cita_id}", st.session_state.get("user_login", "desconocido"), sucursal=sucursal)
+        registrar_auditoria("Eliminar Cita", "Citas", f"Cita eliminada", st.session_state.get("user_login", "desconocido"), sucursal=sucursal)
         return True
     except Exception as e:
         print(f"Error eliminar_cita: {e}")

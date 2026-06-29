@@ -170,7 +170,8 @@ def render_citas():
             
         c5, c6 = st.columns(2)
         motivo = c5.text_input("Motivo de la Cita", value="Control de Rutina" if pre_sel_name else "")
-        optometrista = c6.text_input("Optometrista Asignado", value=st.session_state.get("user_name", ""))
+        es_admin = st.session_state.get("user_role") == "Administrador"
+        optometrista = c6.text_input("Optometrista Asignado", value=st.session_state.get("user_name", ""), disabled=not es_admin)
         
         if st.button("Agendar Cita", type="primary", use_container_width=True):
             if not paciente_nombre:
