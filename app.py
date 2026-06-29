@@ -696,14 +696,16 @@ with st.sidebar:
         st.markdown("<style>[data-testid='stSidebar'] img { filter: brightness(0); padding-bottom: 0px !important; margin-top: -55px !important; }</style>", unsafe_allow_html=True)
         st.image(logo_to_show, use_container_width=True)
         
-        # Botón de edición debajo del logo
-        col1, col2, col3 = st.columns([1, 4, 1])
-        with col2:
-            if st.button("✏️ Editar logo", use_container_width=True, help="Haz clic para cambiar el logo"):
-                st.session_state.show_logo_uploader = not st.session_state.show_logo_uploader
-                st.rerun()
+        # Botón de edición debajo del logo (Solo Administrador)
+        if st.session_state.get("user_role") == "Administrador":
+            col1, col2, col3 = st.columns([1, 4, 1])
+            with col2:
+                if st.button("✏️ Editar logo", use_container_width=True, help="Haz clic para cambiar el logo"):
+                    st.session_state.show_logo_uploader = not st.session_state.show_logo_uploader
+                    st.rerun()
     else:
-        st.session_state.show_logo_uploader = True
+        if st.session_state.get("user_role") == "Administrador":
+            st.session_state.show_logo_uploader = True
         st.markdown("""
         <div class="logo-container">
             <p class="logo-hint">📌 Esperando el logo...</p>
@@ -711,7 +713,7 @@ with st.sidebar:
         </div>
         """, unsafe_allow_html=True)
 
-    if st.session_state.show_logo_uploader:
+    if st.session_state.show_logo_uploader and st.session_state.get("user_role") == "Administrador":
         uploaded_file = st.file_uploader("📤 Sube tu nuevo logo", type=["png", "jpg", "jpeg"], key="logo_upload_sb")
         if uploaded_file:
             import tempfile
