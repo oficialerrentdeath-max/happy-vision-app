@@ -204,8 +204,20 @@ def render_citas():
     if df_h is not None and not df_h.empty and df_p is not None and not df_p.empty:
         def proximo_control(row):
             try:
-                fecha_consulta = datetime.strptime(str(row["fecha"]), "%Y-%m-%d").date()
-                meses = int(float(row.get("meses_proximo_control", 12) or 12))
+                fecha_consulta = pd.to_datetime(row["fecha"]).date()
+                val = str(row.get("meses_proximo_control", "")).strip()
+                if not val:
+                    return fecha_consulta + timedelta(days=12 * 30)
+                if "-" in val:
+                    try:
+                        return pd.to_datetime(val[:10]).date()
+                    except:
+                        pass
+                val_clean = "".join(c for c in val if c.isdigit() or c == ".")
+                if val_clean:
+                    meses = int(float(val_clean))
+                else:
+                    meses = 12
                 return fecha_consulta + timedelta(days=meses * 30)
             except Exception:
                 return None
@@ -222,9 +234,9 @@ def render_citas():
             lambda d: (d - hoy_date).days if d is not None else None
         )
         
-        # Vencidos o próximos a vencer en los siguientes 30 días
+        # Vencidos o próximos a vencer en los siguientes 365 días (1 año)
         mask_alerta = df_ultima["dias_para_control"].apply(
-            lambda d: d is not None and d <= 30
+            lambda d: d is not None and d <= 365
         )
         df_alerta = df_ultima[mask_alerta].sort_values("dias_para_control")
     
@@ -290,12 +302,24 @@ def render_citas():
             
         with tab_crm:
             st.markdown("<h4 style='color:#1e293b; margin-top:10px;'>Alertas de Próximos Controles y Pacientes Vencidos</h4>", unsafe_allow_html=True)
-            st.caption("Pacientes que se atendieron hace un año (o el intervalo programado) y requieren control visual de rutina.")
+            st.caption("Filtra los pacientes que se atendieron y requieren un nuevo control visual según la fecha programada.")
             
-            if df_alerta.empty:
-                st.success("✅ Todos los pacientes están al día en sus controles.")
+            # Selector de rango
+            opciones_rango = {
+                "Vencidos o que vencen en los siguientes 30 días": 30,
+                "Vencidos o que vencen en los siguientes 90 días": 90,
+                "Vencidos o que vencen en los siguientes 12 meses": 365,
+                "Mostrar todos los controles programados": 99999
+            }
+            rango_sel = st.selectbox("Rango de visualización de controles:", list(opciones_rango.keys()), index=2) # Default a 12 meses
+            max_dias = opciones_rango[rango_sel]
+            
+            df_filtrada = df_alerta[df_alerta["dias_para_control"] <= max_dias] if not df_alerta.empty else pd.DataFrame()
+            
+            if df_filtrada.empty:
+                st.success("✅ Ningún paciente coincide con el filtro de tiempo seleccionado.")
             else:
-                for _, row in df_alerta.iterrows():
+                for _, row in df_filtrada.iterrows():
                     dias = row.get("dias_para_control")
                     nombre = row.get("nombre", row.get("paciente_nombre", ""))
                     tel = str(row.get("telefono", "")).strip()
