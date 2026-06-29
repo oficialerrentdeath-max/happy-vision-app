@@ -655,32 +655,28 @@ def render_clinica():
                                 from database import guardar_orden_trabajo, cargar_inventario
                                 bacc1, bacc2, bacc3 = st.columns(3)
 
-                                with bacc1:
-                                    # ... (lógica de opto_info omitida por brevedad en este chunk pero se mantiene) ...
-                                    # [Nota: El código de opto_info está antes en el archivo, aquí solo pongo el final de la columna]
-                                    pass
-
-                                # Generar PDF para botones
+                                # Generar PDF para botones — usar el optometrista que atendió originalmente
                                 try:
                                     import base64 as _b64
-                                    _ulogin = st.session_state.get("user_login", "")
                                     
-                                    # Cargar datos frescos del usuario desde Supabase
+                                    _opto_login_hist = hrow.get("optometrista_login", "") or st.session_state.get("user_login", "")
+                                    
                                     _ud_supabase = {}
                                     try:
                                         from database import supabase as _supa
-                                        if _supa:
-                                            _res = _supa.table("usuarios").select("*").eq("username", _ulogin).execute()
+                                        if _supa and _opto_login_hist:
+                                            _res = _supa.table("usuarios").select("*").eq("username", _opto_login_hist).execute()
                                             if _res.data:
                                                 _ud_supabase = _res.data[0]
-                                                # Actualizar session_state con la firma mas reciente
-                                                if _ud_supabase.get("firma_base64"):
+                                                if _opto_login_hist == st.session_state.get("user_login", "") and _ud_supabase.get("firma_base64"):
                                                     st.session_state["user_firma"] = _ud_supabase["firma_base64"]
                                     except Exception: pass
 
+                                    _opto_nombre_hist = hrow.get("optometrista", "") or st.session_state.get("user_name", "")
+
                                     opto_info = {
-                                        "username":     _ulogin,
-                                        "nombre":       _ud_supabase.get("nombre")   or st.session_state.get("user_name", ""),
+                                        "username":     _opto_login_hist,
+                                        "nombre":       _ud_supabase.get("nombre")   or _opto_nombre_hist,
                                         "cargo":        _ud_supabase.get("cargo")    or st.session_state.get("user_cargo", "Optometrista"),
                                         "registro":     _ud_supabase.get("registro") or st.session_state.get("user_registro", ""),
                                         "telefono":     _ud_supabase.get("telefono") or st.session_state.get("user_telefono", ""),
@@ -1066,7 +1062,9 @@ def render_clinica():
                         "necesita_lentes": c_necesita_lentes,
                         "test_color": c_test_color,
                         "meses_proximo_control": c_proximo_control.strftime("%Y-%m-%d"),
-                        "sucursal": sucursal_actual
+                        "sucursal": sucursal_actual,
+                        "optometrista": st.session_state.get("user_name", ""),
+                        "optometrista_login": st.session_state.get("user_login", ""),
                     }
                     st.session_state.df_historias = pd.concat(
                         [st.session_state.df_historias, pd.DataFrame([nueva_h])], ignore_index=True
