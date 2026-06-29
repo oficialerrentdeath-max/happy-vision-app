@@ -1,9 +1,7 @@
-"""
-╔══════════════════════════════════════════════════════════════╗
-║         HAPPY VISION · SISTEMA DE GESTIÓN INTEGRAL          ║
-║         Contabilidad · Facturación · Inventario             ║
-╚══════════════════════════════════════════════════════════════╝
-"""
+# ╔══════════════════════════════════════════════════════════════╗
+# ║         HAPPY VISION · SISTEMA DE GESTIÓN INTEGRAL          ║
+# ║         Contabilidad · Facturación · Inventario             ║
+# ╚══════════════════════════════════════════════════════════════╝
 
 import streamlit as st
 import pandas as pd
@@ -11,6 +9,31 @@ import json
 import os
 from datetime import datetime
 import base64
+
+# ══════════════════════════════════════════════════════════════
+# CACHED FUNCTIONS FOR PERFORMANCE
+# ══════════════════════════════════════════════════════════════
+@st.cache_data(show_spinner=False)
+def get_base64_encoded_image(image_path: str) -> str:
+    """Reads a local image and returns it as a base64 encoded string, cached for speed."""
+    if not os.path.exists(image_path):
+        return ""
+    try:
+        with open(image_path, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    except Exception as e:
+        print(f"Error encoding image {image_path}: {e}")
+        return ""
+
+@st.cache_data(show_spinner=False)
+def get_logo_html(logo_path: str) -> str:
+    """Reads and creates HTML for logo using cached base64 representation."""
+    encoded = get_base64_encoded_image(logo_path)
+    if not encoded:
+        return ""
+    ext = logo_path.split('.')[-1].lower()
+    mime = "jpeg" if ext == "jpg" else ext
+    return f'<img src="data:image/{mime};base64,{encoded}" width="220"/>'
 
 # ── Utilidades y vistas ────────────────────────────────────────
 from utils import wa_link
@@ -26,6 +49,7 @@ from vistas.citas import render_citas
 from vistas.facturacion import render_facturacion
 from vistas.contabilidad import render_contabilidad
 from vistas.dashboard import render_dashboard
+from vistas.ai_assistant import render_ai_assistant
 from database import cargar_sucursales
 
 
@@ -281,18 +305,13 @@ if not os.path.exists(_firma_dst) and os.path.exists(_firma_src):
 
 
 # ══════════════════════════════════════════════════════════════
-# SESSION STATE INIT
+# SESSION STATE INIT (LOCAL ONLY)
 # ══════════════════════════════════════════════════════════════
-if "initialized_v5" not in st.session_state:
-    from database import cargar_pacientes, cargar_historias, migrar_estructuras
-    st.session_state.df_pacientes = cargar_pacientes()
-    st.session_state.df_historias = cargar_historias()
-    migrar_estructuras()
+if "initialized_local" not in st.session_state:
+    st.session_state.df_pacientes = None
+    st.session_state.df_historias = None
+    st.session_state.initialized_db = False
     st.session_state.page = "Inicio"
-    st.session_state.initialized_v5 = True
-
-    pass
-
 
     # Perfil del optometrista
     if os.path.exists("optometrista.json"):
@@ -313,14 +332,12 @@ if "initialized_v5" not in st.session_state:
         st.session_state.opto_direccion = "Happy Vision"
         st.session_state.opto_telefono  = "+593 96 324 1158"
 
-    st.session_state.initialized_v4 = True
+    st.session_state.initialized_local = True
 
 
 # ══════════════════════════════════════════════════════════════
 # SISTEMA DE LOGIN Y ROLES
 # ══════════════════════════════════════════════════════════════
-USUARIOS = _cargar_usuarios()
-
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.user_role = ""
@@ -331,11 +348,10 @@ if not st.session_state.logged_in:
     bg_img_path = "login_bg.png"
     bg_style = ""
     if os.path.exists(bg_img_path):
-        try:
-            with open(bg_img_path, "rb") as f:
-                bin_str = base64.b64encode(f.read()).decode()
+        bin_str = get_base64_encoded_image(bg_img_path)
+        if bin_str:
             bg_style = f"background-image: url('data:image/png;base64,{bin_str}');"
-        except Exception:
+        else:
             bg_style = "background: linear-gradient(135deg, #ff0000 0%, #770000 100%);" # TEST ROJO
     else:
         bg_style = "background: linear-gradient(135deg, #ff0000 0%, #770000 100%);" # TEST ROJO
@@ -503,12 +519,7 @@ if not st.session_state.logged_in:
         
         if logo_path:
             try:
-                import base64
-                with open(logo_path, "rb") as f:
-                    bin_str = base64.b64encode(f.read()).decode()
-                ext = logo_path.split('.')[-1].lower()
-                mime = "jpeg" if ext == "jpg" else ext
-                logo_html = f'<img src="data:image/{mime};base64,{bin_str}" width="220"/>'
+                logo_html = get_logo_html(logo_path)
             except Exception:
                 pass
                 
@@ -651,6 +662,18 @@ if st.session_state.get("logged_in") and not st.session_state.get("sucursal_acti
                 st.rerun()
                 
     st.stop()
+
+
+# ══════════════════════════════════════════════════════════════
+# CARGA DE BASE DE DATOS DIFERIDA
+# ══════════════════════════════════════════════════════════════
+if not st.session_state.get("initialized_db"):
+    with st.spinner("Cargando base de datos de pacientes e historias..."):
+        from database import cargar_pacientes, cargar_historias, migrar_estructuras
+        st.session_state.df_pacientes = cargar_pacientes()
+        st.session_state.df_historias = cargar_historias()
+        migrar_estructuras()
+        st.session_state.initialized_db = True
 
 
 # ══════════════════════════════════════════════════════════════
@@ -812,6 +835,9 @@ with st.sidebar:
         for key in ["logged_in","user_role","user_name","user_login","user_cargo","user_registro","user_telefono"]:
             st.session_state.pop(key, None)
         st.rerun()
+        
+    # ── Renderizar Botón Flotante de Inteligencia Artificial ──
+    # render_ai_assistant() moved to main body
 
 
 # ══════════════════════════════════════════════════════════════
@@ -843,3 +869,6 @@ elif page == "Configuracion":
     render_configuracion()
 else:
     render_clinica()
+
+# ── Renderizar Botón Flotante de Inteligencia Artificial ──
+render_ai_assistant()

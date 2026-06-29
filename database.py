@@ -30,6 +30,16 @@ supabase: Client = None
 if SUPABASE_URL and SUPABASE_KEY:
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# Decorador de caché compatible (Streamlit fallback para CLI/scripts)
+try:
+    import streamlit as st
+    cache_data = st.cache_data
+except ImportError:
+    def cache_data(*args, **kwargs):
+        def decorator(func):
+            return func
+        return decorator
+
 # ══════════════════════════════════════════════════════════════
 # AUDITORÍA — Registro inmutable de cambios críticos
 # ══════════════════════════════════════════════════════════════
@@ -73,6 +83,7 @@ def cargar_auditoria(limit: int = 500) -> pd.DataFrame:
 # ══════════════════════════════════════════════════════════════
 # INVENTARIO (MONTURAS)
 # ══════════════════════════════════════════════════════════════
+@cache_data(ttl=300, show_spinner=False)
 def cargar_inventario(sucursal: str = None) -> pd.DataFrame:
     """Carga el inventario de monturas."""
     try:
@@ -94,6 +105,10 @@ def guardar_producto(data: dict):
             supabase.table("inventario").update(data).eq("id", data["id"]).execute()
         else:
             supabase.table("inventario").insert(data).execute()
+        try:
+            cargar_inventario.clear()
+        except:
+            pass
     except Exception as e:
         print(f"Error guardar_producto: {e}")
 
@@ -102,6 +117,10 @@ def eliminar_producto(id_producto: int):
     try:
         if not supabase: return
         supabase.table("inventario").delete().eq("id", id_producto).execute()
+        try:
+            cargar_inventario.clear()
+        except:
+            pass
     except Exception as e:
         print(f"Error eliminar_producto: {e}")
 
@@ -226,6 +245,10 @@ def actualizar_historia(historia_id: int, data: dict):
     try:
         if not supabase: return
         supabase.table("historias").update(data).eq("id", historia_id).execute()
+        try:
+            cargar_historias.clear()
+        except:
+            pass
         registrar_auditoria("Actualizar Historia", "Clínica", f"ID Historia: {historia_id}", st.session_state.user_login, sucursal=st.session_state.get("sucursal_activa", ""))
     except Exception as e: print(f"Error actualizar_historia: {e}")
 
@@ -246,6 +269,11 @@ def registrar_venta_directa(data: dict):
                     nuevo_stock = max(0, stock_actual - 1)
                     supabase.table("inventario").update({"cantidad_disponible": nuevo_stock}).eq("id", p_id).execute()
         
+        try:
+            cargar_inventario.clear()
+        except:
+            pass
+
         # 3. Auditoría detallada
         costo = data.get('costo_total', 0)
         ganancia = float(data['total']) - float(costo)
@@ -295,6 +323,7 @@ def registrar_pago_saldo(orden_id: int, monto: float, metodo: str, usuario: str,
 # ══════════════════════════════════════════════════════════════
 # PACIENTES
 # ══════════════════════════════════════════════════════════════
+@cache_data(ttl=300, show_spinner=False)
 def cargar_pacientes() -> pd.DataFrame:
     """Carga todos los pacientes desde Supabase."""
     try:
@@ -324,6 +353,10 @@ def guardar_paciente(row: dict):
         # Asegurar que todos los valores sean string
         row_str = {k: str(v) if v is not None else "" for k, v in row.items()}
         supabase.table("pacientes").upsert(row_str).execute()
+        try:
+            cargar_pacientes.clear()
+        except:
+            pass
     except Exception as e:
         print(f"Error guardar_paciente: {e}")
 
@@ -338,6 +371,10 @@ def guardar_todos_pacientes(df: pd.DataFrame):
         records = df_str.to_dict(orient="records")
         if records:
             supabase.table("pacientes").upsert(records).execute()
+        try:
+            cargar_pacientes.clear()
+        except:
+            pass
     except Exception as e:
         print(f"Error guardar_todos_pacientes: {e}")
         try:
@@ -350,6 +387,10 @@ def eliminar_paciente(p_id):
     try:
         if not supabase: return
         supabase.table("pacientes").delete().eq("id", str(p_id)).execute()
+        try:
+            cargar_pacientes.clear()
+        except:
+            pass
     except Exception as e:
         print(f"Error eliminar_paciente: {e}")
 
@@ -422,6 +463,7 @@ def migrar_estructuras():
 # HISTORIAS CLÍNICAS
 # ══════════════════════════════════════════════════════════════
 
+@cache_data(ttl=300, show_spinner=False)
 def cargar_historias() -> pd.DataFrame:
     """Carga todas las historias clínicas desde Supabase."""
     try:
@@ -447,6 +489,10 @@ def guardar_historia(row: dict):
         # Asegurar string y limpiar nulos
         row_str = {k: str(v) if v is not None else "" for k, v in row.items()}
         supabase.table("historias_clinicas").upsert(row_str).execute()
+        try:
+            cargar_historias.clear()
+        except:
+            pass
     except Exception as e:
         print(f"Error guardar_historia: {e}")
 
@@ -463,6 +509,10 @@ def guardar_todas_historias(df: pd.DataFrame):
             
         if records:
             supabase.table("historias_clinicas").upsert(records).execute()
+        try:
+            cargar_historias.clear()
+        except:
+            pass
     except Exception as e:
         import traceback
         err_detail = traceback.format_exc()
@@ -476,6 +526,10 @@ def eliminar_historia(h_id):
     try:
         if not supabase: return
         supabase.table("historias_clinicas").delete().eq("id", str(h_id)).execute()
+        try:
+            cargar_historias.clear()
+        except:
+            pass
     except Exception as e:
         print(f"Error eliminar_historia: {e}")
 
@@ -483,6 +537,7 @@ def eliminar_historia(h_id):
 # SUCURSALES
 # ══════════════════════════════════════════════════════════════
 
+@cache_data(ttl=600, show_spinner=False)
 def cargar_sucursales() -> pd.DataFrame:
     """Carga todas las sucursales desde Supabase."""
     try:
@@ -498,6 +553,10 @@ def guardar_sucursal(row: dict):
     try:
         if not supabase: return False, "Sin conexión a Supabase"
         supabase.table("sucursales").upsert(row).execute()
+        try:
+            cargar_sucursales.clear()
+        except:
+            pass
         return True, "Guardado exitosamente"
     except Exception as e:
         print(f"Error guardar_sucursal: {e}")
@@ -508,6 +567,10 @@ def eliminar_sucursal(s_id):
     try:
         if not supabase: return
         supabase.table("sucursales").delete().eq("id", s_id).execute()
+        try:
+            cargar_sucursales.clear()
+        except:
+            pass
     except Exception as e:
         print(f"Error eliminar_sucursal: {e}")
 
