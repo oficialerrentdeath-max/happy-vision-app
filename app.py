@@ -49,7 +49,7 @@ from vistas.citas import render_citas
 from vistas.facturacion import render_facturacion
 from vistas.contabilidad import render_contabilidad
 from vistas.dashboard import render_dashboard
-from vistas.ai_assistant import render_ai_assistant
+# from vistas.ai_assistant import render_ai_assistant
 from database import cargar_sucursales
 
 
