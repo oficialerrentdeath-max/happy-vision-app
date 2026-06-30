@@ -2,7 +2,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
-from database import cargar_todas_citas, guardar_cita, eliminar_cita, cargar_optometristas
+from database import cargar_todas_citas, guardar_cita, eliminar_cita, cargar_optometristas, cargar_sucursales
 from utils import wa_link
 
 def render_lista_citas(df_mostrar, key_prefix):
@@ -77,12 +77,22 @@ def render_lista_citas(df_mostrar, key_prefix):
                 st.rerun()
                 
         if cita.get("telefono"):
+            suc_name = cita.get('sucursal', 'Matriz')
+            df_suc = cargar_sucursales()
+            direccion = ""
+            if not df_suc.empty:
+                filtro = df_suc[df_suc['nombre'] == suc_name]
+                if not filtro.empty:
+                    direccion = filtro.iloc[0].get('direccion', '')
+            
+            lugar_texto = f"{suc_name} - {direccion}" if direccion else suc_name
+
             msg = (
                 f"¡Todo listo para tu consulta, {cita['paciente_nombre']}! 🎉\n\n"
                 f"Te dejamos los detalles de tu cita de optometría para que los tengas a la mano:\n\n"
                 f"📅 Día: {cita['fecha']}\n\n"
                 f"⏰ Hora: {hora_str}\n\n"
-                f"📍 Lugar: {cita.get('sucursal', 'Matriz')}\n\n"
+                f"📍 Lugar: {lugar_texto}\n\n"
                 f"👨‍⚕️ Te atenderá: {cita.get('optometrista', '')}\n\n"
                 f"Con el fin de asegurar tu espacio y brindarte la mejor atención, ayúdanos respondiendo a este mensaje con la palabra \"CONFIRMO\" o indícanos si prefieres cambiar el horario. ¡Que tengas un gran día!"
             )
