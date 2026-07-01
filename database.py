@@ -471,17 +471,20 @@ def migrar_estructuras():
             cols_presentes = [c for c in HISTORIAS_COLS if c in df_h.columns]
             st.session_state.df_historias = df_h[cols_presentes]
             
-        # 3. Migrar Usuarios (Nuevos Permisos)
+        # 3. Migrar Usuarios (Nuevos Permisos) — solo la primera vez por sesión
         try:
-            res_u = supabase.table("usuarios").select("*").execute()
-            if res_u.data:
-                for usr in res_u.data:
-                    if not usr.get("accesos") or "Generar Orden" not in usr.get("accesos", []):
-                        # Asignar accesos base a usuarios antiguos incluyendo la nueva pestaña
-                        default_acc = ["Pacientes", "Generar Orden", "Trabajos", "Ventas", "Inicio"]
-                        if "Administrador" in str(usr.get("role", "")):
-                            default_acc = ["Pacientes", "Generar Orden", "Trabajos", "Ventas", "Inventario", "Contabilidad", "Usuarios", "Configuracion", "Inicio"]
-                        supabase.table("usuarios").update({"accesos": default_acc}).eq("username", usr["username"]).execute()
+            import streamlit as _st_mig
+            if not _st_mig.session_state.get("_usuarios_migrados"):
+                res_u = supabase.table("usuarios").select("*").execute()
+                if res_u.data:
+                    for usr in res_u.data:
+                        if not usr.get("accesos") or "Generar Orden" not in usr.get("accesos", []):
+                            # Asignar accesos base a usuarios antiguos incluyendo la nueva pestaña
+                            default_acc = ["Pacientes", "Generar Orden", "Trabajos", "Ventas", "Inicio"]
+                            if "Administrador" in str(usr.get("role", "")):
+                                default_acc = ["Pacientes", "Generar Orden", "Trabajos", "Ventas", "Inventario", "Contabilidad", "Usuarios", "Configuracion", "Inicio"]
+                            supabase.table("usuarios").update({"accesos": default_acc}).eq("username", usr["username"]).execute()
+                _st_mig.session_state["_usuarios_migrados"] = True
         except Exception as ue:
             print(f"Error migrando permisos de usuarios: {ue}")
 
