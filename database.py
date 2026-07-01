@@ -579,9 +579,33 @@ def cargar_sucursales() -> pd.DataFrame:
         return pd.DataFrame(columns=["nombre", "direccion", "telefono", "ciudad"])
 
 def guardar_sucursal(row: dict):
-    """Guarda o actualiza una sucursal."""
+    """Guarda o actualiza una sucursal. Si cambia el nombre, hace cascade UPDATE en todas las tablas."""
     try:
         if not supabase: return False, "Sin conexión a Supabase"
+
+        # Detectar si el nombre cambió (solo aplica en edición, no creación)
+        s_id = row.get("id")
+        nombre_nuevo = row.get("nombre", "")
+        if s_id and nombre_nuevo:
+            try:
+                res_prev = supabase.table("sucursales").select("nombre").eq("id", s_id).execute()
+                nombre_anterior = res_prev.data[0]["nombre"] if res_prev.data else None
+            except:
+                nombre_anterior = None
+
+            if nombre_anterior and nombre_anterior != nombre_nuevo:
+                # Cascade UPDATE: actualizar nombre en todas las tablas relacionadas
+                tablas_cascade = [
+                    "pacientes", "historias_clinicas", "historias_lc",
+                    "inventario", "citas", "ordenes_trabajo",
+                    "ventas_directas", "caja_registros", "caja_estados"
+                ]
+                for tabla in tablas_cascade:
+                    try:
+                        supabase.table(tabla).update({"sucursal": nombre_nuevo}).eq("sucursal", nombre_anterior).execute()
+                    except Exception as ce:
+                        print(f"Cascade ignorado para '{tabla}': {ce}")
+
         supabase.table("sucursales").upsert(row).execute()
         try:
             cargar_sucursales.clear()
@@ -706,4 +730,101 @@ def eliminar_cita(cita_id: int, sucursal: str = "Matriz"):
         return True
     except Exception as e:
         print(f"Error eliminar_cita: {e}")
+        return False
+
+
+# ══════════════════════════════════════════════════════════════
+# HISTORIAS CLÍNICAS — LENTES DE CONTACTO
+# ══════════════════════════════════════════════════════════════
+
+HISTORIAS_LC_COLS = [
+    "id", "paciente_id", "paciente_nombre", "fecha", "sucursal",
+    "optometrista", "optometrista_login",
+    # Bloque 1 — Anamnesis
+    "lc_usuario_previo", "lc_tipo_lente_ant", "lc_marca_ant",
+    "lc_horas_uso", "lc_solucion_habitual", "lc_motivo_consulta",
+    # Bloque 2 — Examen preliminar
+    "lc_avsc_od", "lc_avsc_oi",
+    "lc_rx_od", "lc_rx_oi",
+    "lc_distancia_vertice",
+    "lc_kera_od", "lc_kera_oi",
+    "lc_astig_corneal_od", "lc_astig_corneal_oi",
+    # Bloque 3 — Biomicroscopía
+    "lc_parpados", "lc_conjuntiva", "lc_eversion", "lc_cornea",
+    "lc_but_od", "lc_but_oi", "lc_menisco",
+    # Bloque 4 — Lente de prueba
+    "lc_prueba_tipo", "lc_prueba_od", "lc_prueba_oi",
+    "lc_centrado", "lc_movimiento", "lc_pushup", "lc_rotacion",
+    "lc_sobre_od", "lc_sobre_oi",
+    # Bloque 5 — Lente definitivo
+    "lc_final_od", "lc_final_oi",
+    "lc_marca_final", "lc_modalidad", "lc_regimen", "lc_solucion_final",
+    # Bloque 6 — Entrega y educación
+    "lc_insercion", "lc_fecha_entrega", "lc_proximo_control", "lc_observaciones",
+]
+
+
+@cache_data(ttl=300, show_spinner=False)
+def cargar_historias_lc() -> pd.DataFrame:
+    """Carga todas las historias de Lentes de Contacto desde Supabase."""
+    try:
+        if not supabase:
+            return pd.DataFrame(columns=HISTORIAS_LC_COLS)
+        response = supabase.table("historias_lc").select("*").order("fecha", desc=True).execute()
+        if response.data:
+            df = pd.DataFrame(response.data)
+            for col in HISTORIAS_LC_COLS:
+                if col not in df.columns:
+                    df[col] = ""
+            return df
+        return pd.DataFrame(columns=HISTORIAS_LC_COLS)
+    except Exception as e:
+        print(f"Error cargar_historias_lc: {e}")
+        return pd.DataFrame(columns=HISTORIAS_LC_COLS)
+
+
+def guardar_historia_lc(row: dict) -> bool:
+    """Inserta una nueva historia de LC en Supabase."""
+    try:
+        if not supabase: return False
+        payload = {k: v for k, v in row.items() if k != "id"}
+        supabase.table("historias_lc").insert(payload).execute()
+        try:
+            cargar_historias_lc.clear()
+        except:
+            pass
+        return True
+    except Exception as e:
+        print(f"Error guardar_historia_lc: {e}")
+        return False
+
+
+def actualizar_historia_lc(historia_id, data: dict) -> bool:
+    """Actualiza una historia de LC existente."""
+    try:
+        if not supabase: return False
+        payload = {k: v for k, v in data.items() if k not in ("id", "created_at")}
+        supabase.table("historias_lc").update(payload).eq("id", historia_id).execute()
+        try:
+            cargar_historias_lc.clear()
+        except:
+            pass
+        return True
+    except Exception as e:
+        print(f"Error actualizar_historia_lc: {e}")
+        return False
+
+
+def eliminar_historia_lc(h_id) -> bool:
+    """Elimina una historia de LC."""
+    try:
+        if not supabase: return False
+        supabase.table("historias_lc").delete().eq("id", h_id).execute()
+        try:
+            cargar_historias_lc.clear()
+        except:
+            pass
+        return True
+    except Exception as e:
+        print(f"Error eliminar_historia_lc: {e}")
         return False

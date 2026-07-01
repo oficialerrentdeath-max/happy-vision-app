@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import date
 from utils import wa_link, generar_pdf_historia, generar_msg_indicaciones
-from database import eliminar_historia, actualizar_historia
+from database import eliminar_historia, actualizar_historia, guardar_historia_lc, actualizar_historia_lc, eliminar_historia_lc
 
 
 def _render_lectura_historia(hrow):
@@ -419,16 +419,23 @@ def render_clinica():
                         st.session_state.df_historias["paciente_id"] == pac["id"]
                     ].sort_values("fecha", ascending=False)
 
-                    ca, cb, cc = st.columns([3, 1, 1])
+                    ca, cb, cc, cd = st.columns([2, 1.3, 1.3, 1])
                     ca.caption(f"🗂️ {len(hist_pac)} consulta(s)")
 
                     with cb:
-                        if st.button("📋 Nueva Consulta", key=f"new_h_{pac['id']}", use_container_width=True, type="primary"):
+                        if st.button("📋 Nueva Historia Clínica", key=f"new_h_{pac['id']}", use_container_width=True, type="primary"):
                             st.session_state["nueva_consulta_paciente"] = pac["nombre"]
+                            st.session_state.pop("nueva_lc_paciente", None)
                             st.rerun()
 
                     with cc:
-                        if st.button("✏️ Editar Datos", key=f"edit_p_{pac['id']}", use_container_width=True):
+                        if st.button("👁️ Historia LC", key=f"new_lc_{pac['id']}", use_container_width=True):
+                            st.session_state["nueva_lc_paciente"] = {"nombre": pac["nombre"], "id": pac["id"]}
+                            st.session_state.pop("nueva_consulta_paciente", None)
+                            st.rerun()
+
+                    with cd:
+                        if st.button("✏️ Editar", key=f"edit_p_{pac['id']}", use_container_width=True):
                             st.session_state["editar_paciente_id"] = pac["id"]
 
                     # Editar datos del paciente
@@ -498,7 +505,7 @@ def render_clinica():
                                 st.session_state["editar_paciente_id"] = None
                                 st.rerun()
 
-                    # Historias del paciente
+                    # Historias normales del paciente
                     if len(hist_pac) == 0:
                         st.caption("💭 No hay consultas registradas todavía.")
                     else:
@@ -891,6 +898,123 @@ def render_clinica():
                                 except Exception as e:
                                     st.error(f"⚠️ Error generando PDF: {e}")
 
+                    # ── SECCIÓN: Historias de Lentes de Contacto ─────────────────────────
+                    df_lc_all = st.session_state.get("df_historias_lc")
+                    if df_lc_all is not None and not df_lc_all.empty:
+                        hist_lc_pac = df_lc_all[
+                            df_lc_all["paciente_id"].astype(str) == str(pac["id"])
+                        ].sort_values("fecha", ascending=False)
+                    else:
+                        hist_lc_pac = pd.DataFrame()
+
+                    if not hist_lc_pac.empty:
+                        st.markdown("""
+                        <div style='background:linear-gradient(135deg,#2c1a0e,#7c3f00);border-radius:10px;
+                        padding:10px 18px;margin:18px 0 10px 0;color:white;'>
+                        <b style='font-size:13px;'>👁️ HISTORIAS CLÍNICAS — LENTES DE CONTACTO</b></div>
+                        """, unsafe_allow_html=True)
+
+                        for _, hlc in hist_lc_pac.iterrows():
+                            hlc_id = hlc.get("id", "")
+                            with st.expander(f"👁️ LC: {hlc.get('fecha','')} — {hlc.get('lc_motivo_consulta','Adaptación de Lentes de Contacto')}"):
+                                # Header de la historia LC
+                                st.markdown(f"""
+                                <div style='display:flex;justify-content:space-between;align-items:center;
+                                background:#fdf6ee;border:1px solid #d4a96a;border-radius:8px;
+                                padding:10px 16px;margin-bottom:12px;'>
+                                    <div>
+                                        <span style='font-weight:700;color:#7c3f00;font-size:15px;'>👁️ Historia LC</span>
+                                        <span style='color:#b38b5a;font-size:13px;margin-left:12px;'>📅 {hlc.get('fecha','')}</span>
+                                    </div>
+                                    <div>
+                                        <span style='background:#7c3f00;color:white;padding:4px 10px;border-radius:20px;font-size:12px;'>
+                                        👨‍⚕️ {hlc.get('optometrista','')}
+                                        </span>
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+
+                                # Bloque 1 — Anamnesis
+                                if any(hlc.get(k,"") for k in ["lc_usuario_previo","lc_tipo_lente_ant","lc_marca_ant","lc_motivo_consulta"]):
+                                    st.markdown("<b style='color:#7c3f00;'>📝 Anamnesis</b>", unsafe_allow_html=True)
+                                    lc_b1_1, lc_b1_2, lc_b1_3 = st.columns(3)
+                                    lc_b1_1.metric("Usuario Previo LC", hlc.get("lc_usuario_previo","—") or "—")
+                                    lc_b1_2.metric("Tipo Lente Anterior", hlc.get("lc_tipo_lente_ant","—") or "—")
+                                    lc_b1_3.metric("Motivo Consulta", hlc.get("lc_motivo_consulta","—") or "—")
+                                    if hlc.get("lc_marca_ant"): st.caption(f"Marca anterior: {hlc['lc_marca_ant']} | Horas uso: {hlc.get('lc_horas_uso','—')} h/día")
+
+                                # Bloque 2 — Refracción y Queratometría
+                                if any(hlc.get(k,"") for k in ["lc_rx_od","lc_rx_oi","lc_kera_od","lc_kera_oi"]):
+                                    st.markdown("<b style='color:#7c3f00;'>🔬 Refracción y Queratometría</b>", unsafe_allow_html=True)
+                                    st.markdown(f"""
+                                    <table style='width:100%;border-collapse:collapse;font-size:13px;'>
+                                    <thead><tr style='background:#f5e6cc;'>
+                                        <th style='padding:6px 10px;text-align:left;color:#7c3f00;'>Ojo</th>
+                                        <th style='padding:6px 10px;text-align:left;'>AV S/C</th>
+                                        <th style='padding:6px 10px;text-align:left;'>Rx Gafas</th>
+                                        <th style='padding:6px 10px;text-align:left;'>Queratometría</th>
+                                    </tr></thead>
+                                    <tbody>
+                                    <tr style='background:#fdf6ee;'>
+                                        <td style='padding:6px 10px;font-weight:700;color:#d97706;'>🟠 OD</td>
+                                        <td style='padding:6px 10px;'>{hlc.get('lc_avsc_od','—') or '—'}</td>
+                                        <td style='padding:6px 10px;'>{hlc.get('lc_rx_od','—') or '—'}</td>
+                                        <td style='padding:6px 10px;'>{hlc.get('lc_kera_od','—') or '—'}</td>
+                                    </tr>
+                                    <tr style='background:#fff9f0;'>
+                                        <td style='padding:6px 10px;font-weight:700;color:#92400e;'>🟤 OI</td>
+                                        <td style='padding:6px 10px;'>{hlc.get('lc_avsc_oi','—') or '—'}</td>
+                                        <td style='padding:6px 10px;'>{hlc.get('lc_rx_oi','—') or '—'}</td>
+                                        <td style='padding:6px 10px;'>{hlc.get('lc_kera_oi','—') or '—'}</td>
+                                    </tr>
+                                    </tbody></table>
+                                    """, unsafe_allow_html=True)
+
+                                # Bloque 3 — Biomicroscopía
+                                if any(hlc.get(k,"") for k in ["lc_parpados","lc_conjuntiva","lc_cornea","lc_but_od"]):
+                                    st.markdown("<b style='color:#7c3f00;'>🔬 Biomicroscopía</b>", unsafe_allow_html=True)
+                                    bb1,bb2,bb3,bb4 = st.columns(4)
+                                    bb1.metric("Párpados", hlc.get("lc_parpados","—") or "—")
+                                    bb2.metric("Conjuntiva", hlc.get("lc_conjuntiva","—") or "—")
+                                    bb3.metric("Córnea (Fluor.)", hlc.get("lc_cornea","—") or "—")
+                                    bb4.metric("BUT OD/OI", f"{hlc.get('lc_but_od','—')}/{hlc.get('lc_but_oi','—')}" or "—")
+
+                                # Bloque 5 — Lente Definitivo (el más importante)
+                                if any(hlc.get(k,"") for k in ["lc_final_od","lc_final_oi","lc_marca_final"]):
+                                    st.markdown("<b style='color:#7c3f00;'>✔️ Lente Definitivo</b>", unsafe_allow_html=True)
+                                    st.markdown(f"""
+                                    <table style='width:100%;border-collapse:collapse;font-size:13px;'>
+                                    <thead><tr style='background:#f5e6cc;'>
+                                        <th style='padding:6px 10px;text-align:left;color:#7c3f00;'>Ojo</th>
+                                        <th style='padding:6px 10px;text-align:left;'>Parámetros Finales</th>
+                                    </tr></thead>
+                                    <tbody>
+                                    <tr style='background:#fdf6ee;'>
+                                        <td style='padding:6px 10px;font-weight:700;color:#d97706;'>🟠 OD</td>
+                                        <td style='padding:6px 10px;'>{hlc.get('lc_final_od','—') or '—'}</td>
+                                    </tr>
+                                    <tr style='background:#fff9f0;'>
+                                        <td style='padding:6px 10px;font-weight:700;color:#92400e;'>🟤 OI</td>
+                                        <td style='padding:6px 10px;'>{hlc.get('lc_final_oi','—') or '—'}</td>
+                                    </tr>
+                                    </tbody></table>
+                                    """, unsafe_allow_html=True)
+                                    lfd1,lfd2,lfd3 = st.columns(3)
+                                    lfd1.metric("Marca/Lab.", hlc.get("lc_marca_final","—") or "—")
+                                    lfd2.metric("Modalidad", hlc.get("lc_modalidad","—") or "—")
+                                    lfd3.metric("Próx. Control", hlc.get("lc_proximo_control","—") or "—")
+
+                                if hlc.get("lc_observaciones"):
+                                    st.markdown(f"**📝 Obs. Evolución:** {hlc['lc_observaciones']}")
+
+                                # Botón eliminar
+                                if st.button(f"🗑️ Eliminar Historia LC", key=f"del_lc_{hlc_id}", type="secondary"):
+                                    eliminar_historia_lc(hlc_id)
+                                    from database import cargar_historias_lc
+                                    st.session_state.df_historias_lc = cargar_historias_lc()
+                                    st.success("Historia LC eliminada.")
+                                    st.rerun()
+
     elif not q:
         if len(df_p_all) == 0:
             st.info("No hay pacientes registrados. Usa ➕ Nuevo Paciente para agregar el primero.")
@@ -1154,4 +1278,251 @@ def render_clinica():
                     st.rerun()
             if fcols[1].form_submit_button("❌ Cancelar", use_container_width=True):
                 st.session_state["nueva_consulta_paciente"] = None
+                st.rerun()
+
+
+    # ── FORMULARIO NUEVA HISTORIA DE LENTES DE CONTACTO ────────────────────
+    if st.session_state.get("nueva_lc_paciente"):
+        pac_lc = st.session_state["nueva_lc_paciente"]
+        nombre_lc = pac_lc["nombre"]
+        id_lc     = pac_lc["id"]
+        sucursal_actual = st.session_state.get("sucursal_activa", "Matriz")
+        optometrista_actual = st.session_state.get("user_name", "")
+        opto_login = st.session_state.get("user_login", "")
+
+        st.markdown(f"""
+        <div style='background:linear-gradient(135deg,#2c1a0e,#7c3f00);border-radius:14px;
+        padding:18px 24px;margin-bottom:14px;color:white;'>
+            <h3 style='margin:0;font-size:1.15rem;'>👁️ Historia Clínica — Lentes de Contacto</h3>
+            <p style='margin:4px 0 0 0;font-size:0.9rem;opacity:0.85;'>Paciente: <b>{nombre_lc}</b></p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        with st.form("nueva_lc_form", clear_on_submit=True):
+            lc_fecha = st.date_input("📅 Fecha de la Consulta", value=date.today())
+
+            # ── BLOQUE 1: ANAMNESIS ─────────────────────────────────
+            st.markdown("""
+            <div style='background:linear-gradient(135deg,#fdf6ee,#f5e6cc);border:1px solid #d4a96a;
+            border-radius:10px;padding:14px 18px;margin:10px 0 8px 0;'>
+            <b style='color:#7c3f00;font-size:13px;text-transform:uppercase;letter-spacing:.06em;'>
+            📝 Bloque 1 — Anamnesis Especializada</b></div>
+            """, unsafe_allow_html=True)
+            la1, la2 = st.columns(2)
+            lc_usuario_previo = la1.selectbox("¿Usuario previo de LC?", ["", "Sí", "No"])
+            lc_tipo_lente_ant = la2.selectbox("Tipo de lente anterior",
+                ["", "Blando esférico", "Blando tórico", "Multifocal", "RGP", "Escleral", "Ninguno"])
+            la3, la4 = st.columns(2)
+            lc_marca_ant       = la3.text_input("Marca/Laboratorio anterior")
+            lc_horas_uso       = la4.text_input("Horas de uso diario", placeholder="Ej: 8")
+            la5, la6 = st.columns(2)
+            lc_solucion_hab    = la5.selectbox("Solución de mantenimiento habitual",
+                ["", "Solución multipropósito", "Peróxido de hidrógeno", "Jabón y agua (alerta)", "Ninguna"])
+            lc_motivo_consulta = la6.selectbox("Motivo de la nueva consulta",
+                ["", "Estética", "Deporte", "Renovación", "Incomodidad con los anteriores", "Queratocono", "Necesidad médica"])
+
+            # ── BLOQUE 2: EXAMEN PRELIMINAR ──────────────────────────
+            st.markdown("""
+            <div style='background:linear-gradient(135deg,#fdf6ee,#f5e6cc);border:1px solid #d4a96a;
+            border-radius:10px;padding:14px 18px;margin:10px 0 8px 0;'>
+            <b style='color:#7c3f00;font-size:13px;text-transform:uppercase;letter-spacing:.06em;'>
+            🔬 Bloque 2 — Examen Preliminar y Refracción</b></div>
+            """, unsafe_allow_html=True)
+
+            st.markdown("<small><b>AV Sin Corrección (S/C)</b></small>", unsafe_allow_html=True)
+            lb1, lb2 = st.columns(2)
+            lc_avsc_od = lb1.text_input("🟠 OD AV S/C", placeholder="20/200")
+            lc_avsc_oi = lb2.text_input("🟤 OI AV S/C", placeholder="20/200")
+
+            st.markdown("<small><b>Refracción Subjetiva Actual (Rx Gafas)</b></small>", unsafe_allow_html=True)
+            lrx1,lrx2,lrx3,lrx4 = st.columns([0.15,1,1,1])
+            lrx1.markdown("<p style='margin-top:28px'><b>🟠</b></p>", unsafe_allow_html=True)
+            lc_rx_od_esf = lrx2.text_input("ESF OD"); lc_rx_od_cil = lrx3.text_input("CIL OD"); lc_rx_od_eje = lrx4.text_input("EJE OD")
+            lrx5,lrx6,lrx7,lrx8 = st.columns([0.15,1,1,1])
+            lrx5.markdown("<p style='margin-top:28px'><b>🟤</b></p>", unsafe_allow_html=True)
+            lc_rx_oi_esf = lrx6.text_input("ESF OI"); lc_rx_oi_cil = lrx7.text_input("CIL OI"); lc_rx_oi_eje = lrx8.text_input("EJE OI")
+
+            lc_rx_od = f"{lc_rx_od_esf} / {lc_rx_od_cil} x {lc_rx_od_eje}"
+            lc_rx_oi = f"{lc_rx_oi_esf} / {lc_rx_oi_cil} x {lc_rx_oi_eje}"
+
+            lb3 = st.text_input("📐 Distancia al Vértice (DV en mm)", placeholder="Ej: 12 mm")
+            lc_distancia_vertice = lb3
+
+            st.markdown("<small><b>Queratometría / Topografía</b></small>", unsafe_allow_html=True)
+            lk1,lk2,lk3,lk4 = st.columns([0.15,1,1,1])
+            lk1.markdown("<p style='margin-top:28px'><b>🟠</b></p>", unsafe_allow_html=True)
+            lk_od_plana = lk2.text_input("K Plana OD"); lk_od_curva = lk3.text_input("K Curva OD"); lk_od_eje = lk4.text_input("Eje OD")
+            lk5,lk6,lk7,lk8 = st.columns([0.15,1,1,1])
+            lk5.markdown("<p style='margin-top:28px'><b>🟤</b></p>", unsafe_allow_html=True)
+            lk_oi_plana = lk6.text_input("K Plana OI"); lk_oi_curva = lk7.text_input("K Curva OI"); lk_oi_eje = lk8.text_input("Eje OI")
+            lc_kera_od = f"{lk_od_plana} / {lk_od_curva} @ {lk_od_eje}"
+            lc_kera_oi = f"{lk_oi_plana} / {lk_oi_curva} @ {lk_oi_eje}"
+
+            las1, las2 = st.columns(2)
+            lc_astig_corneal_od = las1.text_input("⚪ Astigmatismo Corneal OD (D)")
+            lc_astig_corneal_oi = las2.text_input("⚪ Astigmatismo Corneal OI (D)")
+
+            # ── BLOQUE 3: BIOMICROSCOPÍA ────────────────────────────
+            st.markdown("""
+            <div style='background:linear-gradient(135deg,#fdf6ee,#f5e6cc);border:1px solid #d4a96a;
+            border-radius:10px;padding:14px 18px;margin:10px 0 8px 0;'>
+            <b style='color:#7c3f00;font-size:13px;text-transform:uppercase;letter-spacing:.06em;'>
+            🔬 Bloque 3 — Evaluación de la Salud Ocular (Biomicroscopía)</b></div>
+            """, unsafe_allow_html=True)
+            lm1, lm2 = st.columns(2)
+            lc_parpados   = lm1.selectbox("👁️ Párpados / Glándulas de Meibomio",
+                ["", "Normal", "Disfunción leve", "Disfunción severa", "Blefaritis"])
+            lc_conjuntiva = lm2.selectbox("Conjuntiva (Hiperemia)",
+                ["", "Grado 0 (Ninguna)", "Grado 1 (Leve)", "Grado 2 (Moderada)", "Grado 3 (Severa)"])
+            lm3, lm4 = st.columns(2)
+            lc_eversion   = lm3.selectbox("Eversión Palpebral (Papilas)",
+                ["", "Ausentes", "Leves", "Conjuntivitis Papilar Gigante (GPC)"])
+            lc_cornea     = lm4.selectbox("Córnea (Tinc. Fluoresceína)",
+                ["", "Grado 0 (Limpia)", "Grado 1 (Punteado leve)", "Grado 2 (Tinc. confluente)", "Grado 3 (Úlcera/Infiltrado)"])
+            lm5, lm6, lm7 = st.columns(3)
+            lc_but_od = lm5.text_input("BUT OD (seg)", placeholder="> 10 seg")
+            lc_but_oi = lm6.text_input("BUT OI (seg)", placeholder="> 10 seg")
+            lc_menisco = lm7.selectbox("Menisco Lagrimal", ["", "Normal", "Alto", "Escaso"])
+
+            # ── BLOQUE 4: LENTE DE PRUEBA ────────────────────────────
+            st.markdown("""
+            <div style='background:linear-gradient(135deg,#fdf6ee,#f5e6cc);border:1px solid #d4a96a;
+            border-radius:10px;padding:14px 18px;margin:10px 0 8px 0;'>
+            <b style='color:#7c3f00;font-size:13px;text-transform:uppercase;letter-spacing:.06em;'>
+            🔄 Bloque 4 — Registro de Pruebas (Lente de Prueba)</b></div>
+            """, unsafe_allow_html=True)
+            lc_prueba_tipo = st.selectbox("Tipo de Lente de Prueba",
+                ["", "Blando Hidrogel", "Hidrogel de Silicona", "RGP", "Escleral"])
+
+            st.markdown("<small><b>Parámetros del Lente de Prueba</b></small>", unsafe_allow_html=True)
+            lp1,lp2,lp3,lp4,lp5 = st.columns([0.15,1,1,1,1])
+            lp1.markdown("<p style='margin-top:28px'><b>🟠</b></p>", unsafe_allow_html=True)
+            lp_od_bc=lp2.text_input("BC OD"); lp_od_td=lp3.text_input("TD OD"); lp_od_esf=lp4.text_input("Esf OD"); lp_od_cil=lp5.text_input("Cil OD")
+            lp6,lp7,lp8,lp9,lp10 = st.columns([0.15,1,1,1,1])
+            lp6.markdown("<p style='margin-top:28px'><b>🟤</b></p>", unsafe_allow_html=True)
+            lp_oi_bc=lp7.text_input("BC OI"); lp_oi_td=lp8.text_input("TD OI"); lp_oi_esf=lp9.text_input("Esf OI"); lp_oi_cil=lp10.text_input("Cil OI")
+            lc_prueba_od = f"BC:{lp_od_bc} TD:{lp_od_td} {lp_od_esf}/{lp_od_cil}"
+            lc_prueba_oi = f"BC:{lp_oi_bc} TD:{lp_oi_td} {lp_oi_esf}/{lp_oi_cil}"
+
+            le1, le2, le3, le4 = st.columns(4)
+            lc_centrado  = le1.selectbox("Centrado", ["", "Centrado", "Descentrado Sup.", "Descentrado Inf.", "Descentrado Nasal", "Descentrado Temporal"])
+            lc_movimiento= le2.selectbox("Movimiento al parpadeo", ["", "Adecuado (0.5-1mm)", "Escaso (apretado)", "Excesivo (flojo)"])
+            lc_pushup    = le3.selectbox("Push-up Test", ["", "Positiva (Aceptable)", "Negativa (Muy apretado)"])
+            lc_rotacion  = le4.text_input("Rotación de eje (°)", placeholder="0° o grados")
+
+            st.markdown("<small><b>Sobrerrefracción (Over-Refraction)</b></small>", unsafe_allow_html=True)
+            ls1,ls2,ls3,ls4 = st.columns([0.15,1,1,1])
+            ls1.markdown("<p style='margin-top:28px'><b>🟠</b></p>", unsafe_allow_html=True)
+            ls_od_esf=ls2.text_input("SR Esf OD"); ls_od_cil=ls3.text_input("SR Cil OD"); ls_od_av=ls4.text_input("AV lograda OD")
+            ls5,ls6,ls7,ls8 = st.columns([0.15,1,1,1])
+            ls5.markdown("<p style='margin-top:28px'><b>🟤</b></p>", unsafe_allow_html=True)
+            ls_oi_esf=ls6.text_input("SR Esf OI"); ls_oi_cil=ls7.text_input("SR Cil OI"); ls_oi_av=ls8.text_input("AV lograda OI")
+            lc_sobre_od = f"{ls_od_esf}/{ls_od_cil} AV:{ls_od_av}"
+            lc_sobre_oi = f"{ls_oi_esf}/{ls_oi_cil} AV:{ls_oi_av}"
+
+            # ── BLOQUE 5: LENTE DEFINITIVO ───────────────────────────
+            st.markdown("""
+            <div style='background:linear-gradient(135deg,#fdf6ee,#f5e6cc);border:1px solid #d4a96a;
+            border-radius:10px;padding:14px 18px;margin:10px 0 8px 0;'>
+            <b style='color:#7c3f00;font-size:13px;text-transform:uppercase;letter-spacing:.06em;'>
+            ✔️ Bloque 5 — Diagnóstico y Lente Definitivo</b></div>
+            """, unsafe_allow_html=True)
+
+            st.markdown("<small><b>Lente Final Autorizado</b></small>", unsafe_allow_html=True)
+            lf1,lf2,lf3,lf4,lf5,lf6 = st.columns([0.15,1,1,1,1,1])
+            lf1.markdown("<p style='margin-top:28px'><b>🟠</b></p>", unsafe_allow_html=True)
+            lf_od_bc=lf2.text_input("BC OD "); lf_od_td=lf3.text_input("TD OD "); lf_od_esf=lf4.text_input("Esf OD "); lf_od_cil=lf5.text_input("Cil OD "); lf_od_add=lf6.text_input("Add OD")
+            lf7,lf8,lf9,lf10,lf11,lf12 = st.columns([0.15,1,1,1,1,1])
+            lf7.markdown("<p style='margin-top:28px'><b>🟤</b></p>", unsafe_allow_html=True)
+            lf_oi_bc=lf8.text_input("BC OI "); lf_oi_td=lf9.text_input("TD OI "); lf_oi_esf=lf10.text_input("Esf OI "); lf_oi_cil=lf11.text_input("Cil OI "); lf_oi_add=lf12.text_input("Add OI")
+            lc_final_od = f"BC:{lf_od_bc} TD:{lf_od_td} {lf_od_esf}/{lf_od_cil} Add:{lf_od_add}"
+            lc_final_oi = f"BC:{lf_oi_bc} TD:{lf_oi_td} {lf_oi_esf}/{lf_oi_cil} Add:{lf_oi_add}"
+
+            lf13, lf14, lf15, lf16 = st.columns(4)
+            lc_marca_final  = lf13.text_input("Marca / Laboratorio")
+            lc_modalidad    = lf14.selectbox("Modalidad de Reemplazo",
+                ["", "Diario", "Quincenal", "Mensual", "Trimestral", "Anual"])
+            lc_regimen      = lf15.selectbox("Régimen de Uso",
+                ["", "Uso diario (se los quita para dormir)", "Uso prolongado"])
+            lc_solucion_final = lf16.text_input("Solución Recomendada")
+
+            # ── BLOQUE 6: ENTREGA Y EDUCACIÓN ───────────────────────
+            st.markdown("""
+            <div style='background:linear-gradient(135deg,#fdf6ee,#f5e6cc);border:1px solid #d4a96a;
+            border-radius:10px;padding:14px 18px;margin:10px 0 8px 0;'>
+            <b style='color:#7c3f00;font-size:13px;text-transform:uppercase;letter-spacing:.06em;'>
+            🏥 Bloque 6 — Entrega, Educación y Controles</b></div>
+            """, unsafe_allow_html=True)
+            lg1, lg2 = st.columns(2)
+            lc_insercion      = lg1.selectbox("Enseñado Inserción/Remoción",
+                ["", "Aprobado", "Requiere más práctica"])
+            lc_fecha_entrega  = lg2.date_input("Fecha de Entrega", value=date.today())
+            lc_proximo_control= st.selectbox("Cronograma Próximos Controles",
+                ["", "1 semana", "1 mes", "6 meses", "1 año"])
+            lc_observaciones  = st.text_area("Observaciones / Evolución en controles",
+                placeholder="Anotar cómo regresa en el control, tinc. corneal tardía, queja de resequedad, etc.")
+
+            # Botón guardar
+            flc1, flc2 = st.columns(2)
+            if flc1.form_submit_button("💾 Guardar Historia LC", use_container_width=True, type="primary"):
+                payload = {
+                    "paciente_id":       str(id_lc),
+                    "paciente_nombre":   nombre_lc,
+                    "fecha":             str(lc_fecha),
+                    "sucursal":          sucursal_actual,
+                    "optometrista":      optometrista_actual,
+                    "optometrista_login":opto_login,
+                    "lc_usuario_previo": lc_usuario_previo,
+                    "lc_tipo_lente_ant": lc_tipo_lente_ant,
+                    "lc_marca_ant":      lc_marca_ant,
+                    "lc_horas_uso":      lc_horas_uso,
+                    "lc_solucion_habitual": lc_solucion_hab,
+                    "lc_motivo_consulta":lc_motivo_consulta,
+                    "lc_avsc_od":        lc_avsc_od,
+                    "lc_avsc_oi":        lc_avsc_oi,
+                    "lc_rx_od":          lc_rx_od,
+                    "lc_rx_oi":          lc_rx_oi,
+                    "lc_distancia_vertice": lc_distancia_vertice,
+                    "lc_kera_od":        lc_kera_od,
+                    "lc_kera_oi":        lc_kera_oi,
+                    "lc_astig_corneal_od": lc_astig_corneal_od,
+                    "lc_astig_corneal_oi": lc_astig_corneal_oi,
+                    "lc_parpados":       lc_parpados,
+                    "lc_conjuntiva":     lc_conjuntiva,
+                    "lc_eversion":       lc_eversion,
+                    "lc_cornea":         lc_cornea,
+                    "lc_but_od":         lc_but_od,
+                    "lc_but_oi":         lc_but_oi,
+                    "lc_menisco":        lc_menisco,
+                    "lc_prueba_tipo":    lc_prueba_tipo,
+                    "lc_prueba_od":      lc_prueba_od,
+                    "lc_prueba_oi":      lc_prueba_oi,
+                    "lc_centrado":       lc_centrado,
+                    "lc_movimiento":     lc_movimiento,
+                    "lc_pushup":         lc_pushup,
+                    "lc_rotacion":       lc_rotacion,
+                    "lc_sobre_od":       lc_sobre_od,
+                    "lc_sobre_oi":       lc_sobre_oi,
+                    "lc_final_od":       lc_final_od,
+                    "lc_final_oi":       lc_final_oi,
+                    "lc_marca_final":    lc_marca_final,
+                    "lc_modalidad":      lc_modalidad,
+                    "lc_regimen":        lc_regimen,
+                    "lc_solucion_final": lc_solucion_final,
+                    "lc_insercion":      lc_insercion,
+                    "lc_fecha_entrega":  str(lc_fecha_entrega),
+                    "lc_proximo_control":lc_proximo_control,
+                    "lc_observaciones":  lc_observaciones,
+                }
+                ok = guardar_historia_lc(payload)
+                if ok:
+                    from database import cargar_historias_lc
+                    st.session_state.df_historias_lc = cargar_historias_lc()
+                    st.session_state["nueva_lc_paciente"] = None
+                    st.success(f"✅ Historia de Lentes de Contacto guardada para {nombre_lc}")
+                    st.rerun()
+                else:
+                    st.error("❌ Error al guardar. Verifica que ejecutaste el SQL en Supabase.")
+            if flc2.form_submit_button("❌ Cancelar", use_container_width=True):
+                st.session_state["nueva_lc_paciente"] = None
                 st.rerun()

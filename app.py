@@ -310,6 +310,7 @@ if not os.path.exists(_firma_dst) and os.path.exists(_firma_src):
 if "initialized_local" not in st.session_state:
     st.session_state.df_pacientes = None
     st.session_state.df_historias = None
+    st.session_state.df_historias_lc = None
     st.session_state.initialized_db = False
     st.session_state.page = "Inicio"
 
@@ -669,11 +670,13 @@ if st.session_state.get("logged_in") and not st.session_state.get("sucursal_acti
 # ══════════════════════════════════════════════════════════════
 if not st.session_state.get("initialized_db"):
     with st.spinner("Cargando base de datos de pacientes e historias..."):
-        from database import cargar_pacientes, cargar_historias, migrar_estructuras
+        from database import cargar_pacientes, cargar_historias, cargar_historias_lc, migrar_estructuras
         st.session_state.df_pacientes = cargar_pacientes()
         st.session_state.df_historias = cargar_historias()
+        st.session_state.df_historias_lc = cargar_historias_lc()
         migrar_estructuras()
         st.session_state.initialized_db = True
+
 
 
 # ══════════════════════════════════════════════════════════════
