@@ -761,6 +761,7 @@ HISTORIAS_LC_COLS = [
     "lc_marca_final", "lc_modalidad", "lc_regimen", "lc_solucion_final",
     # Bloque 6 — Entrega y educación
     "lc_insercion", "lc_fecha_entrega", "lc_proximo_control", "lc_observaciones",
+    "recomendaciones"
 ]
 
 

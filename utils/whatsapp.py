@@ -61,3 +61,39 @@ def generar_msg_indicaciones(row, paciente_info) -> str:
         f"{control_txt}\n\n"
         f"Consultas: +593 96 324 1158 | Happy Vision"
     )
+
+def generar_msg_indicaciones_lc(row, paciente_info) -> str:
+    """Genera el mensaje WhatsApp con indicaciones para Lentes de Contacto."""
+    recom = row.get('recomendaciones', '') or row.get('lc_observaciones', '')
+    if not str(recom).strip() or str(recom).strip().lower() in ('nan', 'none', ''):
+        recom = 'Ver indicaciones detalladas en su certificado.'
+    
+    control = row.get('lc_proximo_control', '')
+    control_txt = f"\nPróximo control: {control}" if control else ""
+    
+    solucion = row.get('lc_solucion_final', '')
+    solucion_txt = f"\nSolución recomendada: {solucion}" if solucion else ""
+    
+    return (
+        f"👁️ *Happy Vision - Indicaciones Lentes de Contacto*\n\n"
+        f"Estimado/a *{paciente_info.get('nombre', '')}*, a continuación las indicaciones de su adaptación del *{row.get('fecha', '')}*:\n\n"
+        f"*Indicaciones / Cuidados:*\n{recom}"
+        f"{solucion_txt}"
+        f"{control_txt}\n\n"
+        f"Ante cualquier duda o molestia, suspenda el uso y comuníquese con nosotros.\n"
+        f"📍 *Happy Vision* | 📞 +593 96 324 1158"
+    )
+
+
+def generar_msg_hc_lc(row, paciente_info) -> str:
+    """Genera el mensaje WhatsApp para compartir un certificado de Lentes de Contacto."""
+    return (
+        f"*Happy Vision - Certificado de Lentes de Contacto*\n\n"
+        f"Estimado/a *{paciente_info.get('nombre', '')}*, adjunto encontrará su certificado visual de la adaptación de Lentes de Contacto realizada el {row.get('fecha', '')}.\n\n"
+        f"*Lente Definitivo:*\n"
+        f"OD: {row.get('lc_final_od', '')}\n"
+        f"OI: {row.get('lc_final_oi', '')}\n"
+        f"Marca: {row.get('lc_marca_final', '')}\n\n"
+        f"Por favor, envíenos su correo electrónico si prefiere recibirlo por esa vía, o envíenos un '+', y le enviaremos el documento en formato PDF por aquí.\n\n"
+        f"📍 *Happy Vision* | 📞 +593 96 324 1158"
+    )

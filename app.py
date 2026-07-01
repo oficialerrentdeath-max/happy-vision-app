@@ -877,3 +877,5 @@ else:
 
 # ── Renderizar Botón Flotante de Inteligencia Artificial (Desactivado) ──
 # render_ai_assistant()
+# trigger rerun
+# fix tuple

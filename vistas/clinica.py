@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
-from utils import wa_link, generar_pdf_historia, generar_msg_indicaciones
+from utils import wa_link, generar_pdf_historia, generar_msg_indicaciones, generar_pdf_historia_lc, generar_msg_indicaciones_lc, generar_msg_hc_lc
 from database import eliminar_historia, actualizar_historia, guardar_historia_lc, actualizar_historia_lc, eliminar_historia_lc
 
 
@@ -917,104 +917,639 @@ def render_clinica():
                         for _, hlc in hist_lc_pac.iterrows():
                             hlc_id = hlc.get("id", "")
                             with st.expander(f"👁️ LC: {hlc.get('fecha','')} — {hlc.get('lc_motivo_consulta','Adaptación de Lentes de Contacto')}"):
-                                # Header de la historia LC
-                                st.markdown(f"""
-                                <div style='display:flex;justify-content:space-between;align-items:center;
-                                background:#fdf6ee;border:1px solid #d4a96a;border-radius:8px;
-                                padding:10px 16px;margin-bottom:12px;'>
-                                    <div>
-                                        <span style='font-weight:700;color:#7c3f00;font-size:15px;'>👁️ Historia LC</span>
-                                        <span style='color:#b38b5a;font-size:13px;margin-left:12px;'>📅 {hlc.get('fecha','')}</span>
-                                    </div>
-                                    <div>
-                                        <span style='background:#7c3f00;color:white;padding:4px 10px;border-radius:20px;font-size:12px;'>
-                                        👨‍⚕️ {hlc.get('optometrista','')}
-                                        </span>
-                                    </div>
-                                </div>
-                                """, unsafe_allow_html=True)
-
-                                # Bloque 1 — Anamnesis
-                                if any(hlc.get(k,"") for k in ["lc_usuario_previo","lc_tipo_lente_ant","lc_marca_ant","lc_motivo_consulta"]):
-                                    st.markdown("<b style='color:#7c3f00;'>📝 Anamnesis</b>", unsafe_allow_html=True)
-                                    lc_b1_1, lc_b1_2, lc_b1_3 = st.columns(3)
-                                    lc_b1_1.metric("Usuario Previo LC", hlc.get("lc_usuario_previo","—") or "—")
-                                    lc_b1_2.metric("Tipo Lente Anterior", hlc.get("lc_tipo_lente_ant","—") or "—")
-                                    lc_b1_3.metric("Motivo Consulta", hlc.get("lc_motivo_consulta","—") or "—")
-                                    if hlc.get("lc_marca_ant"): st.caption(f"Marca anterior: {hlc['lc_marca_ant']} | Horas uso: {hlc.get('lc_horas_uso','—')} h/día")
-
-                                # Bloque 2 — Refracción y Queratometría
-                                if any(hlc.get(k,"") for k in ["lc_rx_od","lc_rx_oi","lc_kera_od","lc_kera_oi"]):
-                                    st.markdown("<b style='color:#7c3f00;'>🔬 Refracción y Queratometría</b>", unsafe_allow_html=True)
+                                if not st.session_state.get(f"editando_lc_{hlc_id}", False):
+                                    # Header de la historia LC
                                     st.markdown(f"""
-                                    <table style='width:100%;border-collapse:collapse;font-size:13px;'>
-                                    <thead><tr style='background:#f5e6cc;'>
-                                        <th style='padding:6px 10px;text-align:left;color:#7c3f00;'>Ojo</th>
-                                        <th style='padding:6px 10px;text-align:left;'>AV S/C</th>
-                                        <th style='padding:6px 10px;text-align:left;'>Rx Gafas</th>
-                                        <th style='padding:6px 10px;text-align:left;'>Queratometría</th>
-                                    </tr></thead>
-                                    <tbody>
-                                    <tr style='background:#fdf6ee;'>
-                                        <td style='padding:6px 10px;font-weight:700;color:#d97706;'>🟠 OD</td>
-                                        <td style='padding:6px 10px;'>{hlc.get('lc_avsc_od','—') or '—'}</td>
-                                        <td style='padding:6px 10px;'>{hlc.get('lc_rx_od','—') or '—'}</td>
-                                        <td style='padding:6px 10px;'>{hlc.get('lc_kera_od','—') or '—'}</td>
-                                    </tr>
-                                    <tr style='background:#fff9f0;'>
-                                        <td style='padding:6px 10px;font-weight:700;color:#92400e;'>🟤 OI</td>
-                                        <td style='padding:6px 10px;'>{hlc.get('lc_avsc_oi','—') or '—'}</td>
-                                        <td style='padding:6px 10px;'>{hlc.get('lc_rx_oi','—') or '—'}</td>
-                                        <td style='padding:6px 10px;'>{hlc.get('lc_kera_oi','—') or '—'}</td>
-                                    </tr>
-                                    </tbody></table>
+                                    <div style='display:flex;justify-content:space-between;align-items:center;
+                                    background:#fdf6ee;border:1px solid #d4a96a;border-radius:8px;
+                                    padding:10px 16px;margin-bottom:12px;'>
+                                        <div>
+                                            <span style='font-weight:700;color:#7c3f00;font-size:15px;'>👁️ Historia LC</span>
+                                            <span style='color:#b38b5a;font-size:13px;margin-left:12px;'>📅 {hlc.get('fecha','')}</span>
+                                        </div>
+                                        <div>
+                                            <span style='background:#7c3f00;color:white;padding:4px 10px;border-radius:20px;font-size:12px;'>
+                                            👨‍⚕️ {hlc.get('optometrista','')}
+                                            </span>
+                                        </div>
+                                    </div>
                                     """, unsafe_allow_html=True)
 
-                                # Bloque 3 — Biomicroscopía
-                                if any(hlc.get(k,"") for k in ["lc_parpados","lc_conjuntiva","lc_cornea","lc_but_od"]):
-                                    st.markdown("<b style='color:#7c3f00;'>🔬 Biomicroscopía</b>", unsafe_allow_html=True)
-                                    bb1,bb2,bb3,bb4 = st.columns(4)
-                                    bb1.metric("Párpados", hlc.get("lc_parpados","—") or "—")
-                                    bb2.metric("Conjuntiva", hlc.get("lc_conjuntiva","—") or "—")
-                                    bb3.metric("Córnea (Fluor.)", hlc.get("lc_cornea","—") or "—")
-                                    bb4.metric("BUT OD/OI", f"{hlc.get('lc_but_od','—')}/{hlc.get('lc_but_oi','—')}" or "—")
+                                    # Bloque 1 — Anamnesis
+                                    if any(hlc.get(k,"") for k in ["lc_usuario_previo","lc_tipo_lente_ant","lc_marca_ant","lc_motivo_consulta"]):
+                                        st.markdown("<b style='color:#7c3f00;'>📝 Anamnesis</b>", unsafe_allow_html=True)
+                                        lc_b1_1, lc_b1_2, lc_b1_3 = st.columns(3)
+                                        lc_b1_1.metric("Usuario Previo LC", hlc.get("lc_usuario_previo","—") or "—")
+                                        lc_b1_2.metric("Tipo Lente Anterior", hlc.get("lc_tipo_lente_ant","—") or "—")
+                                        lc_b1_3.metric("Motivo Consulta", hlc.get("lc_motivo_consulta","—") or "—")
+                                        if hlc.get("lc_marca_ant"): st.caption(f"Marca anterior: {hlc['lc_marca_ant']} | Horas uso: {hlc.get('lc_horas_uso','—')} h/día")
 
-                                # Bloque 5 — Lente Definitivo (el más importante)
-                                if any(hlc.get(k,"") for k in ["lc_final_od","lc_final_oi","lc_marca_final"]):
-                                    st.markdown("<b style='color:#7c3f00;'>✔️ Lente Definitivo</b>", unsafe_allow_html=True)
-                                    st.markdown(f"""
-                                    <table style='width:100%;border-collapse:collapse;font-size:13px;'>
-                                    <thead><tr style='background:#f5e6cc;'>
-                                        <th style='padding:6px 10px;text-align:left;color:#7c3f00;'>Ojo</th>
-                                        <th style='padding:6px 10px;text-align:left;'>Parámetros Finales</th>
-                                    </tr></thead>
-                                    <tbody>
-                                    <tr style='background:#fdf6ee;'>
-                                        <td style='padding:6px 10px;font-weight:700;color:#d97706;'>🟠 OD</td>
-                                        <td style='padding:6px 10px;'>{hlc.get('lc_final_od','—') or '—'}</td>
-                                    </tr>
-                                    <tr style='background:#fff9f0;'>
-                                        <td style='padding:6px 10px;font-weight:700;color:#92400e;'>🟤 OI</td>
-                                        <td style='padding:6px 10px;'>{hlc.get('lc_final_oi','—') or '—'}</td>
-                                    </tr>
-                                    </tbody></table>
-                                    """, unsafe_allow_html=True)
-                                    lfd1,lfd2,lfd3 = st.columns(3)
-                                    lfd1.metric("Marca/Lab.", hlc.get("lc_marca_final","—") or "—")
-                                    lfd2.metric("Modalidad", hlc.get("lc_modalidad","—") or "—")
-                                    lfd3.metric("Próx. Control", hlc.get("lc_proximo_control","—") or "—")
+                                    # Bloque 2 — Refracción y Queratometría
+                                    if any(hlc.get(k,"") for k in ["lc_rx_od","lc_rx_oi","lc_kera_od","lc_kera_oi"]):
+                                        st.markdown("<b style='color:#7c3f00;'>🔬 Refracción y Queratometría</b>", unsafe_allow_html=True)
+                                        st.markdown(f"""
+                                        <table style='width:100%;border-collapse:collapse;font-size:13px;'>
+                                        <thead><tr style='background:#f5e6cc;'>
+                                            <th style='padding:6px 10px;text-align:left;color:#7c3f00;'>Ojo</th>
+                                            <th style='padding:6px 10px;text-align:left;'>AV S/C</th>
+                                            <th style='padding:6px 10px;text-align:left;'>Rx Gafas</th>
+                                            <th style='padding:6px 10px;text-align:left;'>Queratometría</th>
+                                        </tr></thead>
+                                        <tbody>
+                                        <tr style='background:#fdf6ee;'>
+                                            <td style='padding:6px 10px;font-weight:700;color:#d97706;'>🟠 OD</td>
+                                            <td style='padding:6px 10px;'>{hlc.get('lc_avsc_od','—') or '—'}</td>
+                                            <td style='padding:6px 10px;'>{hlc.get('lc_rx_od','—') or '—'}</td>
+                                            <td style='padding:6px 10px;'>{hlc.get('lc_kera_od','—') or '—'}</td>
+                                        </tr>
+                                        <tr style='background:#fff9f0;'>
+                                            <td style='padding:6px 10px;font-weight:700;color:#92400e;'>🟤 OI</td>
+                                            <td style='padding:6px 10px;'>{hlc.get('lc_avsc_oi','—') or '—'}</td>
+                                            <td style='padding:6px 10px;'>{hlc.get('lc_rx_oi','—') or '—'}</td>
+                                            <td style='padding:6px 10px;'>{hlc.get('lc_kera_oi','—') or '—'}</td>
+                                        </tr>
+                                        </tbody></table>
+                                        """, unsafe_allow_html=True)
 
-                                if hlc.get("lc_observaciones"):
-                                    st.markdown(f"**📝 Obs. Evolución:** {hlc['lc_observaciones']}")
+                                    # Bloque 3 — Biomicroscopía
+                                    if any(hlc.get(k,"") for k in ["lc_parpados","lc_conjuntiva","lc_cornea","lc_but_od"]):
+                                        st.markdown("<b style='color:#7c3f00;'>🔬 Biomicroscopía</b>", unsafe_allow_html=True)
+                                        bb1,bb2,bb3,bb4 = st.columns(4)
+                                        bb1.metric("Párpados", hlc.get("lc_parpados","—") or "—")
+                                        bb2.metric("Conjuntiva", hlc.get("lc_conjuntiva","—") or "—")
+                                        bb3.metric("Córnea (Fluor.)", hlc.get("lc_cornea","—") or "—")
+                                        bb4.metric("BUT OD/OI", f"{hlc.get('lc_but_od','—')}/{hlc.get('lc_but_oi','—')}" or "—")
 
-                                # Botón eliminar
-                                if st.button(f"🗑️ Eliminar Historia LC", key=f"del_lc_{hlc_id}", type="secondary"):
-                                    eliminar_historia_lc(hlc_id)
-                                    from database import cargar_historias_lc
-                                    st.session_state.df_historias_lc = cargar_historias_lc()
-                                    st.success("Historia LC eliminada.")
-                                    st.rerun()
+                                    # Bloque 5 — Lente Definitivo (el más importante)
+                                    if any(hlc.get(k,"") for k in ["lc_final_od","lc_final_oi","lc_marca_final"]):
+                                        st.markdown("<b style='color:#7c3f00;'>✔️ Lente Definitivo</b>", unsafe_allow_html=True)
+                                        st.markdown(f"""
+                                        <table style='width:100%;border-collapse:collapse;font-size:13px;'>
+                                        <thead><tr style='background:#f5e6cc;'>
+                                            <th style='padding:6px 10px;text-align:left;color:#7c3f00;'>Ojo</th>
+                                            <th style='padding:6px 10px;text-align:left;'>Parámetros Finales</th>
+                                        </tr></thead>
+                                        <tbody>
+                                        <tr style='background:#fdf6ee;'>
+                                            <td style='padding:6px 10px;font-weight:700;color:#d97706;'>🟠 OD</td>
+                                            <td style='padding:6px 10px;'>{hlc.get('lc_final_od','—') or '—'}</td>
+                                        </tr>
+                                        <tr style='background:#fff9f0;'>
+                                            <td style='padding:6px 10px;font-weight:700;color:#92400e;'>🟤 OI</td>
+                                            <td style='padding:6px 10px;'>{hlc.get('lc_final_oi','—') or '—'}</td>
+                                        </tr>
+                                        </tbody></table>
+                                        """, unsafe_allow_html=True)
+                                        lfd1,lfd2,lfd3 = st.columns(3)
+                                        lfd1.metric("Marca/Lab.", hlc.get("lc_marca_final","—") or "—")
+                                        lfd2.metric("Modalidad", hlc.get("lc_modalidad","—") or "—")
+                                        lfd3.metric("Próx. Control", hlc.get("lc_proximo_control","—") or "—")
 
+                                    if hlc.get("lc_observaciones"):
+                                        st.markdown(f"**📝 Obs. Evolución:** {hlc['lc_observaciones']}")
+
+                                    st.markdown("---")
+                                    ed1, ed2 = st.columns(2)
+                                    with ed1:
+                                        if st.button("✏️ Editar Historia LC", key=f"edit_lc_{hlc_id}", type="primary", use_container_width=True):
+                                            st.session_state[f"editando_lc_{hlc_id}"] = True
+                                            st.rerun()
+                                    with ed2:
+                                        if st.button("🗑️ Eliminar Historia LC", key=f"del_lc_{hlc_id}", type="secondary", use_container_width=True):
+                                            eliminar_historia_lc(hlc_id)
+                                            from database import cargar_historias_lc
+                                            st.session_state.df_historias_lc = cargar_historias_lc()
+                                            st.success("Historia LC eliminada.")
+                                            st.rerun()
+
+                                    # --- RECOMENDACIONES ---
+                                    st.markdown("#### 💡 Recomendaciones / Lo que se llevó el paciente (LC)")
+                                    curr_rec_lc = hlc.get('recomendaciones', '')
+                                    if str(curr_rec_lc) == "nan": curr_rec_lc = ""
+                                    rec_editado_lc = st.text_area("Indicaciones médicas, líquidos recomendados, etc.", value=str(curr_rec_lc), key=f"rec_lc_{hlc_id}", height=80)
+                                    if st.button("💾 Guardar recomendación", key=f"btn_rec_lc_{hlc_id}", use_container_width=True):
+                                        from database import actualizar_historia_lc, cargar_historias_lc
+                                        actualizar_historia_lc(hlc_id, {"recomendaciones": rec_editado_lc})
+                                        st.toast("✅ Recomendación guardada en la nube.")
+                                        st.session_state.df_historias_lc = cargar_historias_lc()
+                                        st.rerun()
+
+                                    st.markdown("---")
+                                    bacc1_lc, bacc2_lc, bacc3_lc = st.columns(3)
+
+                                    try:
+                                        import base64 as _b64
+                                        import urllib.parse
+                                        
+                                        def _normalizar_tel_lc(tel_raw):
+                                            t = str(tel_raw).strip().replace(" ", "").replace("-", "").replace("+", "")
+                                            if t.startswith("0"):
+                                                t = "593" + t[1:]
+                                            elif not t.startswith("593") and t:
+                                                t = "593" + t
+                                            return t
+
+                                        _opto_login_lc = hlc.get("optometrista_login", "") or st.session_state.get("user_login", "")
+                                        _ud_supabase_lc = {}
+                                        try:
+                                            from database import supabase as _supa
+                                            if _supa and _opto_login_lc:
+                                                _res = _supa.table("usuarios").select("*").eq("username", _opto_login_lc).execute()
+                                                if _res.data:
+                                                    _ud_supabase_lc = _res.data[0]
+                                        except Exception: pass
+
+                                        _opto_nombre_lc = hlc.get("optometrista", "") or st.session_state.get("user_name", "")
+
+                                        opto_info_lc = {
+                                            "username":     _opto_login_lc,
+                                            "nombre":       _ud_supabase_lc.get("nombre")   or _opto_nombre_lc,
+                                            "cargo":        _ud_supabase_lc.get("cargo")    or st.session_state.get("user_cargo", "Optometrista"),
+                                            "registro":     _ud_supabase_lc.get("registro") or st.session_state.get("user_registro", ""),
+                                            "telefono":     _ud_supabase_lc.get("telefono") or st.session_state.get("user_telefono", ""),
+                                            "firma_base64": _ud_supabase_lc.get("firma_base64") or st.session_state.get("user_firma", "")
+                                        }
+
+                                        pdf_bytes_lc = generar_pdf_historia_lc(hlc.to_dict(), pac.to_dict(), opto_info_lc)
+                                        pdf_bytes_ind = generar_pdf_historia_lc(hlc.to_dict(), pac.to_dict(), opto_info_lc, is_indicaciones=True)
+
+                                        tel_pac_lc = _normalizar_tel_lc(pac.get("telefono", ""))
+                                        nombre_pac_lc = pac.get('nombre', pac.get('nombres', ''))
+
+                                        def _log_pdf_descarga_lc():
+                                            from database import registrar_auditoria
+                                            registrar_auditoria(
+                                                accion="Descargar PDF LC",
+                                                entidad="Certificado LC",
+                                                detalle=f"Paciente: {nombre_pac_lc} | Historia LC ID: {hlc_id}",
+                                                usuario=st.session_state.get("user_login", ""),
+                                                nombre_usuario=st.session_state.get("user_name", ""),
+                                                sucursal=st.session_state.get("sucursal_activa", "")
+                                            )
+
+                                        def _log_pdf_descarga_ind_lc():
+                                            from database import registrar_auditoria
+                                            registrar_auditoria(
+                                                accion="Descargar PDF LC",
+                                                entidad="Indicaciones LC",
+                                                detalle=f"Paciente: {nombre_pac_lc} | Historia LC ID: {hlc_id}",
+                                                usuario=st.session_state.get("user_login", ""),
+                                                nombre_usuario=st.session_state.get("user_name", ""),
+                                                sucursal=st.session_state.get("sucursal_activa", "")
+                                            )
+
+                                        with bacc1_lc:
+                                            with st.popover("📥 Descargar PDFs LC", use_container_width=True):
+                                                st.download_button(
+                                                    label="📥 Certificado LC (PDF)",
+                                                    data=pdf_bytes_lc,
+                                                    file_name=f"Certificado_LC_{nombre_pac_lc.replace(' ','_')}.pdf",
+                                                    mime="application/pdf",
+                                                    use_container_width=True,
+                                                    key=f"dl_pdf_lc_{hlc_id}",
+                                                    on_click=_log_pdf_descarga_lc
+                                                )
+                                                st.download_button(
+                                                    label="📥 Indicaciones LC (PDF)",
+                                                    data=pdf_bytes_ind,
+                                                    file_name=f"Indicaciones_LC_{nombre_pac_lc.replace(' ','_')}.pdf",
+                                                    mime="application/pdf",
+                                                    use_container_width=True,
+                                                    key=f"dl_ind_lc_{hlc_id}",
+                                                    on_click=_log_pdf_descarga_ind_lc
+                                                )
+
+                                        with bacc2_lc:
+                                            with st.popover("👁️ Vista Previa y Enviar LC", use_container_width=True):
+                                                with st.expander("👁️ Vista Previa Certificado"):
+                                                    _b64str_lc = _b64.b64encode(pdf_bytes_lc).decode("utf-8")
+                                                    st.markdown(
+                                                        f'<iframe src="data:application/pdf;base64,{_b64str_lc}" '
+                                                        f'width="100%" height="400px" style="border:none;"></iframe>',
+                                                        unsafe_allow_html=True
+                                                    )
+                                                with st.expander("👁️ Vista Previa Indicaciones"):
+                                                    _b64str_ind = _b64.b64encode(pdf_bytes_ind).decode("utf-8")
+                                                    st.markdown(
+                                                        f'<iframe src="data:application/pdf;base64,{_b64str_ind}" '
+                                                        f'width="100%" height="400px" style="border:none;"></iframe>',
+                                                        unsafe_allow_html=True
+                                                    )
+                                                
+                                                if tel_pac_lc:
+                                                    msg_pdf_lc = generar_msg_hc_lc(hlc.to_dict(), pac.to_dict())
+                                                    wa_pdf_lc_url = f"https://wa.me/{tel_pac_lc}?text={urllib.parse.quote(msg_pdf_lc)}"
+                                                    if st.button("📲 WhatsApp (Certificado LC)", key=f"btn_wa_pdf_lc_{hlc_id}", use_container_width=True):
+                                                        from database import registrar_auditoria
+                                                        registrar_auditoria(
+                                                            accion="Enviar WhatsApp LC",
+                                                            entidad="Certificado LC PDF",
+                                                            detalle=f"Paciente: {nombre_pac_lc} | Tel: {tel_pac_lc}",
+                                                            usuario=st.session_state.get("user_login", ""),
+                                                            nombre_usuario=st.session_state.get("user_name", ""),
+                                                            sucursal=st.session_state.get("sucursal_activa", "")
+                                                        )
+                                                        st.markdown(f'<a href="{wa_pdf_lc_url}" target="_blank" id="wa_lc_link_{hlc_id}"><script>document.getElementById("wa_lc_link_{hlc_id}").click();</script></a>', unsafe_allow_html=True)
+                                                        st.info(f"👉 [Abrir WhatsApp Certificado]({wa_pdf_lc_url})")
+
+                                                    msg_pdf_ind = generar_msg_indicaciones_lc(hlc.to_dict(), pac.to_dict())
+                                                    wa_pdf_ind_url = f"https://wa.me/{tel_pac_lc}?text={urllib.parse.quote(msg_pdf_ind)}"
+                                                    if st.button("📲 WhatsApp (Indicaciones LC)", key=f"btn_wa_pdf_ind_{hlc_id}", use_container_width=True):
+                                                        from database import registrar_auditoria
+                                                        registrar_auditoria(
+                                                            accion="Enviar WhatsApp LC",
+                                                            entidad="Indicaciones LC PDF",
+                                                            detalle=f"Paciente: {nombre_pac_lc} | Tel: {tel_pac_lc}",
+                                                            usuario=st.session_state.get("user_login", ""),
+                                                            nombre_usuario=st.session_state.get("user_name", ""),
+                                                            sucursal=st.session_state.get("sucursal_activa", "")
+                                                        )
+                                                        st.markdown(f'<a href="{wa_pdf_ind_url}" target="_blank" id="wa_ind_lc_link_{hlc_id}"><script>document.getElementById("wa_ind_lc_link_{hlc_id}").click();</script></a>', unsafe_allow_html=True)
+                                                        st.info(f"👉 [Abrir WhatsApp Indicaciones]({wa_pdf_ind_url})")
+                                                else:
+                                                    st.caption("⚠️ Sin teléfono")
+
+                                        with bacc3_lc:
+                                            with st.popover("💊 Enviar Indicacion LC", use_container_width=True):
+                                                st.markdown("<p style='font-size:14px; font-weight:700; margin-bottom:2px;'>📋 Indicaciones LC para el Paciente</p>", unsafe_allow_html=True)
+                                                st.caption("Selecciona una plantilla, edítala y envía.")
+                                                
+                                                wa_key_lc = f"wa_msg_val_lc_{hlc_id}"
+                                                if wa_key_lc not in st.session_state:
+                                                    st.session_state[wa_key_lc] = hlc.get("recomendaciones", "") or ""
+
+                                                c_s1, c_s2 = st.columns(2)
+                                                if c_s1.button("🧼 Higiene LC", key=f"btn_s1_lc_{hlc_id}", use_container_width=True):
+                                                    st.session_state[wa_key_lc] = "🧼 Lave y seque muy bien sus manos antes de colocar o retirar sus lentes de contacto. Nunca use saliva ni agua de grifo."
+                                                    st.rerun()
+                                                if c_s2.button("💧 Lubricación", key=f"btn_s2_lc_{hlc_id}", use_container_width=True):
+                                                    st.session_state[wa_key_lc] = "💧 Aplique 1 gota de lágrimas artificiales específicas para lentes de contacto cada 4 horas para mantener la hidratación."
+                                                    st.rerun()
+                                                
+                                                c_s3, c_s4 = st.columns(2)
+                                                if c_s3.button("🕒 Uso Diario", key=f"btn_s3_lc_{hlc_id}", use_container_width=True):
+                                                    st.session_state[wa_key_lc] = "🕒 No exceda las horas de uso diario recomendadas (máximo 8-10 horas) y recuerde retirárselos antes de dormir."
+                                                    st.rerun()
+                                                if c_s4.button("📅 Control LC", key=f"btn_s4_lc_{hlc_id}", use_container_width=True):
+                                                    st.session_state[wa_key_lc] = "📅 Agende su control de seguimiento en 1 semana para verificar que la córnea y la adaptación del lente sigan saludables."
+                                                    st.rerun()
+
+                                                indicacion_editada_lc = st.text_area(
+                                                    "✏️ Edita el mensaje antes de enviar:",
+                                                    key=wa_key_lc,
+                                                    height=140,
+                                                    placeholder="Selecciona una plantilla arriba o escribe aquí..."
+                                                )
+                                                
+                                                if tel_pac_lc:
+                                                    fecha_hc_lc = hlc.get('fecha', '')
+                                                    full_wa_msg_lc = (
+                                                        f"👁️ *Happy Vision — Indicaciones Lentes de Contacto*\n\n"
+                                                        f"Estimado/a *{nombre_pac_lc}*, a continuación las indicaciones de su consulta de lentes de contacto del *{fecha_hc_lc}*:\n\n"
+                                                        f"{indicacion_editada_lc}\n\n"
+                                                        f"Ante cualquier duda o molestia, comuníquese con nosotros.\n"
+                                                        f"📍 *Happy Vision* | 📞 +593 96 324 1158"
+                                                    )
+                                                    wa_url_lc = f"https://wa.me/{tel_pac_lc}?text={urllib.parse.quote(full_wa_msg_lc)}"
+                                                    if st.button("📲 Enviar por WhatsApp", key=f"btn_wa_ind_lc_send_{hlc_id}", use_container_width=True, type="primary"):
+                                                        from database import registrar_auditoria
+                                                        registrar_auditoria(
+                                                            accion="Enviar WhatsApp",
+                                                            entidad="Indicaciones LC WhatsApp",
+                                                            detalle=f"Paciente: {nombre_pac_lc} | Tel: {tel_pac_lc}",
+                                                            usuario=st.session_state.get("user_login", ""),
+                                                            nombre_usuario=st.session_state.get("user_name", ""),
+                                                            sucursal=st.session_state.get("sucursal_activa", "")
+                                                        )
+                                                        st.markdown(f'<a href="{wa_url_lc}" target="_blank" id="wa_ind_lc_send_link_{hlc_id}"><script>document.getElementById("wa_ind_lc_send_link_{hlc_id}").click();</script></a>', unsafe_allow_html=True)
+                                                        st.info(f"👉 [Click aquí para abrir WhatsApp]({wa_url_lc})")
+                                                else:
+                                                    st.caption("⚠️ Sin teléfono registrado")
+
+                                    except Exception as e:
+                                        st.error(f"⚠️ Error generando PDF: {e}")
+                                else:
+                                    if st.button("⬅️ Volver a vista de lectura", key=f"cancel_edit_lc_{hlc_id}"):
+                                        st.session_state[f"editando_lc_{hlc_id}"] = False
+                                        st.rerun()
+
+                                    with st.form(key=f"edit_lc_form_full_{hlc_id}", clear_on_submit=False):
+                                        st.markdown(f"""
+                                        <div style='background:linear-gradient(135deg,#2c1a0e,#7c3f00);border-radius:14px;
+                                        padding:18px 24px;margin-bottom:14px;color:white;'>
+                                            <h3 style='margin:0;font-size:1.15rem;'>✏️ Editando Historia Clínica - Lentes de Contacto</h3>
+                                        </div>
+                                        """, unsafe_allow_html=True)
+
+                                        elc_fecha_val = hlc.get('fecha', str(date.today()))
+                                        if len(str(elc_fecha_val)) >= 10: elc_fecha_val = elc_fecha_val[:10]
+                                        elc_fecha = st.date_input("📅 Fecha de la Consulta", value=date.fromisoformat(elc_fecha_val), key=f"efec_{hlc_id}")
+
+                                        import re
+
+                                        # ── BLOQUE 1: ANAMNESIS ─────────────────────────────────
+                                        st.markdown("""
+                                        <div style='background:linear-gradient(135deg,#fdf6ee,#f5e6cc);border:1px solid #d4a96a;
+                                        border-radius:10px;padding:14px 18px;margin:10px 0 8px 0;'>
+                                        <b style='color:#7c3f00;font-size:13px;text-transform:uppercase;letter-spacing:.06em;'>
+                                        📝 Bloque 1 — Anamnesis Especializada</b></div>
+                                        """, unsafe_allow_html=True)
+                                        ea1, ea2 = st.columns(2)
+                                        e_lc_usu = ea1.selectbox("¿Usuario previo de LC?", ["", "Sí", "No"], index=["", "Sí", "No"].index(hlc.get('lc_usuario_previo', '')) if hlc.get('lc_usuario_previo', '') in ["", "Sí", "No"] else 0, key=f"eu1_{hlc_id}")
+                                        e_lc_tip = ea2.selectbox("Tipo de lente anterior", ["", "Blando esférico", "Blando tórico", "Multifocal", "RGP", "Escleral", "Ninguno"], index=["", "Blando esférico", "Blando tórico", "Multifocal", "RGP", "Escleral", "Ninguno"].index(hlc.get('lc_tipo_lente_ant', '')) if hlc.get('lc_tipo_lente_ant', '') in ["", "Blando esférico", "Blando tórico", "Multifocal", "RGP", "Escleral", "Ninguno"] else 0, key=f"eu2_{hlc_id}")
+                                        ea3, ea4 = st.columns(2)
+                                        e_lc_mar = ea3.text_input("Marca/Laboratorio anterior", value=str(hlc.get('lc_marca_ant', '')), key=f"eu3_{hlc_id}")
+                                        e_lc_hor = ea4.text_input("Horas de uso diario", value=str(hlc.get('lc_horas_uso', '')), key=f"eu4_{hlc_id}")
+                                        ea5, ea6 = st.columns(2)
+                                        e_lc_sol = ea5.selectbox("Solución de mantenimiento habitual", ["", "Solución multipropósito", "Peróxido de hidrógeno", "Jabón y agua (alerta)", "Ninguna"], index=["", "Solución multipropósito", "Peróxido de hidrógeno", "Jabón y agua (alerta)", "Ninguna"].index(hlc.get('lc_solucion_habitual', '')) if hlc.get('lc_solucion_habitual', '') in ["", "Solución multipropósito", "Peróxido de hidrógeno", "Jabón y agua (alerta)", "Ninguna"] else 0, key=f"eu5_{hlc_id}")
+                                        e_lc_mot = ea6.selectbox("Motivo de la nueva consulta", ["", "Estética", "Deporte", "Renovación", "Incomodidad con los anteriores", "Queratocono", "Necesidad médica"], index=["", "Estética", "Deporte", "Renovación", "Incomodidad con los anteriores", "Queratocono", "Necesidad médica"].index(hlc.get('lc_motivo_consulta', '')) if hlc.get('lc_motivo_consulta', '') in ["", "Estética", "Deporte", "Renovación", "Incomodidad con los anteriores", "Queratocono", "Necesidad médica"] else 0, key=f"eu6_{hlc_id}")
+
+                                        # ── BLOQUE 2: EXAMEN PRELIMINAR ──────────────────────────
+                                        st.markdown("""
+                                        <div style='background:linear-gradient(135deg,#fdf6ee,#f5e6cc);border:1px solid #d4a96a;
+                                        border-radius:10px;padding:14px 18px;margin:10px 0 8px 0;'>
+                                        <b style='color:#7c3f00;font-size:13px;text-transform:uppercase;letter-spacing:.06em;'>
+                                        🔬 Bloque 2 — Examen Preliminar y Refracción</b></div>
+                                        """, unsafe_allow_html=True)
+
+                                        st.markdown("<small><b>AV Sin Corrección (S/C)</b></small>", unsafe_allow_html=True)
+                                        eb1, eb2 = st.columns(2)
+                                        e_lc_avsc_od = eb1.text_input("🟠 OD AV S/C", value=str(hlc.get('lc_avsc_od', '')), key=f"eb1_{hlc_id}")
+                                        e_lc_avsc_oi = eb2.text_input("🟤 OI AV S/C", value=str(hlc.get('lc_avsc_oi', '')), key=f"eb2_{hlc_id}")
+
+                                        st.markdown("<small><b>Refracción Subjetiva Actual (Rx Gafas)</b></small>", unsafe_allow_html=True)
+                                        val_rx_od = hlc.get('lc_rx_od', '')
+                                        val_rx_oi = hlc.get('lc_rx_oi', '')
+                                        def parse_rx(rx_str):
+                                            if not rx_str or '/' not in str(rx_str): return "", "", ""
+                                            try:
+                                                parts = str(rx_str).split('/')
+                                                esf = parts[0].strip()
+                                                rest = parts[1].split('x')
+                                                cil = rest[0].strip()
+                                                eje = rest[1].strip() if len(rest) > 1 else ""
+                                                return esf, cil, eje
+                                            except Exception:
+                                                return str(rx_str), "", ""
+
+                                        e_rx_od_esf_val, e_rx_od_cil_val, e_rx_od_eje_val = parse_rx(val_rx_od)
+                                        e_rx_oi_esf_val, e_rx_oi_cil_val, e_rx_oi_eje_val = parse_rx(val_rx_oi)
+
+                                        lerx1,lerx2,lerx3,lerx4 = st.columns([0.15,1,1,1])
+                                        lerx1.markdown("<p style='margin-top:28px'><b>🟠</b></p>", unsafe_allow_html=True)
+                                        e_rx_od_esf = lerx2.text_input("ESF OD", value=e_rx_od_esf_val, key=f"erx_od_esf_{hlc_id}")
+                                        e_rx_od_cil = lerx3.text_input("CIL OD", value=e_rx_od_cil_val, key=f"erx_od_cil_{hlc_id}")
+                                        e_rx_od_eje = lerx4.text_input("EJE OD", value=e_rx_od_eje_val, key=f"erx_od_eje_{hlc_id}")
+
+                                        lerx5,lerx6,lerx7,lerx8 = st.columns([0.15,1,1,1])
+                                        lerx5.markdown("<p style='margin-top:28px'><b>🟤</b></p>", unsafe_allow_html=True)
+                                        e_rx_oi_esf = lerx6.text_input("ESF OI", value=e_rx_oi_esf_val, key=f"erx_oi_esf_{hlc_id}")
+                                        e_rx_oi_cil = lerx7.text_input("CIL OI", value=e_rx_oi_cil_val, key=f"erx_oi_cil_{hlc_id}")
+                                        e_rx_oi_eje = lerx8.text_input("EJE OI", value=e_rx_oi_eje_val, key=f"erx_oi_eje_{hlc_id}")
+
+                                        e_lc_dv = st.text_input("📐 Distancia al Vértice (DV en mm)", value=str(hlc.get('lc_distancia_vertice', '')), key=f"eb5_{hlc_id}")
+
+                                        st.markdown("<small><b>Queratometría / Topografía</b></small>", unsafe_allow_html=True)
+                                        val_kera_od = hlc.get('lc_kera_od', '')
+                                        val_kera_oi = hlc.get('lc_kera_oi', '')
+                                        def parse_kera(k_str):
+                                            if not k_str or '/' not in str(k_str): return "", "", ""
+                                            try:
+                                                parts = str(k_str).split('/')
+                                                plana = parts[0].strip()
+                                                rest = parts[1].split('@')
+                                                curva = rest[0].strip()
+                                                eje = rest[1].strip() if len(rest) > 1 else ""
+                                                return plana, curva, eje
+                                            except Exception:
+                                                return str(k_str), "", ""
+
+                                        e_k_od_p_val, e_k_od_c_val, e_k_od_e_val = parse_kera(val_kera_od)
+                                        e_k_oi_p_val, e_k_oi_c_val, e_k_oi_e_val = parse_kera(val_kera_oi)
+
+                                        lek1,lek2,lek3,lek4 = st.columns([0.15,1,1,1])
+                                        lek1.markdown("<p style='margin-top:28px'><b>🟠</b></p>", unsafe_allow_html=True)
+                                        e_lk_od_p = lek2.text_input("K Plana OD", value=e_k_od_p_val, key=f"ek1_{hlc_id}")
+                                        e_lk_od_c = lek3.text_input("K Curva OD", value=e_k_od_c_val, key=f"ek2_{hlc_id}")
+                                        e_lk_od_e = lek4.text_input("Eje OD", value=e_k_od_e_val, key=f"ek3_{hlc_id}")
+
+                                        lek5,lek6,lek7,lek8 = st.columns([0.15,1,1,1])
+                                        lek5.markdown("<p style='margin-top:28px'><b>🟤</b></p>", unsafe_allow_html=True)
+                                        e_lk_oi_p = lek6.text_input("K Plana OI", value=e_k_oi_p_val, key=f"ek4_{hlc_id}")
+                                        e_lk_oi_c = lek7.text_input("K Curva OI", value=e_k_oi_c_val, key=f"ek5_{hlc_id}")
+                                        e_lk_oi_e = lek8.text_input("Eje OI", value=e_k_oi_e_val, key=f"ek6_{hlc_id}")
+
+                                        eas1, eas2 = st.columns(2)
+                                        e_ast_od = eas1.text_input("⚪ Astigmatismo Corneal OD (D)", value=str(hlc.get('lc_astig_corneal_od', '')), key=f"eas1_{hlc_id}")
+                                        e_ast_oi = eas2.text_input("⚪ Astigmatismo Corneal OI (D)", value=str(hlc.get('lc_astig_corneal_oi', '')), key=f"eas2_{hlc_id}")
+
+                                        # ── BLOQUE 3: BIOMICROSCOPÍA ────────────────────────────
+                                        st.markdown("""
+                                        <div style='background:linear-gradient(135deg,#fdf6ee,#f5e6cc);border:1px solid #d4a96a;
+                                        border-radius:10px;padding:14px 18px;margin:10px 0 8px 0;'>
+                                        <b style='color:#7c3f00;font-size:13px;text-transform:uppercase;letter-spacing:.06em;'>
+                                        🔬 Bloque 3 — Evaluación de la Salud Ocular (Biomicroscopía)</b></div>
+                                        """, unsafe_allow_html=True)
+                                        em1, em2 = st.columns(2)
+                                        e_lc_par = em1.selectbox("👁️ Párpados / Glándulas de Meibomio", ["", "Normal", "Disfunción leve", "Disfunción severa", "Blefaritis"], index=["", "Normal", "Disfunción leve", "Disfunción severa", "Blefaritis"].index(hlc.get('lc_parpados', '')) if hlc.get('lc_parpados', '') in ["", "Normal", "Disfunción leve", "Disfunción severa", "Blefaritis"] else 0, key=f"em1_{hlc_id}")
+                                        e_lc_con = em2.selectbox("Conjuntiva (Hiperemia)", ["", "Grado 0 (Ninguna)", "Grado 1 (Leve)", "Grado 2 (Moderada)", "Grado 3 (Severa)"], index=["", "Grado 0 (Ninguna)", "Grado 1 (Leve)", "Grado 2 (Moderada)", "Grado 3 (Severa)"].index(hlc.get('lc_conjuntiva', '')) if hlc.get('lc_conjuntiva', '') in ["", "Grado 0 (Ninguna)", "Grado 1 (Leve)", "Grado 2 (Moderada)", "Grado 3 (Severa)"] else 0, key=f"em2_{hlc_id}")
+                                        em3, em4 = st.columns(2)
+                                        e_lc_eve = em3.selectbox("Eversión Palpebral (Papilas)", ["", "Ausentes", "Leves", "Conjuntivitis Papilar Gigante (GPC)"], index=["", "Ausentes", "Leves", "Conjuntivitis Papilar Gigante (GPC)"].index(hlc.get('lc_eversion', '')) if hlc.get('lc_eversion', '') in ["", "Ausentes", "Leves", "Conjuntivitis Papilar Gigante (GPC)"] else 0, key=f"em3_{hlc_id}")
+                                        e_lc_cor = em4.selectbox("Córnea (Tinc. Fluoresceína)", ["", "Grado 0 (Limpia)", "Grado 1 (Punteado leve)", "Grado 2 (Tinc. confluente)", "Grado 3 (Úlcera/Infiltrado)"], index=["", "Grado 0 (Limpia)", "Grado 1 (Punteado leve)", "Grado 2 (Tinc. confluente)", "Grado 3 (Úlcera/Infiltrado)"].index(hlc.get('lc_cornea', '')) if hlc.get('lc_cornea', '') in ["", "Grado 0 (Limpia)", "Grado 1 (Punteado leve)", "Grado 2 (Tinc. confluente)", "Grado 3 (Úlcera/Infiltrado)"] else 0, key=f"em4_{hlc_id}")
+                                        em5, em6, em7 = st.columns(3)
+                                        e_lc_but_od = em5.text_input("BUT OD (seg)", value=str(hlc.get('lc_but_od', '')), key=f"em5_{hlc_id}")
+                                        e_lc_but_oi = em6.text_input("BUT OI (seg)", value=str(hlc.get('lc_but_oi', '')), key=f"em6_{hlc_id}")
+                                        e_lc_men = em7.selectbox("Menisco Lagrimal", ["", "Normal", "Alto", "Escaso"], index=["", "Normal", "Alto", "Escaso"].index(hlc.get('lc_menisco', '')) if hlc.get('lc_menisco', '') in ["", "Normal", "Alto", "Escaso"] else 0, key=f"em7_{hlc_id}")
+
+                                        # ── BLOQUE 4: LENTE DE PRUEBA ────────────────────────────
+                                        st.markdown("""
+                                        <div style='background:linear-gradient(135deg,#fdf6ee,#f5e6cc);border:1px solid #d4a96a;
+                                        border-radius:10px;padding:14px 18px;margin:10px 0 8px 0;'>
+                                        <b style='color:#7c3f00;font-size:13px;text-transform:uppercase;letter-spacing:.06em;'>
+                                        🔄 Bloque 4 — Registro de Pruebas (Lente de Prueba)</b></div>
+                                        """, unsafe_allow_html=True)
+                                        e_lc_pru_tip = st.selectbox("Tipo de Lente de Prueba", ["", "Blando Hidrogel", "Hidrogel de Silicona", "RGP", "Escleral"], index=["", "Blando Hidrogel", "Hidrogel de Silicona", "RGP", "Escleral"].index(hlc.get('lc_prueba_tipo', '')) if hlc.get('lc_prueba_tipo', '') in ["", "Blando Hidrogel", "Hidrogel de Silicona", "RGP", "Escleral"] else 0, key=f"ep1_{hlc_id}")
+
+                                        val_pru_od = hlc.get('lc_prueba_od', '')
+                                        val_pru_oi = hlc.get('lc_prueba_oi', '')
+
+                                        def parse_prueba(s):
+                                            if not s: return "", "", "", ""
+                                            bc = re.search(r"BC:\\s*([^\\s]+)", str(s))
+                                            td = re.search(r"TD:\\s*([^\\s]+)", str(s))
+                                            sph_cil = re.search(r"TD:\\s*[^\\s]+\\s+([^\\s/]+)/([^\s/]+)", str(s))
+                                            if not sph_cil:
+                                                sph_cil = re.search(r"([^\\s/]+)/([^\\s/]+)$", str(s))
+                                            val_bc = bc.group(1) if bc else ""
+                                            val_td = td.group(1) if td else ""
+                                            val_sph = sph_cil.group(1) if sph_cil else ""
+                                            val_cil = sph_cil.group(2) if sph_cil else ""
+                                            return val_bc, val_td, val_sph, val_cil
+
+                                        e_pru_od_bc, e_pru_od_td, e_pru_od_esf, e_pru_od_cil = parse_prueba(val_pru_od)
+                                        e_pru_oi_bc, e_pru_oi_td, e_pru_oi_esf, e_pru_oi_cil = parse_prueba(val_pru_oi)
+
+                                        st.markdown("<small><b>Parámetros del Lente de Prueba</b></small>", unsafe_allow_html=True)
+                                        lep1,lep2,lep3,lep4,lep5 = st.columns([0.15,1,1,1,1])
+                                        lep1.markdown("<p style='margin-top:28px'><b>🟠</b></p>", unsafe_allow_html=True)
+                                        e_lp_od_b = lep2.text_input("BC OD", value=e_pru_od_bc, key=f"ep2_{hlc_id}")
+                                        e_lp_od_t = lep3.text_input("TD OD", value=e_pru_od_td, key=f"ep4_{hlc_id}")
+                                        e_lp_od_e = lep4.text_input("Esf OD", value=e_pru_od_esf, key=f"ep5_{hlc_id}")
+                                        e_lp_od_c = lep5.text_input("Cil OD", value=e_pru_od_cil, key=f"ep6_{hlc_id}")
+
+                                        lep6,lep7,lep8,lep9,lep10 = st.columns([0.15,1,1,1,1])
+                                        lep6.markdown("<p style='margin-top:28px'><b>🟤</b></p>", unsafe_allow_html=True)
+                                        e_lp_oi_b = lep7.text_input("BC OI", value=e_pru_oi_bc, key=f"ep7_{hlc_id}")
+                                        e_lp_oi_t = lep8.text_input("TD OI", value=e_pru_oi_td, key=f"ep8_{hlc_id}")
+                                        e_lp_oi_e = lep9.text_input("Esf OI", value=e_pru_oi_esf, key=f"ep9_{hlc_id}")
+                                        e_lp_oi_c = lep10.text_input("Cil OI", value=e_pru_oi_cil, key=f"ep10_{hlc_id}")
+
+                                        ee1, ee2, ee3, ee4 = st.columns(4)
+                                        e_lc_cen = ee1.selectbox("Centrado", ["", "Centrado", "Descentrado Sup.", "Descentrado Inf.", "Descentrado Nasal", "Descentrado Temporal"], index=["", "Centrado", "Descentrado Sup.", "Descentrado Inf.", "Descentrado Nasal", "Descentrado Temporal"].index(hlc.get('lc_centrado', '')) if hlc.get('lc_centrado', '') in ["", "Centrado", "Descentrado Sup.", "Descentrado Inf.", "Descentrado Nasal", "Descentrado Temporal"] else 0, key=f"ee1_{hlc_id}")
+                                        e_lc_mov = ee2.selectbox("Movimiento al parpadeo", ["", "Adecuado (0.5-1mm)", "Escaso (apretado)", "Excesivo (flojo)"], index=["", "Adecuado (0.5-1mm)", "Escaso (apretado)", "Excesivo (flojo)"].index(hlc.get('lc_movimiento', '')) if hlc.get('lc_movimiento', '') in ["", "Adecuado (0.5-1mm)", "Escaso (apretado)", "Excesivo (flojo)"] else 0, key=f"ee2_{hlc_id}")
+                                        e_lc_pus = ee3.selectbox("Push-up Test", ["", "Positiva (Aceptable)", "Negativa (Muy apretado)"], index=["", "Positiva (Aceptable)", "Negativa (Muy apretado)"].index(hlc.get('lc_pushup', '')) if hlc.get('lc_pushup', '') in ["", "Positiva (Aceptable)", "Negativa (Muy apretado)"] else 0, key=f"ee3_{hlc_id}")
+                                        e_lc_rot = ee4.text_input("Rotación de eje (°)", value=str(hlc.get('lc_rotacion', '')), key=f"ee4_{hlc_id}")
+
+                                        st.markdown("<small><b>Sobrerrefracción (Over-Refraction)</b></small>", unsafe_allow_html=True)
+                                        val_sobre_od = hlc.get('lc_sobre_od', '')
+                                        val_sobre_oi = hlc.get('lc_sobre_oi', '')
+                                        
+                                        def parse_sobre(s):
+                                            if not s: return "", "", ""
+                                            sph_align = re.search(r"^([^\\s/]+)/([^\\s/]+)", str(s))
+                                            av = re.search(r"AV:\\s*(.*)", str(s))
+                                            val_sph = sph_align.group(1) if sph_align else ""
+                                            val_cil = sph_align.group(2) if sph_align else ""
+                                            val_av = av.group(1) if av else ""
+                                            return val_sph, val_cil, val_av
+
+                                        e_ls_od_esf_val, e_ls_od_cil_val, e_ls_od_av_val = parse_sobre(val_sobre_od)
+                                        e_ls_oi_esf_val, e_ls_oi_cil_val, e_ls_oi_av_val = parse_sobre(val_sobre_oi)
+
+                                        les1,les2,les3,les4 = st.columns([0.15,1,1,1])
+                                        les1.markdown("<p style='margin-top:28px'><b>🟠</b></p>", unsafe_allow_html=True)
+                                        e_ls_od_e = les2.text_input("SR Esf OD", value=e_ls_od_esf_val, key=f"es1_{hlc_id}")
+                                        e_ls_od_c = les3.text_input("SR Cil OD", value=e_ls_od_cil_val, key=f"es2_{hlc_id}")
+                                        e_ls_od_a = les4.text_input("AV lograda OD", value=e_ls_od_av_val, key=f"es3_{hlc_id}")
+
+                                        les5,les6,les7,les8 = st.columns([0.15,1,1,1])
+                                        les5.markdown("<p style='margin-top:28px'><b>🟤</b></p>", unsafe_allow_html=True)
+                                        e_ls_oi_e = les6.text_input("SR Esf OI", value=e_ls_oi_esf_val, key=f"es4_{hlc_id}")
+                                        e_ls_oi_c = les7.text_input("SR Cil OI", value=e_ls_oi_cil_val, key=f"es5_{hlc_id}")
+                                        e_ls_oi_a = les8.text_input("AV lograda OI", value=e_ls_oi_av_val, key=f"es6_{hlc_id}")
+
+                                        # ── BLOQUE 5: LENTE DEFINITIVO ───────────────────────────
+                                        st.markdown("""
+                                        <div style='background:linear-gradient(135deg,#fdf6ee,#f5e6cc);border:1px solid #d4a96a;
+                                        border-radius:10px;padding:14px 18px;margin:10px 0 8px 0;'>
+                                        <b style='color:#7c3f00;font-size:13px;text-transform:uppercase;letter-spacing:.06em;'>
+                                        ✔️ Bloque 5 — Diagnóstico y Lente Definitivo</b></div>
+                                        """, unsafe_allow_html=True)
+
+                                        st.markdown("<small><b>Lente Final Autorizado</b></small>", unsafe_allow_html=True)
+                                        val_final_od = hlc.get('lc_final_od', '')
+                                        val_final_oi = hlc.get('lc_final_oi', '')
+
+                                        def parse_final(s):
+                                            if not s: return "", "", "", "", ""
+                                            bc = re.search(r"BC:\\s*([^\\s]+)", str(s))
+                                            td = re.search(r"TD:\\s*([^\\s]+)", str(s))
+                                            sph_cil = re.search(r"TD:\\s*[^\\s]+\\s+([^\\s/]+)/([^\s/]+)", str(s))
+                                            if not sph_cil:
+                                                sph_cil = re.search(r"([^\\s/]+)/([^\\s/]+)", str(s))
+                                            add = re.search(r"Add:\\s*([^\\s]+)", str(s))
+                                            val_bc = bc.group(1) if bc else ""
+                                            val_td = td.group(1) if td else ""
+                                            val_sph = sph_cil.group(1) if sph_cil else ""
+                                            val_cil = sph_cil.group(2) if sph_cil else ""
+                                            val_add = add.group(1) if add else ""
+                                            return val_bc, val_td, val_sph, val_cil, val_add
+
+                                        e_lf_od_bc, e_lf_od_td, e_lf_od_esf, e_lf_od_cil, e_lf_od_add = parse_final(val_final_od)
+                                        e_lf_oi_bc, e_lf_oi_td, e_lf_oi_esf, e_lf_oi_cil, e_lf_oi_add = parse_final(val_final_oi)
+
+                                        lef1,lef2,lef3,lef4,lef5,lef6 = st.columns([0.15,1,1,1,1,1])
+                                        lef1.markdown("<p style='margin-top:28px'><b>🟠</b></p>", unsafe_allow_html=True)
+                                        e_lf_od_b = lef2.text_input("BC OD ", value=e_lf_od_bc, key=f"ef1_{hlc_id}")
+                                        e_lf_od_t = lef3.text_input("TD OD ", value=e_lf_od_td, key=f"ef2_{hlc_id}")
+                                        e_lf_od_e = lef4.text_input("Esf OD ", value=e_lf_od_esf, key=f"ef3_{hlc_id}")
+                                        e_lf_od_c = lef5.text_input("Cil OD ", value=e_lf_od_cil, key=f"ef4_{hlc_id}")
+                                        e_lf_od_a = lef6.text_input("Add OD", value=e_lf_od_add, key=f"ef5_{hlc_id}")
+
+                                        lef7,lef8,lef9,lef10,lef11,lef12 = st.columns([0.15,1,1,1,1,1])
+                                        lef7.markdown("<p style='margin-top:28px'><b>🟤</b></p>", unsafe_allow_html=True)
+                                        e_lf_oi_b = lef8.text_input("BC OI ", value=e_lf_oi_bc, key=f"ef6_{hlc_id}")
+                                        e_lf_oi_t = lef9.text_input("TD OI ", value=e_lf_oi_td, key=f"ef7_{hlc_id}")
+                                        e_lf_oi_e = lef10.text_input("Esf OI ", value=e_lf_oi_esf, key=f"ef8_{hlc_id}")
+                                        e_lf_oi_c = lef11.text_input("Cil OI ", value=e_lf_oi_cil, key=f"ef9_{hlc_id}")
+                                        e_lf_oi_a = lef12.text_input("Add OI", value=e_lf_oi_add, key=f"ef10_{hlc_id}")
+
+                                        el1, el2, el3, el4 = st.columns(4)
+                                        e_lc_mar_fin = el1.text_input("Marca / Laboratorio", value=str(hlc.get('lc_marca_final', '')), key=f"el1_{hlc_id}")
+                                        e_lc_mod = el2.selectbox("Modalidad de Reemplazo", ["", "Diario", "Quincenal", "Mensual", "Trimestral", "Anual"], index=["", "Diario", "Quincenal", "Mensual", "Trimestral", "Anual"].index(hlc.get('lc_modalidad', '')) if hlc.get('lc_modalidad', '') in ["", "Diario", "Quincenal", "Mensual", "Trimestral", "Anual"] else 0, key=f"el2_{hlc_id}")
+                                        e_lc_reg = el3.selectbox("Régimen de Uso", ["", "Uso diario (se los quita para dormir)", "Uso prolongado"], index=["", "Uso diario (se los quita para dormir)", "Uso prolongado"].index(hlc.get('lc_regimen', '')) if hlc.get('lc_regimen', '') in ["", "Uso diario (se los quita para dormir)", "Uso prolongado"] else 0, key=f"el3_{hlc_id}")
+                                        e_lc_sol_fin = el4.text_input("Solución Recomendada", value=str(hlc.get('lc_solucion_final', '')), key=f"el4_{hlc_id}")
+
+                                        # ── BLOQUE 6: ENTREGA Y EDUCACIÓN ───────────────────────
+                                        st.markdown("""
+                                        <div style='background:linear-gradient(135deg,#fdf6ee,#f5e6cc);border:1px solid #d4a96a;
+                                        border-radius:10px;padding:14px 18px;margin:10px 0 8px 0;'>
+                                        <b style='color:#7c3f00;font-size:13px;text-transform:uppercase;letter-spacing:.06em;'>
+                                        🏥 Bloque 6 — Entrega, Educación y Controles</b></div>
+                                        """, unsafe_allow_html=True)
+                                        er1, er2 = st.columns(2)
+                                        e_lc_ins = er1.selectbox("Enseñado Inserción/Remoción", ["", "Aprobado", "Requiere más práctica"], index=["", "Aprobado", "Requiere más práctica"].index(hlc.get('lc_insercion', '')) if hlc.get('lc_insercion', '') in ["", "Aprobado", "Requiere más práctica"] else 0, key=f"er1_{hlc_id}")
+
+                                        e_fent_val = hlc.get('lc_fecha_entrega', str(date.today()))
+                                        if not e_fent_val or str(e_fent_val) == "nan": e_fent_val = str(date.today())
+                                        if len(str(e_fent_val)) >= 10: e_fent_val = e_fent_val[:10]
+                                        e_lc_fent = er2.date_input("Fecha de Entrega", value=date.fromisoformat(e_fent_val), key=f"er2_{hlc_id}")
+
+                                        e_lc_pcon = st.selectbox("Cronograma Próximos Controles", ["", "1 semana", "1 mes", "6 meses", "1 año"], index=["", "1 semana", "1 mes", "6 meses", "1 año"].index(hlc.get('lc_proximo_control', '')) if hlc.get('lc_proximo_control', '') in ["", "1 semana", "1 mes", "6 meses", "1 año"] else 0, key=f"er3_{hlc_id}")
+                                        e_lc_obs = st.text_area("Observaciones / Evolución en controles", value=str(hlc.get('lc_observaciones', '')), key=f"er4_{hlc_id}")
+
+                                        if st.form_submit_button("💾 Guardar Cambios LC", type="primary", use_container_width=True):
+                                            constructed_rx_od = f"{e_rx_od_esf} / {e_rx_od_cil} x {e_rx_od_eje}"
+                                            constructed_rx_oi = f"{e_rx_oi_esf} / {e_rx_oi_cil} x {e_rx_oi_eje}"
+                                            constructed_kera_od = f"{e_lk_od_p} / {e_lk_od_c} @ {e_lk_od_e}"
+                                            constructed_kera_oi = f"{e_lk_oi_p} / {e_lk_oi_c} @ {e_lk_oi_e}"
+                                            constructed_prueba_od = f"BC:{e_lp_od_b} TD:{e_lp_od_t} {e_lp_od_e}/{e_lp_od_c}"
+                                            constructed_prueba_oi = f"BC:{e_lp_oi_b} TD:{e_lp_oi_t} {e_lp_oi_e}/{e_lp_oi_c}"
+                                            constructed_sobre_od = f"{e_ls_od_e}/{e_ls_od_c} AV:{e_ls_od_a}"
+                                            constructed_sobre_oi = f"{e_ls_oi_e}/{e_ls_oi_c} AV:{e_ls_oi_a}"
+                                            constructed_final_od = f"BC:{e_lf_od_b} TD:{e_lf_od_t} {e_lf_od_e}/{e_lf_od_c} Add:{e_lf_od_a}"
+                                            constructed_final_oi = f"BC:{e_lf_oi_b} TD:{e_lf_oi_t} {e_lf_oi_e}/{e_lf_oi_c} Add:{e_lf_oi_a}"
+
+                                            datos_act = {
+                                                "fecha": elc_fecha.isoformat(),
+                                                "lc_usuario_previo": e_lc_usu, "lc_tipo_lente_ant": e_lc_tip,
+                                                "lc_marca_ant": e_lc_mar, "lc_horas_uso": e_lc_hor,
+                                                "lc_solucion_habitual": e_lc_sol, "lc_motivo_consulta": e_lc_mot,
+                                                "lc_avsc_od": e_lc_avsc_od, "lc_avsc_oi": e_lc_avsc_oi,
+                                                "lc_rx_od": constructed_rx_od, "lc_rx_oi": constructed_rx_oi,
+                                                "lc_distancia_vertice": e_lc_dv,
+                                                "lc_kera_od": constructed_kera_od, "lc_kera_oi": constructed_kera_oi,
+                                                "lc_astig_corneal_od": e_ast_od, "lc_astig_corneal_oi": e_ast_oi,
+                                                "lc_parpados": e_lc_par, "lc_conjuntiva": e_lc_con, "lc_eversion": e_lc_eve,
+                                                "lc_cornea": e_lc_cor, "lc_but_od": e_lc_but_od, "lc_but_oi": e_lc_but_oi, "lc_menisco": e_lc_men,
+                                                "lc_prueba_tipo": e_lc_pru_tip,
+                                                "lc_prueba_od": constructed_prueba_od, "lc_prueba_oi": constructed_prueba_oi,
+                                                "lc_centrado": e_lc_cen, "lc_movimiento": e_lc_mov, "lc_pushup": e_lc_pus, "lc_rotacion": e_lc_rot,
+                                                "lc_sobre_od": constructed_sobre_od, "lc_sobre_oi": constructed_sobre_oi,
+                                                "lc_final_od": constructed_final_od, "lc_final_oi": constructed_final_oi,
+                                                "lc_marca_final": e_lc_mar_fin, "lc_modalidad": e_lc_mod, "lc_regimen": e_lc_reg,
+                                                "lc_solucion_final": e_lc_sol_fin,
+                                                "lc_insercion": e_lc_ins, "lc_fecha_entrega": str(e_lc_fent),
+                                                "lc_proximo_control": e_lc_pcon, "lc_observaciones": e_lc_obs
+                                            }
+                                            if actualizar_historia_lc(hlc_id, datos_act):
+                                                st.session_state[f"editando_lc_{hlc_id}"] = False
+                                                from database import cargar_historias_lc
+                                                st.session_state.df_historias_lc = cargar_historias_lc()
+                                                st.success("✅ Cambios guardados correctamente.")
+                                                st.rerun()
+                                            else:
+                                                st.error("Error al guardar en la base de datos.")
     elif not q:
         if len(df_p_all) == 0:
             st.info("No hay pacientes registrados. Usa ➕ Nuevo Paciente para agregar el primero.")
