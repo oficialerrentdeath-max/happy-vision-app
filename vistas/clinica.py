@@ -1572,6 +1572,10 @@ def render_clinica():
                 n_hist = len(st.session_state.df_historias[
                     st.session_state.df_historias["paciente_id"].astype(str) == str(rp["id"])
                 ])
+                _df_hlc = st.session_state.get("df_historias_lc", None)
+                n_hist_lc = len(_df_hlc[
+                    _df_hlc["paciente_id"].astype(str) == str(rp["id"])
+                ]) if _df_hlc is not None and not _df_hlc.empty else 0
 
                 _apellidos = str(rp.get("apellidos", "")).strip()
                 _nombres   = str(rp.get("nombres", "")).strip()
@@ -1594,6 +1598,8 @@ def render_clinica():
                 )
                 col_b.caption(f"📞 {rp.get('telefono','')}")
                 col_c.caption(f"📋 Historias: {n_hist}")
+                if n_hist_lc > 0:
+                    col_c.caption(f"👁️ Historias LC: {n_hist_lc}")
                 if col_d.button("🔍 Ver", key=f"rap_cons_{rp['id']}", use_container_width=True):
                     st.session_state["clinica_buscar"] = rp.get("nombre","")
                     st.rerun()
