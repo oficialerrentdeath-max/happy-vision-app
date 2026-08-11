@@ -342,13 +342,30 @@ def render_clinica():
                             final_edad = hoy.year - p_fnac.year - ((hoy.month, hoy.day) < (p_fnac.month, p_fnac.day))
                             final_fnac = p_fnac.strftime("%Y-%m-%d")
 
-                        # Calcular ID de forma segura
+                        # Calcular ID propio por sucursal de forma segura
                         df_p_current = st.session_state.df_pacientes
                         if not df_p_current.empty and "id" in df_p_current.columns:
-                            max_id = pd.to_numeric(df_p_current["id"], errors="coerce").max()
-                            nuevo_id = int(max_id + 1) if pd.notna(max_id) else 1
+                            if "sucursal" in df_p_current.columns and sucursal_actual:
+                                df_p_suc = df_p_current[df_p_current["sucursal"] == sucursal_actual]
+                            else:
+                                df_p_suc = df_p_current
+                            
+                            def _extract_num_id(val):
+                                try:
+                                    return int(str(val).split("_")[0])
+                                except:
+                                    return None
+
+                            numeric_ids = df_p_suc["id"].apply(_extract_num_id).dropna() if not df_p_suc.empty else pd.Series(dtype=int)
+                            max_id = numeric_ids.max() if not numeric_ids.empty else 0
+                            num_secuencia = int(max_id + 1)
                         else:
-                            nuevo_id = 1
+                            num_secuencia = 1
+
+                        if sucursal_actual and sucursal_actual != "Matriz":
+                            nuevo_id = f"{num_secuencia}_{sucursal_actual}"
+                        else:
+                            nuevo_id = str(num_secuencia)
 
                         nuevo_p = {
                             "id": nuevo_id,
@@ -1583,9 +1600,10 @@ def render_clinica():
 
                 col_num, col_a, col_b, col_c, col_d, col_e, col_f = st.columns([0.5, 3.2, 1.8, 1.5, 1.4, 1.4, 0.6])
 
+                display_id = str(rp.get('id', '')).split('_')[0]
                 col_num.markdown(
                     f"<div style='text-align:center; padding-top:6px;'>"
-                    f"<span style='color:#93c5fd;font-size:22px;font-weight:800;line-height:1;'>{rp.get('id','')}</span></div>",
+                    f"<span style='color:#93c5fd;font-size:22px;font-weight:800;line-height:1;'>{display_id}</span></div>",
                     unsafe_allow_html=True
                 )
                 col_a.markdown(
