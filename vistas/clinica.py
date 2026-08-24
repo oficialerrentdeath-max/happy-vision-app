@@ -252,6 +252,44 @@ def _render_lectura_historia(hrow):
 
 
 def render_clinica():
+    # ── AUTO-EXPAND TEXTAREAS ────────────────────────────────────────────────
+    st.markdown("""
+    <style>
+    /* Textareas en historias clínicas: altura mínima generosa */
+    .stTextArea textarea {
+        min-height: 100px !important;
+        resize: none !important;
+        overflow: hidden !important;
+        transition: height 0.1s ease !important;
+        line-height: 1.5 !important;
+    }
+    </style>
+    <script>
+    (function() {
+        function autoResize(el) {
+            el.style.height = 'auto';
+            el.style.height = Math.max(el.scrollHeight, 100) + 'px';
+        }
+
+        function attachListeners() {
+            document.querySelectorAll('.stTextArea textarea').forEach(function(ta) {
+                if (!ta.dataset.autoExpand) {
+                    ta.dataset.autoExpand = '1';
+                    autoResize(ta);
+                    ta.addEventListener('input', function() { autoResize(ta); });
+                    ta.addEventListener('focus', function() { autoResize(ta); });
+                }
+            });
+        }
+
+        // Observar cambios en el DOM (Streamlit re-renderiza constantemente)
+        var observer = new MutationObserver(function() { attachListeners(); });
+        observer.observe(document.body, { childList: true, subtree: true });
+        attachListeners();
+    })();
+    </script>
+    """, unsafe_allow_html=True)
+
     st.markdown("""
     <div class="page-header">
         <h1>👥 Pacientes</h1>
@@ -688,8 +726,8 @@ def render_clinica():
                                             _ctrl_date = date.today() + _td2(days=_meses_n * 30)
                                         eh_proximo_control = ed3.date_input("Proximo control", value=_ctrl_date, key=f"pc_e_{h_id}")
 
-                                        eh_obs = st.text_area("Observaciones / Recomendaciones", value=str(_def.get('observaciones','')), key=f"obs_e_{h_id}")
-                                        eh_recom = st.text_area("Recomendaciones (Indicaciones al paciente)", value=str(_def.get('recomendaciones','')), key=f"rec_e_{h_id}")
+                                        eh_obs = st.text_area("Observaciones / Recomendaciones", value=str(_def.get('observaciones','')), key=f"obs_e_{h_id}", height=120)
+                                        eh_recom = st.text_area("Recomendaciones (Indicaciones al paciente)", value=str(_def.get('recomendaciones','')), key=f"rec_e_{h_id}", height=120)
 
                                         if st.form_submit_button("Guardar Cambios", type="primary", use_container_width=True):
                                             eh_diag = " | ".join(eh_diag_cie_multi)
@@ -732,7 +770,7 @@ def render_clinica():
                                 st.markdown("**💡 Recomendaciones / Lo que se llevó el paciente:**")
                                 rec_val     = hrow.get("recomendaciones", "")
                                 rec_editado = st.text_area("Recomendaciones", value=str(rec_val) if rec_val else "",
-                                    key=f"rec_{hrow['id']}", label_visibility="collapsed", height=80)
+                                    key=f"rec_{hrow['id']}", label_visibility="collapsed", height=120)
                                 if st.button("💾 Guardar recomendación", key=f"save_rec_{hrow['id']}"):
                                     idx_h = st.session_state.df_historias[
                                         st.session_state.df_historias["id"] == hrow["id"]
