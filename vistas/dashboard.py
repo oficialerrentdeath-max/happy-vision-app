@@ -215,6 +215,9 @@ def render_bi_dashboard(sucursal_activa):
     df_ventas = cargar_ventas_historial(suc_sel)
     df_inv = cargar_inventario(None if suc_sel == "Todas" else suc_sel)
     df_historias = cargar_historias()
+    # Filtrar historias por la sucursal seleccionada
+    if suc_sel != "Todas" and "sucursal" in df_historias.columns:
+        df_historias = df_historias[df_historias["sucursal"] == suc_sel]
     
     if df_ventas.empty:
         st.warning("⚠️ No se registran datos de ventas para generar el reporte gerencial.")

@@ -313,7 +313,14 @@ def render_clinica():
     sucursal_actual = st.session_state.get("sucursal_activa", "Matriz")
     
     if "sucursal" in st.session_state.df_pacientes.columns:
-        df_p_all = st.session_state.df_pacientes[st.session_state.df_pacientes["sucursal"] == sucursal_actual].copy()
+        if sucursal_actual == "Matriz":
+            df_p_all = st.session_state.df_pacientes[
+                (st.session_state.df_pacientes["sucursal"] == "Matriz") |
+                (st.session_state.df_pacientes["sucursal"] == "") |
+                (st.session_state.df_pacientes["sucursal"].isna())
+            ].copy()
+        else:
+            df_p_all = st.session_state.df_pacientes[st.session_state.df_pacientes["sucursal"] == sucursal_actual].copy()
     else:
         df_p_all = st.session_state.df_pacientes.copy()
 
@@ -1823,7 +1830,9 @@ def render_clinica():
                 if c_diag_libre.strip():
                     c_diag = (c_diag + " " + c_diag_libre.strip()).strip()
 
-                p_match = st.session_state.df_pacientes[st.session_state.df_pacientes["nombre"] == c_pac_sel]
+                p_match = df_p_all[df_p_all["nombre"] == c_pac_sel] if 'df_p_all' in locals() and not df_p_all.empty else st.session_state.df_pacientes[st.session_state.df_pacientes["nombre"] == c_pac_sel]
+                if p_match.empty and not st.session_state.df_pacientes.empty:
+                    p_match = st.session_state.df_pacientes[st.session_state.df_pacientes["nombre"] == c_pac_sel]
                 if len(p_match) > 0:
                     p_id_match = p_match.iloc[0]["id"]
                     # Calcular nuevo ID de historia de forma segura

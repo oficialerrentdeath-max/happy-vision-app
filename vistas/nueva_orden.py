@@ -88,20 +88,60 @@ def render_nueva_orden():
 
     with tab_n:
         st.markdown("<div class='section-title'>👤 Datos del Paciente</div>", unsafe_allow_html=True)
+        sucursal_activa = st.session_state.get("sucursal_activa", "Matriz")
         pacientes_dict = {}
         pacientes_nombres = {}
-        try:
-            res_p = supabase.table("pacientes").select("id, nombres, apellidos, identificacion").execute()
-            if res_p.data:
-                df_p = pd.DataFrame(res_p.data)
-                df_p["display"] = df_p["nombres"] + " " + df_p["apellidos"] + " (" + df_p["identificacion"] + ")"
-                busc = st.text_input("🔍 Buscar paciente:", key="busc_orden")
-                if busc: df_p = df_p[df_p["display"].str.contains(busc, case=False)]
-                pacientes_dict = dict(zip(df_p["id"], df_p["display"]))
-                pacientes_nombres = dict(zip(df_p["id"], df_p["nombres"] + " " + df_p["apellidos"]))
-        except: pass
 
-        paciente_id = st.selectbox("Confirmar Paciente:", options=list(pacientes_dict.keys()), format_func=lambda x: pacientes_dict.get(x, ""))
+        df_p_source = st.session_state.get("df_pacientes")
+        if df_p_source is None or df_p_source.empty:
+            try:
+                res_p = supabase.table("pacientes").select("id, nombre, nombres, apellidos, identificacion, sucursal").execute()
+                df_p_source = pd.DataFrame(res_p.data) if res_p.data else pd.DataFrame()
+            except:
+                df_p_source = pd.DataFrame()
+
+        if not df_p_source.empty:
+            df_p = df_p_source.copy()
+            # Filtrar estrictamente por la sucursal activa
+            if "sucursal" in df_p.columns and sucursal_activa:
+                if sucursal_activa == "Matriz":
+                    df_p = df_p[(df_p["sucursal"] == "Matriz") | (df_p["sucursal"] == "") | (df_p["sucursal"].isna())]
+                else:
+                    df_p = df_p[df_p["sucursal"] == sucursal_activa]
+
+            if not df_p.empty:
+                def _calc_nom(r):
+                    nom = str(r.get("nombres", "") or "").strip()
+                    ape = str(r.get("apellidos", "") or "").strip()
+                    full = f"{nom} {ape}".strip()
+                    if not full:
+                        full = str(r.get("nombre", "") or "").strip()
+                    return full
+
+                def _calc_disp(r):
+                    full = _calc_nom(r)
+                    ident = str(r.get("identificacion", "") or "").strip()
+                    return f"{full} ({ident})" if ident else full
+
+                df_p["display"] = df_p.apply(_calc_disp, axis=1)
+                df_p["nombre_completo"] = df_p.apply(_calc_nom, axis=1)
+
+                busc = st.text_input("🔍 Buscar paciente:", key="busc_orden")
+                if busc:
+                    df_p = df_p[df_p["display"].str.contains(busc, case=False, na=False)]
+
+                pacientes_dict = dict(zip(df_p["id"], df_p["display"]))
+                pacientes_nombres = dict(zip(df_p["id"], df_p["nombre_completo"]))
+            else:
+                st.info(f"ℹ️ No hay pacientes registrados en la sucursal **{sucursal_activa}**.")
+        else:
+            st.info("ℹ️ No hay pacientes registrados en el sistema.")
+
+        if pacientes_dict:
+            paciente_id = st.selectbox("Confirmar Paciente:", options=list(pacientes_dict.keys()), format_func=lambda x: pacientes_dict.get(x, ""))
+        else:
+            paciente_id = None
+            st.warning("⚠️ Debes registrar pacientes en esta sede para poder generar órdenes de trabajo.")
         
         rx_od_v = {"Esfera": "", "Cilindro": "", "Eje": "", "Adición": "", "A.V.": ""}
         rx_oi_v = {"Esfera": "", "Cilindro": "", "Eje": "", "Adición": "", "A.V.": ""}
@@ -165,13 +205,13 @@ def render_nueva_orden():
 
                     nueva = {
                         "id": nuevo_id,
-                        "paciente_id": paciente_id, "paciente_nombre": pacientes_nombres[paciente_id],
+                        "paciente_id": paciente_id, "paciente_nombre": pacientes_nombres.get(paciente_id, "Paciente"),
                         "receta_od": {"Esf": o_esf, "Cil": o_cil, "Eje": o_eje, "Add": o_add, "AV": o_av},
                         "receta_oi": {"Esf": i_esf, "Cil": i_cil, "Eje": i_eje, "Add": i_add, "AV": i_av},
                         "dip": dip, "altura": altura, "tipo_lente": tipo,
                         "material": ", ".join(material), "protecciones": ", ".join(protecciones),
                         "observaciones": obs, "estado": "Pendiente",
-                        "sucursal": st.session_state.get("sucursal_activa"),
+                        "sucursal": sucursal_activa,
                         "creado_por": st.session_state.get("user_login"), "creado_el": datetime.now().isoformat()
                     }
                     try:
@@ -180,6 +220,17 @@ def render_nueva_orden():
                         st.session_state[f"order_id_{p_key}"] = nuevo_id
                         st.session_state[f"pdf_data_{p_key}"] = nueva
                         st.success(f"✅ Orden #{nuevo_id} guardada.")
+                        try:
+                            from database import registrar_auditoria
+                            registrar_auditoria(
+                                accion="Crear Orden de Trabajo",
+                                entidad="Laboratorio",
+                                detalle=f"Orden #{nuevo_id} para {pacientes_nombres.get(paciente_id, 'Paciente')}",
+                                usuario=st.session_state.get("user_login", ""),
+                                nombre_usuario=st.session_state.get("user_name", ""),
+                                sucursal=sucursal_activa
+                            )
+                        except: pass
                     except Exception as e: st.error(f"Error: {e}")
 
         with col_btn2:
@@ -200,7 +251,8 @@ def render_nueva_orden():
 
     with tab_h:
         st.markdown("<div class='section-title'>🔍 Historial</div>", unsafe_allow_html=True)
-        df_ord = cargar_ordenes_trabajo(st.session_state.get("sucursal_activa"))
+        suc_act = st.session_state.get("sucursal_activa", "Matriz")
+        df_ord = cargar_ordenes_trabajo(suc_act)
         if not df_ord.empty:
             for _, r in df_ord.iterrows():
                 with st.expander(f"📄 #{r['id']} - {r['paciente_nombre']} ({r['creado_el'][:10]})"):
@@ -216,7 +268,7 @@ def render_nueva_orden():
                     st.download_button(
                         label=f"📥 Descargar PDF #{r['id']}",
                         data=pdf_h,
-                        file_name=f"Orden_{r['id']}_{r['paciente_nombre'].replace(' ','_')}.pdf",
+                        file_name=f"Orden_{r['id']}_{str(r.get('paciente_nombre', 'Orden')).replace(' ','_')}.pdf",
                         mime="application/pdf",
                         key=f"dl_h_{r['id']}",
                         use_container_width=True
@@ -227,3 +279,5 @@ def render_nueva_orden():
                         if st.button(f"🗑️ Eliminar #{r['id']}", key=f"del_{r['id']}"):
                             supabase.table("ordenes_trabajo").delete().eq("id", r['id']).execute()
                             st.rerun()
+        else:
+            st.info(f"ℹ️ No hay órdenes de trabajo registradas en la sucursal **{suc_act}**.")

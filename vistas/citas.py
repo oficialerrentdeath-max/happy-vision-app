@@ -135,8 +135,15 @@ def render_citas():
         telefono = ""
         
         if opcion_paciente == "Paciente Registrado" and df_pacientes is not None and not df_pacientes.empty:
+            df_p_suc = df_pacientes.copy()
+            if "sucursal" in df_p_suc.columns and sucursal:
+                if sucursal == "Matriz":
+                    df_p_suc = df_p_suc[(df_p_suc["sucursal"] == "Matriz") | (df_p_suc["sucursal"] == "") | (df_p_suc["sucursal"].isna())]
+                else:
+                    df_p_suc = df_p_suc[df_p_suc["sucursal"] == sucursal]
+
             # Filtrar pacientes que tengan un nombre válido
-            df_p_valid = df_pacientes[df_pacientes["nombre"].str.strip() != ""]
+            df_p_valid = df_p_suc[df_p_suc["nombre"].str.strip() != ""] if not df_p_suc.empty else pd.DataFrame()
             if not df_p_valid.empty:
                 df_p_sorted = df_p_valid.sort_values(by="nombre")
                 
@@ -166,7 +173,7 @@ def render_citas():
                     paciente_nombre = selected_p["nombre"]
                     telefono = selected_p.get("telefono", "")
             else:
-                st.info("No hay pacientes registrados con nombres válidos.")
+                st.info(f"ℹ️ No hay pacientes registrados en la sucursal **{sucursal}**.")
                 opcion_paciente = "Nuevo Paciente (Sin registrar)"
         
         if opcion_paciente == "Nuevo Paciente (Sin registrar)" or df_pacientes is None or df_pacientes.empty:
@@ -219,49 +226,58 @@ def render_citas():
     # ── CONTROL Y METRICAS DE HOY ─────────────────────────────
     df_citas = cargar_todas_citas(sucursal)
     
-    # CÁLCULO DE CONTROLES PENDIENTES (CRM)
+    # CÁLCULO DE CONTROLES PENDIENTES (CRM) — filtrado por sucursal activa
     df_h = st.session_state.get("df_historias")
     df_p = st.session_state.get("df_pacientes")
     df_alerta = pd.DataFrame()
     
     if df_h is not None and not df_h.empty and df_p is not None and not df_p.empty:
-        def proximo_control(row):
-            try:
-                fecha_consulta = pd.to_datetime(row["fecha"]).date()
-                val = str(row.get("meses_proximo_control", "")).strip()
-                if not val:
-                    return fecha_consulta + timedelta(days=12 * 30)
-                if "-" in val:
-                    try:
-                        return pd.to_datetime(val[:10]).date()
-                    except:
-                        pass
-                val_clean = "".join(c for c in val if c.isdigit() or c == ".")
-                if val_clean:
-                    meses = int(float(val_clean))
-                else:
-                    meses = 12
-                return fecha_consulta + timedelta(days=meses * 30)
-            except Exception:
-                return None
+        # ── Filtrar por sucursal activa ──────────────────────────
+        if "sucursal" in df_h.columns:
+            df_h = df_h[df_h["sucursal"] == sucursal]
+        if "sucursal" in df_p.columns:
+            df_p = df_p[df_p["sucursal"] == sucursal]
 
-        df_h_copy = df_h.copy()
-        df_h_copy["proximo_control"] = df_h_copy.apply(proximo_control, axis=1)
-        
-        df_h_sorted = df_h_copy.sort_values("fecha", ascending=False)
-        df_ultima = df_h_sorted.drop_duplicates(subset=["paciente_id"], keep="first").copy()
-        df_ultima = df_ultima.merge(df_p[["id", "nombre", "telefono"]], left_on="paciente_id", right_on="id", how="left", suffixes=("", "_pac"))
-        
-        hoy_date = datetime.now().date()
-        df_ultima["dias_para_control"] = df_ultima["proximo_control"].apply(
-            lambda d: (d - hoy_date).days if d is not None else None
-        )
-        
-        # Vencidos o próximos a vencer en los siguientes 365 días (1 año)
-        mask_alerta = df_ultima["dias_para_control"].apply(
-            lambda d: d is not None and d <= 365
-        )
-        df_alerta = df_ultima[mask_alerta].sort_values("dias_para_control")
+        if df_h.empty or df_p.empty:
+            df_alerta = pd.DataFrame()
+        else:
+            def proximo_control(row):
+                try:
+                    fecha_consulta = pd.to_datetime(row["fecha"]).date()
+                    val = str(row.get("meses_proximo_control", "")).strip()
+                    if not val:
+                        return fecha_consulta + timedelta(days=12 * 30)
+                    if "-" in val:
+                        try:
+                            return pd.to_datetime(val[:10]).date()
+                        except:
+                            pass
+                    val_clean = "".join(c for c in val if c.isdigit() or c == ".")
+                    if val_clean:
+                        meses = int(float(val_clean))
+                    else:
+                        meses = 12
+                    return fecha_consulta + timedelta(days=meses * 30)
+                except Exception:
+                    return None
+
+            df_h_copy = df_h.copy()
+            df_h_copy["proximo_control"] = df_h_copy.apply(proximo_control, axis=1)
+            
+            df_h_sorted = df_h_copy.sort_values("fecha", ascending=False)
+            df_ultima = df_h_sorted.drop_duplicates(subset=["paciente_id"], keep="first").copy()
+            df_ultima = df_ultima.merge(df_p[["id", "nombre", "telefono"]], left_on="paciente_id", right_on="id", how="left", suffixes=("", "_pac"))
+            
+            hoy_date = datetime.now().date()
+            df_ultima["dias_para_control"] = df_ultima["proximo_control"].apply(
+                lambda d: (d - hoy_date).days if d is not None else None
+            )
+            
+            # Vencidos o próximos a vencer en los siguientes 365 días (1 año)
+            mask_alerta = df_ultima["dias_para_control"].apply(
+                lambda d: d is not None and d <= 365
+            )
+            df_alerta = df_ultima[mask_alerta].sort_values("dias_para_control")
     
     if not df_citas.empty or not df_alerta.empty:
         hoy_str = datetime.now().strftime("%Y-%m-%d")

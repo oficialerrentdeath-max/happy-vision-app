@@ -13,11 +13,30 @@ def render_crm():
     </div>
     """, unsafe_allow_html=True)
 
-    df_h = st.session_state.df_historias.copy()
-    df_p = st.session_state.df_pacientes.copy()
+    sucursal_activa = st.session_state.get("sucursal_activa", "Matriz")
+
+    df_h_raw = st.session_state.df_historias.copy()
+    df_p_raw = st.session_state.df_pacientes.copy()
+
+    # ── Filtrar por sucursal activa ─────────────────────────────────
+    if "sucursal" in df_h_raw.columns:
+        if sucursal_activa == "Matriz":
+            df_h = df_h_raw[(df_h_raw["sucursal"] == "Matriz") | (df_h_raw["sucursal"] == "") | (df_h_raw["sucursal"].isna())]
+        else:
+            df_h = df_h_raw[df_h_raw["sucursal"] == sucursal_activa]
+    else:
+        df_h = df_h_raw
+
+    if "sucursal" in df_p_raw.columns:
+        if sucursal_activa == "Matriz":
+            df_p = df_p_raw[(df_p_raw["sucursal"] == "Matriz") | (df_p_raw["sucursal"] == "") | (df_p_raw["sucursal"].isna())]
+        else:
+            df_p = df_p_raw[df_p_raw["sucursal"] == sucursal_activa]
+    else:
+        df_p = df_p_raw
 
     if len(df_h) == 0 or len(df_p) == 0:
-        st.info("📭 No hay historias clínicas o pacientes registrados aún. El CRM se activará cuando haya datos.")
+        st.info("📭 No hay historias clínicas o pacientes registrados en esta sucursal. El CRM se activará cuando haya datos.")
         return
 
     # ── Calcular fecha de próximo control ─────────────────────────

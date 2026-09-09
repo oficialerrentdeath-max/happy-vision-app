@@ -90,11 +90,7 @@ def render_inventario():
     # ── TABLA PRINCIPAL ────────────────────────────────────────
     df = cargar_inventario(sucursal_activa)
 
-    if df.empty:
-        st.info("📭 No hay productos registrados en esta sucursal.")
-        return
-
-    # Normalización de columnas
+    # Normalización de columnas (se hace siempre, incluso si está vacío)
     for col, default in [("nombre", ""), ("categoria", ""), ("proveedor", ""),
                          ("costo_compra", 0.0), ("precio_venta", 0.0),
                          ("cantidad_disponible", 0), ("codigo_referencia", "")]:
@@ -102,14 +98,23 @@ def render_inventario():
             df[col] = default
 
     # Buscador, Filtros y Botón de Agregar (En una sola fila)
-    f1, f2, f3, f4 = st.columns([2, 1, 1, 1])
-    busq = f1.text_input("🔍 Buscar por código, marca o producto...", label_visibility="collapsed", placeholder="Buscar...")
-    f_cat = f2.selectbox("Categoría", ["Todas"] + sorted(df["categoria"].unique().tolist()), label_visibility="collapsed")
-    
-    if f3.button("➕ Nuevo Producto", type="primary", use_container_width=True):
-        st.session_state.show_add_form = not st.session_state.get("show_add_form", False)
+    # Si el inventario está vacío, sólo mostramos el botón de agregar
+    if df.empty:
+        col_btn, _ = st.columns([1, 3])
+        if col_btn.button("➕ Nuevo Producto", type="primary", use_container_width=True):
+            st.session_state.show_add_form = not st.session_state.get("show_add_form", False)
+        busq = ""
+        f_cat = "Todas"
+        f4 = None
+    else:
+        f1, f2, f3, f4 = st.columns([2, 1, 1, 1])
+        busq = f1.text_input("🔍 Buscar por código, marca o producto...", label_visibility="collapsed", placeholder="Buscar...")
+        f_cat = f2.selectbox("Categoría", ["Todas"] + sorted(df["categoria"].unique().tolist()), label_visibility="collapsed")
 
-    # Formulario para Agregar Producto
+        if f3.button("➕ Nuevo Producto", type="primary", use_container_width=True):
+            st.session_state.show_add_form = not st.session_state.get("show_add_form", False)
+
+    # Formulario para Agregar Producto (siempre disponible)
     if st.session_state.get("show_add_form"):
         st.markdown('<div class="edit-container" style="background:#f0f7ff; border-color:#3b82f6; padding:20px; border-radius:12px; border:1px solid #bae6fd; margin-bottom:20px;">', unsafe_allow_html=True)
         st.subheader("🆕 Registrar Nuevo Producto")
@@ -149,16 +154,22 @@ def render_inventario():
                     st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
+    # Si no hay productos, mostrar mensaje informativo y salir (botón ya se mostró arriba)
+    if df.empty:
+        st.info("📭 No hay productos registrados en esta sucursal. Usa el botón **➕ Nuevo Producto** para comenzar.")
+        return
+
     df_f = df.copy()
     if busq:
         df_f = df_f[df_f.apply(lambda r: busq.lower() in str(r).lower(), axis=1)]
     if f_cat != "Todas":
         df_f = df_f[df_f["categoria"] == f_cat]
 
-    with f4:
-        from utils.pdf import generar_pdf_inventario
-        pdf_bytes = generar_pdf_inventario(df_f, sucursal_activa, st.session_state.get("user_name", ""))
-        st.download_button("📥 PDF Control", data=pdf_bytes, file_name=f"Control_Inventario_{sucursal_activa}.pdf", mime="application/pdf", use_container_width=True)
+    if f4 is not None:
+        with f4:
+            from utils.pdf import generar_pdf_inventario
+            pdf_bytes = generar_pdf_inventario(df_f, sucursal_activa, st.session_state.get("user_name", ""))
+            st.download_button("📥 PDF Control", data=pdf_bytes, file_name=f"Control_Inventario_{sucursal_activa}.pdf", mime="application/pdf", use_container_width=True)
 
     ITEMS_POR_PAGINA = 50
     total_paginas = max(1, (len(df_f) - 1) // ITEMS_POR_PAGINA + 1)
