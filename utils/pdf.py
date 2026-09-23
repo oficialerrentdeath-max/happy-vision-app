@@ -139,7 +139,7 @@ def generar_pdf_historia(row: dict, paciente_info: dict, opto: dict, sucursal: s
             _draw_aligned_logo(pdf, header_path, 82.5, 3, 45, 20)
             pdf.set_y(30)
         except Exception:
-            pdf.set_y(20)
+            pdf.set_y(30)
     else:
         pdf.set_font("Helvetica", "B", 14)
         pdf.set_text_color(0, 160, 180)
@@ -147,6 +147,7 @@ def generar_pdf_historia(row: dict, paciente_info: dict, opto: dict, sucursal: s
         pdf.set_font("Helvetica", "", 9)
         pdf.set_text_color(100, 100, 100)
         pdf.cell(0, 5, "Tu optica amiga", ln=True, align="C")
+        pdf.set_y(30)
 
     # ─ LÍNEA + TÍTULO ──────────────────────────────────────────
     pdf.set_draw_color(0, 160, 180)
@@ -449,11 +450,11 @@ def generar_pdf_ticket(orden: dict, sucursal_info: dict = None, sucursal: str = 
     logo_path = _get_logo_path(_suc_ticket) or None
     if logo_path:
         _draw_aligned_logo(pdf, logo_path, 58, 5, 30, 20)
-        pdf.ln(25)
     else:
         pdf.set_font("Helvetica", "B", 16)
         pdf.cell(0, 10, "HAPPY VISION", ln=True, align="C")
-        pdf.ln(5)
+    
+    pdf.set_y(35)
 
     pdf.set_font("Helvetica", "B", 12)
     pdf.cell(0, 10, _s(f"ORDEN DE TRABAJO #{orden['id']}"), ln=True, align="C")
@@ -705,7 +706,7 @@ def generar_pdf_historia_lc(row: dict, paciente_info: dict, opto: dict, is_indic
             _draw_aligned_logo(pdf, header_path, 82.5, 3, 45, 20)
             pdf.set_y(30)
         except Exception:
-            pdf.set_y(20)
+            pdf.set_y(30)
     else:
         pdf.set_font("Helvetica", "B", 14)
         pdf.set_text_color(0, 160, 180)
@@ -713,6 +714,7 @@ def generar_pdf_historia_lc(row: dict, paciente_info: dict, opto: dict, is_indic
         pdf.set_font("Helvetica", "", 9)
         pdf.set_text_color(100, 100, 100)
         pdf.cell(0, 5, "Tu optica amiga", ln=True, align="C")
+        pdf.set_y(30)
 
     # 💧 LÍNEA + TÍTULO 💧
     pdf.set_draw_color(0, 160, 180)
