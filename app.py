@@ -791,24 +791,53 @@ with st.sidebar:
     if 'show_logo_uploader' not in st.session_state:
         st.session_state.show_logo_uploader = False
 
-    logo_path_local = "logo.png" if os.path.exists("logo.png") else ("logo.jpg" if os.path.exists("logo.jpg") else None)
-    logo_to_show = st.session_state.get('logo_url') or logo_path_local
-    
+    # ── LOGO POR SUCURSAL ACTIVA ─────────────────────────────────
+    from supabase_client import get_logo_sucursal_path
+    _suc_activa = st.session_state.get("sucursal_activa", "")
+    _logo_cache_key = f"logo_url_{_suc_activa}"
+
+    def _es_imagen_valida(path: str) -> bool:
+        """Verifica que el archivo exista y tenga tamaño suficiente para ser imagen real."""
+        try:
+            return os.path.isfile(path) and os.path.getsize(path) > 500
+        except Exception:
+            return False
+
+    # Obtener logo de la sucursal activa (caché → Supabase → fallback local)
+    logo_to_show = st.session_state.get(_logo_cache_key)
+
+    # Validar que el archivo en caché siga siendo válido
+    if logo_to_show and isinstance(logo_to_show, str) and not logo_to_show.startswith("http"):
+        if not _es_imagen_valida(logo_to_show):
+            # Archivo inválido o corrupto: limpiar caché y volver a buscar
+            st.session_state.pop(_logo_cache_key, None)
+            try:
+                if os.path.exists(logo_to_show):
+                    os.remove(logo_to_show)
+            except Exception:
+                pass
+            logo_to_show = None
+
     if not logo_to_show:
-        from supabase_client import public_url
-        logo_to_show = public_url("logos/logo.png")
-        if logo_to_show:
-            st.session_state.logo_url = logo_to_show
+        candidate = get_logo_sucursal_path(_suc_activa)
+        if candidate and (candidate.startswith("http") or _es_imagen_valida(candidate)):
+            logo_to_show = candidate
+            st.session_state[_logo_cache_key] = logo_to_show
 
     if logo_to_show:
-        st.markdown("<style>[data-testid='stSidebar'] img { filter: brightness(0); padding-bottom: 0px !important; margin-top: -55px !important; }</style>", unsafe_allow_html=True)
-        st.image(logo_to_show, use_container_width=True)
-        
+        try:
+            st.markdown("<style>[data-testid='stSidebar'] img { padding-bottom: 0px !important; margin-top: -55px !important; }</style>", unsafe_allow_html=True)
+            st.image(logo_to_show, use_container_width=True)
+        except Exception:
+            # Si falla al renderizar, limpiar caché y no mostrar nada
+            st.session_state.pop(_logo_cache_key, None)
+            logo_to_show = None
+
         # Botón de edición debajo del logo (Solo Administrador)
-        if st.session_state.get("user_role") == "Administrador":
+        if logo_to_show and st.session_state.get("user_role") == "Administrador":
             col1, col2, col3 = st.columns([1, 4, 1])
             with col2:
-                if st.button("✏️ Editar logo", use_container_width=True, help="Haz clic para cambiar el logo"):
+                if st.button("✏️ Editar logo", use_container_width=True, help="Haz clic para cambiar el logo de esta sucursal"):
                     st.session_state.show_logo_uploader = not st.session_state.show_logo_uploader
                     st.rerun()
     else:
@@ -822,26 +851,48 @@ with st.sidebar:
         """, unsafe_allow_html=True)
 
     if st.session_state.show_logo_uploader and st.session_state.get("user_role") == "Administrador":
-        uploaded_file = st.file_uploader("📤 Sube tu nuevo logo", type=["png", "jpg", "jpeg"], key="logo_upload_sb")
+        _label_suc = _suc_activa if _suc_activa else "esta sucursal"
+        st.caption(f"🏢 Subiendo logo para: **{_label_suc}**")
+        uploaded_file = st.file_uploader("📤 Sube el logo de esta sucursal", type=["png", "jpg", "jpeg"], key="logo_upload_sb")
         if uploaded_file:
             import tempfile
-            from supabase_client import upload_image, public_url
-            
+            from supabase_client import upload_logo_sucursal
+            from database import actualizar_logo_sucursal
+
             file_ext = uploaded_file.name.split('.')[-1].lower()
-            local_save_name = f"logo.{file_ext}"
-            with open(local_save_name, "wb") as f:
+
+            # Guardar también como logo.png local como fallback
+            with open(f"logo.{file_ext}", "wb") as f:
                 f.write(uploaded_file.getvalue())
-                
+
             with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_ext}") as tmp:
                 tmp.write(uploaded_file.getvalue())
                 tmp_path = tmp.name
-                
-            remote_path = "logos/logo.png"
-            if upload_image(tmp_path, remote_path):
-                st.session_state.logo_url = public_url(remote_path)
-            
-            st.session_state.show_logo_uploader = False
-            st.rerun()
+
+            with st.spinner(f"Subiendo logo para '{_label_suc}'..."):
+                remote_path = upload_logo_sucursal(tmp_path, _suc_activa if _suc_activa else "logo")
+                if remote_path:
+                    # Guardar en caché local
+                    import os as _os
+                    _cache_dir = _os.path.join(_os.getcwd(), "_logos_cache")
+                    _os.makedirs(_cache_dir, exist_ok=True)
+                    _nombre_limpio = (_suc_activa or "logo").lower().replace(" ", "_").replace("/", "-")
+                    _local_cache = _os.path.join(_cache_dir, f"{_nombre_limpio}.{file_ext}")
+                    with open(_local_cache, "wb") as f:
+                        f.write(uploaded_file.getvalue())
+                    # Registrar en BD si hay sucursal activa
+                    if _suc_activa:
+                        try:
+                            actualizar_logo_sucursal(_suc_activa, remote_path)
+                        except Exception:
+                            pass
+                    # Limpiar caché en session_state para forzar recarga
+                    st.session_state.pop(_logo_cache_key, None)
+                    st.session_state.show_logo_uploader = False
+                    st.success(f"✅ Logo de '{_label_suc}' actualizado")
+                    st.rerun()
+                else:
+                    st.error("❌ Error al subir el logo. Intenta de nuevo.")
 
     st.markdown("<div class='fancy-divider'></div>", unsafe_allow_html=True)
 
