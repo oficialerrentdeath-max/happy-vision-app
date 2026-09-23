@@ -20,11 +20,19 @@ def generar_pdf_orden(data, order_id="N/A"):
     pdf = FPDF()
     pdf.add_page()
     
-    # Logo más grande
+    # Logo de la sucursal activa
     try:
-        pdf.image("logo.png", 10, 8, 45)
-    except:
-        pass
+        from utils.pdf import _get_logo_path, _draw_aligned_logo
+        _suc_orden = data.get("sucursal") or ""
+        _logo_orden = _get_logo_path(_suc_orden)
+        if _logo_orden:
+            _draw_aligned_logo(pdf, _logo_orden, 10, 8, 45, 20)
+    except Exception:
+        try:
+            from utils.pdf import _draw_aligned_logo
+            _draw_aligned_logo(pdf, "logo.png", 10, 8, 45, 20)
+        except Exception:
+            pass
         
     # Encabezado con Número de Orden
     pdf.set_font("Arial", 'B', 16)

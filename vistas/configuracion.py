@@ -1,6 +1,12 @@
 import streamlit as st
 import pandas as pd
-from database import cargar_sucursales, guardar_sucursal, eliminar_sucursal, cargar_auditoria, obtener_resumen_dia
+import tempfile
+import os
+from database import (
+    cargar_sucursales, guardar_sucursal, eliminar_sucursal,
+    cargar_auditoria, obtener_resumen_dia,
+    actualizar_logo_sucursal
+)
 
 def render_configuracion():
     st.title("⚙️ Configuración del Sistema")
@@ -19,7 +25,7 @@ def render_configuracion():
     
     with tab1:
         st.subheader("Locales y Sucursales")
-        st.info("Aquí puedes definir las direcciones y teléfonos de cada local para que aparezcan en los certificados PDF.")
+        st.info("Aquí puedes definir las direcciones, teléfonos y logo de cada local para que aparezcan en los certificados PDF.")
         
         df_suc = cargar_sucursales()
         
@@ -49,16 +55,21 @@ def render_configuracion():
 
         if not df_suc.empty:
             for _, row in df_suc.iterrows():
+                logo_url = row.get("logo_url") or ""
+                tiene_logo = bool(logo_url)
+
                 with st.container():
                     st.markdown(f"""
                     <div style='background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 10px;'>
                         <h4 style='margin:0; color:#1e293b;'>🏢 {row['nombre']}</h4>
                         <p style='margin:5px 0; font-size:14px; color:#64748b;'>📍 {row['direccion']} — {row['ciudad']}</p>
-                        <p style='margin:0; font-size:13px; color:#94a3b8;'>📞 {row.get('telefono', 'N/A')}</p>
+                        <p style='margin:0; font-size:13px; color:#94a3b8;'>📞 {row.get('telefono', 'N/A')} &nbsp;|&nbsp; 🖼️ Logo: {'<b style="color:#16a34a;">Personalizado ✓</b>' if tiene_logo else '<span style="color:#94a3b8;">Predeterminado</span>'}</p>
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    c1, c2, c3 = st.columns([3, 1, 1])
+                    c1, c2, c3, c4 = st.columns([3, 1.2, 1.2, 1])
+
+                    # ─── EDITAR DATOS ───────────────────────────────────
                     with c2:
                         with st.popover("✏️ Editar"):
                             with st.form(f"edit_suc_{row['id']}"):
@@ -80,8 +91,110 @@ def render_configuracion():
                                         st.rerun()
                                     else:
                                         st.error(f"❌ Error: {msg}")
+
+                    # ─── GESTIONAR LOGO ─────────────────────────────────
                     with c3:
-                        if st.button("🗑️ Eliminar", key=f"del_suc_{row['id']}", use_container_width=True):
+                        with st.popover("🖼️ Logo"):
+                            st.markdown(f"**Logo para:** `{row['nombre']}`")
+                            st.caption("Este logo aparecerá en certificados, facturas y tickets de esta sucursal.")
+
+                            # Vista previa del logo actual
+                            if tiene_logo:
+                                # Intentar mostrar desde caché local o descarga
+                                try:
+                                    from supabase_client import get_logo_sucursal_path
+                                    logo_preview = get_logo_sucursal_path(row['nombre'])
+                                    if logo_preview and os.path.exists(logo_preview):
+                                        st.image(logo_preview, caption="Logo actual", width=200)
+                                    else:
+                                        st.info("Logo guardado en nube ✓")
+                                except Exception:
+                                    st.info("Logo guardado en nube ✓")
+                            else:
+                                st.warning("Sin logo personalizado. Se usará el logo predeterminado (`logo.png`).")
+
+                            st.divider()
+
+                            # Subir nuevo logo
+                            nuevo_logo = st.file_uploader(
+                                "📤 Subir nuevo logo",
+                                type=["png", "jpg", "jpeg"],
+                                key=f"logo_upload_{row['id']}",
+                                help="PNG recomendado con fondo transparente. Máx. 2 MB."
+                            )
+
+                            if nuevo_logo is not None:
+                                # Validar tamaño (2 MB)
+                                if nuevo_logo.size > 2 * 1024 * 1024:
+                                    st.error("❌ El archivo supera el límite de 2 MB.")
+                                else:
+                                    st.image(nuevo_logo, caption="Vista previa del nuevo logo", width=200)
+
+                                    if st.button("💾 Guardar Logo", key=f"btn_save_logo_{row['id']}", type="primary", use_container_width=True):
+                                        with st.spinner("Subiendo logo..."):
+                                            try:
+                                                from supabase_client import upload_logo_sucursal
+
+                                                # Guardar temporalmente en disco
+                                                ext = os.path.splitext(nuevo_logo.name)[1].lower() or ".png"
+                                                tmp_path = os.path.join(
+                                                    os.getcwd(),
+                                                    "_logos_cache",
+                                                    f"_upload_tmp_{row['id']}{ext}"
+                                                )
+                                                os.makedirs(os.path.dirname(tmp_path), exist_ok=True)
+                                                with open(tmp_path, "wb") as f:
+                                                    f.write(nuevo_logo.getbuffer())
+
+                                                # Subir a Supabase Storage
+                                                remote_path = upload_logo_sucursal(tmp_path, row['nombre'])
+
+                                                # Limpiar temporal de upload
+                                                try:
+                                                    os.remove(tmp_path)
+                                                except Exception:
+                                                    pass
+
+                                                if remote_path:
+                                                    # Guardar ruta en la tabla sucursales
+                                                    ok = actualizar_logo_sucursal(row['nombre'], remote_path)
+                                                    if ok:
+                                                        # Limpiar caché del logo anterior
+                                                        nombre_limpio = row['nombre'].lower().replace(" ", "_").replace("/", "-")
+                                                        cache_dir = os.path.join(os.getcwd(), "_logos_cache")
+                                                        for old_ext in [".png", ".jpg", ".jpeg"]:
+                                                            old_cache = os.path.join(cache_dir, f"{nombre_limpio}{old_ext}")
+                                                            if os.path.exists(old_cache):
+                                                                try:
+                                                                    os.remove(old_cache)
+                                                                except Exception:
+                                                                    pass
+                                                        st.session_state["suc_msg"] = f"✅ Logo de '{row['nombre']}' actualizado correctamente."
+                                                        st.rerun()
+                                                    else:
+                                                        st.error("❌ Logo subido pero no se pudo registrar en la base de datos.")
+                                                else:
+                                                    st.error("❌ Error al subir el logo a Supabase Storage.")
+                                            except Exception as e:
+                                                st.error(f"❌ Error inesperado: {e}")
+
+                            # Eliminar logo personalizado
+                            if tiene_logo:
+                                st.divider()
+                                if st.button("🗑️ Eliminar Logo Personalizado", key=f"btn_del_logo_{row['id']}", use_container_width=True):
+                                    with st.spinner("Eliminando logo..."):
+                                        try:
+                                            from supabase_client import delete_logo_sucursal
+                                            delete_logo_sucursal(row['nombre'])
+                                            actualizar_logo_sucursal(row['nombre'], "")
+                                            st.session_state["suc_msg"] = f"✅ Logo de '{row['nombre']}' eliminado. Se usará el logo predeterminado."
+                                            st.rerun()
+                                        except Exception as e:
+                                            st.error(f"❌ Error al eliminar: {e}")
+
+                    # ─── ELIMINAR SEDE ──────────────────────────────────
+                    with c4:
+                        if st.button("🗑️", key=f"del_suc_{row['id']}", use_container_width=True, help="Eliminar sede"):
                             eliminar_sucursal(row['id'])
                             st.success("Sede eliminada.")
                             st.rerun()

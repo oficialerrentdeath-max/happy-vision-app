@@ -23,9 +23,71 @@ def _s(texto) -> str:
 
 
 # ══════════════════════════════════════════════════════════════
+# HELPER: LOGO POR SUCURSAL
+# ══════════════════════════════════════════════════════════════
+def _get_logo_path(sucursal: str = None) -> str:
+    """Resuelve la ruta local del logo correcto para una sucursal.
+
+    Orden de resolución:
+    1. Logo personalizado de la sucursal (caché local o descarga de Supabase Storage).
+    2. logo.png local del repositorio (logo predeterminado).
+    3. Retorna '' si no hay ninguno disponible.
+    """
+    if sucursal:
+        try:
+            from supabase_client import get_logo_sucursal_path
+            logo = get_logo_sucursal_path(sucursal)
+            if logo and os.path.exists(logo):
+                return logo
+        except Exception:
+            pass  # Fallback al logo predeterminado
+
+    # Logo predeterminado del repositorio
+    for cand in ["logo.png", "logo.jpg", "logo.jpeg"]:
+        if os.path.exists(cand):
+            return cand
+    return ""
+
+def _draw_aligned_logo(pdf, logo_path: str, box_x: float, box_y: float, box_w: float, box_h: float):
+    """
+    Dibuja un logo en el PDF ajustándolo perfectamente dentro de una caja (box_w x box_h)
+    sin distorsionarlo y centrándolo.
+    """
+    if not logo_path or not os.path.exists(logo_path):
+        return
+    try:
+        from PIL import Image
+        with Image.open(logo_path) as img:
+            img_w, img_h = img.size
+        
+        # Calcular los ratios
+        img_ratio = img_w / float(img_h)
+        box_ratio = box_w / float(box_h)
+        
+        if img_ratio > box_ratio:
+            # La imagen es más ancha que la caja
+            draw_w = box_w
+            draw_h = box_w / img_ratio
+        else:
+            # La imagen es más alta que la caja
+            draw_h = box_h
+            draw_w = box_h * img_ratio
+            
+        # Centrar en la caja
+        draw_x = box_x + (box_w - draw_w) / 2.0
+        draw_y = box_y + (box_h - draw_h) / 2.0
+        
+        pdf.image(logo_path, x=draw_x, y=draw_y, w=draw_w, h=draw_h)
+    except Exception as e:
+        print(f"Error ajustando logo: {e}")
+        # Fallback
+        pdf.image(logo_path, x=box_x, y=box_y, w=box_w)
+
+
+# ══════════════════════════════════════════════════════════════
 # CERTIFICADO VISUAL (PDF)
 # ══════════════════════════════════════════════════════════════
-def generar_pdf_historia(row: dict, paciente_info: dict, opto: dict) -> bytes:
+def generar_pdf_historia(row: dict, paciente_info: dict, opto: dict, sucursal: str = None) -> bytes:
     """Genera el Certificado Visual PDF usando fpdf estándar."""
     pdf = FPDF(orientation="P", unit="mm", format="A4")
     pdf.add_page()
@@ -33,11 +95,9 @@ def generar_pdf_historia(row: dict, paciente_info: dict, opto: dict) -> bytes:
     pdf.set_margins(18, 10, 18)
 
     # ─ LOGO ────────────────────────────────────────────────────
-    logo_path = None
-    for cand in ["logo.png", "logo.jpg", "logo.jpeg"]:
-        if os.path.exists(cand):
-            logo_path = cand
-            break
+    # Usar sucursal del row si no se pasó explícitamente
+    _suc = sucursal or row.get("sucursal") or None
+    logo_path = _get_logo_path(_suc) or None
 
     if logo_path:
         try:
@@ -55,7 +115,7 @@ def generar_pdf_historia(row: dict, paciente_info: dict, opto: dict) -> bytes:
             except Exception:
                 pass
 
-            pdf.image(watermark_path, x=5, y=40, w=200)
+            _draw_aligned_logo(pdf, watermark_path, 5, 40, 200, 180)
 
             header_path = logo_path
             try:
@@ -76,7 +136,7 @@ def generar_pdf_historia(row: dict, paciente_info: dict, opto: dict) -> bytes:
             except Exception:
                 pass
 
-            pdf.image(header_path, x=82.5, y=3, w=45)
+            _draw_aligned_logo(pdf, header_path, 82.5, 3, 45, 20)
             pdf.set_y(30)
         except Exception:
             pdf.set_y(20)
@@ -378,16 +438,17 @@ def generar_pdf_historia(row: dict, paciente_info: dict, opto: dict) -> bytes:
 # ══════════════════════════════════════════════════════════════
 # TICKET DE VENTA / ÓRDEN DE TRABAJO
 # ══════════════════════════════════════════════════════════════
-def generar_pdf_ticket(orden: dict, sucursal_info: dict = None) -> bytes:
+def generar_pdf_ticket(orden: dict, sucursal_info: dict = None, sucursal: str = None) -> bytes:
     """Genera un comprobante de pago / ticket de venta para el cliente."""
     pdf = FPDF(orientation="P", unit="mm", format="A5") # Formato A5 para tickets
     pdf.add_page()
     pdf.set_margins(10, 10, 10)
     
-    # Logo si existe
-    logo_path = "logo.png" if os.path.exists("logo.png") else None
+    # Logo (personalizado por sucursal o predeterminado)
+    _suc_ticket = sucursal or orden.get("sucursal") or None
+    logo_path = _get_logo_path(_suc_ticket) or None
     if logo_path:
-        pdf.image(logo_path, x=58, y=5, w=30)
+        _draw_aligned_logo(pdf, logo_path, 58, 5, 30, 20)
         pdf.ln(25)
     else:
         pdf.set_font("Helvetica", "B", 16)
@@ -455,7 +516,7 @@ def generar_pdf_ticket(orden: dict, sucursal_info: dict = None) -> bytes:
 # ══════════════════════════════════════════════════════════════
 # REPORTE DE INVENTARIO FÍSICO (PDF)
 # ══════════════════════════════════════════════════════════════
-def generar_pdf_inventario(df_inv: pd.DataFrame, sucursal: str, supervisor: str = "") -> bytes:
+def generar_pdf_inventario(df_inv: pd.DataFrame, sucursal: str = "", supervisor: str = "") -> bytes:
     """Genera un PDF con formato de tabla tipo Excel para control de inventario físico."""
     pdf = FPDF(orientation="L", unit="mm", format="A4")
     pdf.add_page()
@@ -463,9 +524,9 @@ def generar_pdf_inventario(df_inv: pd.DataFrame, sucursal: str, supervisor: str 
     pdf.set_margins(10, 15, 10)
 
     # ─ Encabezado ────────────────────────────────────────────────
-    logo_path = "logo.png" if os.path.exists("logo.png") else None
+    logo_path = _get_logo_path(sucursal) or None
     if logo_path:
-        pdf.image(logo_path, x=10, y=10, w=35)
+        _draw_aligned_logo(pdf, logo_path, 10, 10, 35, 20)
     
     pdf.set_y(15)
     pdf.set_font("Helvetica", "B", 14)
@@ -554,9 +615,10 @@ def generar_pdf_venta(venta_data: dict) -> bytes:
     pdf = FPDF(orientation='P', unit='mm', format='A5')
     pdf.add_page()
     
-    # Encabezado (Logo si existe)
-    if os.path.exists("logo.png"):
-        pdf.image("logo.png", 10, 8, 33)
+    # Encabezado (Logo si existe — personalizado por sucursal)
+    _logo_venta = _get_logo_path(venta_data.get("sucursal"))
+    if _logo_venta:
+        _draw_aligned_logo(pdf, _logo_venta, 10, 8, 33, 20)
     
     pdf.set_font("Arial", 'B', 14)
     pdf.cell(0, 10, _s("HAPPY VISION"), ln=True, align="C")
@@ -600,7 +662,7 @@ def generar_pdf_venta(venta_data: dict) -> bytes:
     return raw.encode("latin-1") if isinstance(raw, str) else bytes(raw)
 
 
-def generar_pdf_historia_lc(row: dict, paciente_info: dict, opto: dict, is_indicaciones: bool = False) -> bytes:
+def generar_pdf_historia_lc(row: dict, paciente_info: dict, opto: dict, is_indicaciones: bool = False, sucursal: str = None) -> bytes:
     """Genera el Certificado Visual PDF para Adaptación de Lentes de Contacto."""
     pdf = FPDF(orientation="P", unit="mm", format="A4")
     pdf.add_page()
@@ -608,11 +670,8 @@ def generar_pdf_historia_lc(row: dict, paciente_info: dict, opto: dict, is_indic
     pdf.set_margins(18, 10, 18)
 
     # 💧 LOGO 💧
-    logo_path = None
-    for cand in ["logo.png", "logo.jpg", "logo.jpeg"]:
-        if os.path.exists(cand):
-            logo_path = cand
-            break
+    _suc_lc = sucursal or row.get("sucursal") or None
+    logo_path = _get_logo_path(_suc_lc) or None
 
     if logo_path:
         try:
@@ -629,7 +688,7 @@ def generar_pdf_historia_lc(row: dict, paciente_info: dict, opto: dict, is_indic
                 bg.convert("RGB").save(watermark_path, format="PNG")
             except Exception:
                 pass
-            pdf.image(watermark_path, x=5, y=40, w=200)
+            _draw_aligned_logo(pdf, watermark_path, 5, 40, 200, 180)
 
             header_path = logo_path
             try:
@@ -643,7 +702,7 @@ def generar_pdf_historia_lc(row: dict, paciente_info: dict, opto: dict, is_indic
                 final_bg.convert("RGB").save(header_path, format="PNG")
             except Exception:
                 pass
-            pdf.image(header_path, x=82.5, y=3, w=45)
+            _draw_aligned_logo(pdf, header_path, 82.5, 3, 45, 20)
             pdf.set_y(30)
         except Exception:
             pdf.set_y(20)

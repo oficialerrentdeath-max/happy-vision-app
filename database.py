@@ -619,6 +619,34 @@ def guardar_sucursal(row: dict):
         print(f"Error guardar_sucursal: {e}")
         return False, str(e)
 
+def obtener_logo_sucursal(nombre_sucursal: str) -> str:
+    """Retorna la ruta remota en Supabase Storage del logo de la sucursal, o '' si no tiene."""
+    try:
+        if not supabase:
+            return ""
+        res = supabase.table("sucursales").select("logo_url").eq("nombre", nombre_sucursal).execute()
+        if res.data:
+            return res.data[0].get("logo_url") or ""
+        return ""
+    except Exception as e:
+        print(f"Error obtener_logo_sucursal: {e}")
+        return ""
+
+def actualizar_logo_sucursal(nombre_sucursal: str, logo_url: str) -> bool:
+    """Actualiza el campo logo_url de la sucursal por nombre."""
+    try:
+        if not supabase:
+            return False
+        supabase.table("sucursales").update({"logo_url": logo_url}).eq("nombre", nombre_sucursal).execute()
+        try:
+            cargar_sucursales.clear()
+        except:
+            pass
+        return True
+    except Exception as e:
+        print(f"Error actualizar_logo_sucursal: {e}")
+        return False
+
 def eliminar_sucursal(s_id):
     """Elimina una sucursal."""
     try:
