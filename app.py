@@ -476,12 +476,11 @@ if not st.session_state.logged_in:
         -webkit-backdrop-filter: blur(25px) !important;
         border: 1px solid rgba(255, 255, 255, 0.15) !important;
         border-radius: 20px !important;
-        padding: 15px 30px !important;
+        padding: 18px 25px !important;
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7) !important;
         width: 100%;
         max-width: 400px;
-        height: 50mm !important;
-        margin: 0 auto;
+        margin: 0 auto 10px auto;
         text-align: center;
         display: flex;
         flex-direction: column;
@@ -490,16 +489,14 @@ if not st.session_state.logged_in:
         overflow: hidden;
     }}
 
-    /* Logo centrado y sin recortes extraños */
+    /* Logo centrado, en sus colores originales y sin distorsión */
     .glass-card img {{
         display: block !important;
-        margin: 0 auto 10px auto !important; /* Centrado y con espacio inferior */
-        max-height: 120mm !important; /* Ajuste para que quepa con el formulario */
+        margin: 0 auto !important;
+        max-height: 85px !important;
         width: auto !important;
         max-width: 90% !important;
-        object-fit: contain !important; /* Ver logo completo */
-        filter: brightness(0) invert(1) !important;
-        opacity: 0.9;
+        object-fit: contain !important;
     }}
 
     /* Espaciado súper compacto para cumplir los 50mm */
@@ -603,27 +600,32 @@ if not st.session_state.logged_in:
     with centered_col:
         st.markdown('<div class="login-wrapper">', unsafe_allow_html=True)
         
-        # Carga de Logo en Base64 para inyección HTML
+        # Carga del Logo de Matriz (primera sucursal) en Base64 para inyección HTML
         logo_html = ""
-        # 1. Intentar leer el logo local para máxima confiabilidad
-        logo_path = "logo.png" if os.path.exists("logo.png") else ("logo.jpg" if os.path.exists("logo.jpg") else None)
-        
-        if logo_path:
+        from supabase_client import get_logo_matriz_path
+        matriz_logo_path = get_logo_matriz_path()
+        if matriz_logo_path and os.path.exists(matriz_logo_path):
             try:
-                logo_html = get_logo_html(logo_path)
+                logo_html = get_logo_html(matriz_logo_path)
             except Exception:
                 pass
-                
-        # 2. Si no hay logo local, intentar desde Supabase o Caché
+
         if not logo_html:
-            from supabase_client import public_url
-            logo_url = st.session_state.get('logo_url') or public_url("logos/logo.png")
-            if logo_url:
-                logo_html = f'<img src="{logo_url}" width="220"/>'
+            for cand in ["logo.png", "logo.jpg"]:
+                if os.path.exists(cand):
+                    try:
+                        logo_html = get_logo_html(cand)
+                        break
+                    except Exception:
+                        pass
+
+        if not logo_html:
+            logo_html = "<h2 style='color:#ffffff; margin:0; font-weight:800; letter-spacing:1px;'>HAPPY VISION</h2><p style='color:#94a3b8; font-size:12px; margin:4px 0 0 0;'>Sistema Óptico Integral</p>"
 
         st.markdown(f"""
             <div class="glass-card">
                 {logo_html}
+            </div>
         """, unsafe_allow_html=True)
         
         # Formulario sin borde nativo
@@ -837,23 +839,45 @@ with st.sidebar:
         if logo_to_show and st.session_state.get("user_role") == "Administrador":
             col1, col2, col3 = st.columns([1, 4, 1])
             with col2:
-                if st.button("✏️ Editar logo", use_container_width=True, help="Haz clic para cambiar el logo de esta sucursal"):
+                btn_label = "✏️ Cambiar logo" if st.session_state.show_logo_uploader else "✏️ Editar logo"
+                if st.button(btn_label, use_container_width=True, help="Haz clic para cambiar el logo de esta sucursal"):
                     st.session_state.show_logo_uploader = not st.session_state.show_logo_uploader
                     st.rerun()
     else:
-        if st.session_state.get("user_role") == "Administrador":
-            st.session_state.show_logo_uploader = True
         st.markdown("""
         <div class="logo-container">
             <p class="logo-hint">📌 Esperando el logo...</p>
             <p style='color:#475569; font-size:12px; margin-top:8px;'>Sube un logo para comenzar.</p>
         </div>
         """, unsafe_allow_html=True)
+        if st.session_state.get("user_role") == "Administrador":
+            if st.button("📤 Subir logo inicial", use_container_width=True):
+                st.session_state.show_logo_uploader = True
+                st.rerun()
 
     if st.session_state.show_logo_uploader and st.session_state.get("user_role") == "Administrador":
-        _label_suc = _suc_activa if _suc_activa else "esta sucursal"
-        st.caption(f"🏢 Subiendo logo para: **{_label_suc}**")
-        uploaded_file = st.file_uploader("📤 Sube el logo de esta sucursal", type=["png", "jpg", "jpeg"], key="logo_upload_sb")
+        from supabase_client import tiene_logo_personalizado, delete_logo_sucursal
+        _label_suc = _suc_activa if _suc_activa else "Matriz"
+        es_matriz = (_label_suc).lower() == "matriz"
+        tiene_pers = tiene_logo_personalizado(_label_suc)
+
+        if not es_matriz:
+            if not tiene_pers:
+                st.info(f"ℹ️ Esta sucursal usa automáticamente el logo de **Matriz**. Puedes subir un logo exclusivo si lo requieres.")
+            else:
+                st.caption(f"🏢 Sede con logo personalizado: **{_label_suc}**")
+                if st.button("🔄 Volver al logo de Matriz", key="btn_restore_matriz_sb", use_container_width=True):
+                    from database import actualizar_logo_sucursal
+                    delete_logo_sucursal(_label_suc)
+                    actualizar_logo_sucursal(_label_suc, "")
+                    st.session_state.pop(_logo_cache_key, None)
+                    st.session_state.show_logo_uploader = False
+                    st.success(f"✅ Se restableció el logo de Matriz para '{_label_suc}'.")
+                    st.rerun()
+        else:
+            st.caption(f"🏢 Subiendo logo principal para: **{_label_suc}**")
+
+        uploaded_file = st.file_uploader("📤 Sube el logo", type=["png", "jpg", "jpeg"], key="logo_upload_sb")
         if uploaded_file:
             import tempfile
             from supabase_client import upload_logo_sucursal
@@ -861,38 +885,32 @@ with st.sidebar:
 
             file_ext = uploaded_file.name.split('.')[-1].lower()
 
-            # Guardar también como logo.png local como fallback
-            with open(f"logo.{file_ext}", "wb") as f:
-                f.write(uploaded_file.getvalue())
-
             with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_ext}") as tmp:
                 tmp.write(uploaded_file.getvalue())
                 tmp_path = tmp.name
 
             with st.spinner(f"Subiendo logo para '{_label_suc}'..."):
-                remote_path = upload_logo_sucursal(tmp_path, _suc_activa if _suc_activa else "logo")
+                remote_path = upload_logo_sucursal(tmp_path, _label_suc)
                 if remote_path:
-                    # Guardar en caché local
-                    import os as _os
-                    _cache_dir = _os.path.join(_os.getcwd(), "_logos_cache")
-                    _os.makedirs(_cache_dir, exist_ok=True)
-                    _nombre_limpio = (_suc_activa or "logo").lower().replace(" ", "_").replace("/", "-")
-                    _local_cache = _os.path.join(_cache_dir, f"{_nombre_limpio}.{file_ext}")
-                    with open(_local_cache, "wb") as f:
-                        f.write(uploaded_file.getvalue())
                     # Registrar en BD si hay sucursal activa
-                    if _suc_activa:
+                    if _label_suc:
                         try:
-                            actualizar_logo_sucursal(_suc_activa, remote_path)
-                        except Exception:
-                            pass
+                            actualizar_logo_sucursal(_label_suc, remote_path)
+                        except Exception as e:
+                            print(f"[DB] Error actualizar_logo_sucursal: {e}")
+
                     # Limpiar caché en session_state para forzar recarga
                     st.session_state.pop(_logo_cache_key, None)
+                    if es_matriz:
+                        for k in list(st.session_state.keys()):
+                            if k.startswith("logo_"):
+                                del st.session_state[k]
+
                     st.session_state.show_logo_uploader = False
-                    st.success(f"✅ Logo de '{_label_suc}' actualizado")
+                    st.success(f"✅ Logo de '{_label_suc}' actualizado exitosamente")
                     st.rerun()
                 else:
-                    st.error("❌ Error al subir el logo. Intenta de nuevo.")
+                    st.error("❌ Error al subir el logo a almacenamiento en la nube.")
 
     st.markdown("<div class='fancy-divider'></div>", unsafe_allow_html=True)
 

@@ -99,19 +99,21 @@ def render_configuracion():
                             st.caption("Este logo aparecerá en certificados, facturas y tickets de esta sucursal.")
 
                             # Vista previa del logo actual
+                            from supabase_client import get_logo_sucursal_path, get_logo_matriz_path
                             if tiene_logo:
-                                # Intentar mostrar desde caché local o descarga
                                 try:
-                                    from supabase_client import get_logo_sucursal_path
                                     logo_preview = get_logo_sucursal_path(row['nombre'])
                                     if logo_preview and os.path.exists(logo_preview):
-                                        st.image(logo_preview, caption="Logo actual", width=200)
+                                        st.image(logo_preview, caption="Logo de esta sede", width=200)
                                     else:
                                         st.info("Logo guardado en nube ✓")
                                 except Exception:
                                     st.info("Logo guardado en nube ✓")
                             else:
-                                st.warning("Sin logo personalizado. Se usará el logo predeterminado (`logo.png`).")
+                                matriz_preview = get_logo_matriz_path()
+                                if matriz_preview and os.path.exists(matriz_preview):
+                                    st.image(matriz_preview, caption="Mostrando logo de Matriz", width=200)
+                                st.info("ℹ️ Esta sucursal usa automáticamente el logo de **Matriz**. Puedes subir uno exclusivo si lo requieres.")
 
                             st.divider()
 
@@ -146,7 +148,7 @@ def render_configuracion():
                                                 with open(tmp_path, "wb") as f:
                                                     f.write(nuevo_logo.getbuffer())
 
-                                                # Subir a Supabase Storage
+                                                # Subir a Supabase Storage (sanitizado internamente)
                                                 remote_path = upload_logo_sucursal(tmp_path, row['nombre'])
 
                                                 # Limpiar temporal de upload
@@ -159,16 +161,13 @@ def render_configuracion():
                                                     # Guardar ruta en la tabla sucursales
                                                     ok = actualizar_logo_sucursal(row['nombre'], remote_path)
                                                     if ok:
-                                                        # Limpiar caché del logo anterior
-                                                        nombre_limpio = row['nombre'].lower().replace(" ", "_").replace("/", "-")
-                                                        cache_dir = os.path.join(os.getcwd(), "_logos_cache")
-                                                        for old_ext in [".png", ".jpg", ".jpeg"]:
-                                                            old_cache = os.path.join(cache_dir, f"{nombre_limpio}{old_ext}")
-                                                            if os.path.exists(old_cache):
-                                                                try:
-                                                                    os.remove(old_cache)
-                                                                except Exception:
-                                                                    pass
+                                                        if row['nombre'].lower() == "matriz":
+                                                            for k in list(st.session_state.keys()):
+                                                                if k.startswith("logo_"):
+                                                                    del st.session_state[k]
+                                                        else:
+                                                            st.session_state.pop(f"logo_{row['nombre']}", None)
+
                                                         st.session_state["suc_msg"] = f"✅ Logo de '{row['nombre']}' actualizado correctamente."
                                                         st.rerun()
                                                     else:
@@ -181,13 +180,15 @@ def render_configuracion():
                             # Eliminar logo personalizado
                             if tiene_logo:
                                 st.divider()
-                                if st.button("🗑️ Eliminar Logo Personalizado", key=f"btn_del_logo_{row['id']}", use_container_width=True):
+                                del_label = "🗑️ Eliminar Logo Personalizado (Volver a Matriz)" if row['nombre'].lower() != "matriz" else "🗑️ Eliminar Logo"
+                                if st.button(del_label, key=f"btn_del_logo_{row['id']}", use_container_width=True):
                                     with st.spinner("Eliminando logo..."):
                                         try:
                                             from supabase_client import delete_logo_sucursal
                                             delete_logo_sucursal(row['nombre'])
                                             actualizar_logo_sucursal(row['nombre'], "")
-                                            st.session_state["suc_msg"] = f"✅ Logo de '{row['nombre']}' eliminado. Se usará el logo predeterminado."
+                                            st.session_state.pop(f"logo_{row['nombre']}", None)
+                                            st.session_state["suc_msg"] = f"✅ Logo de '{row['nombre']}' eliminado. Ahora usa el logo de Matriz."
                                             st.rerun()
                                         except Exception as e:
                                             st.error(f"❌ Error al eliminar: {e}")

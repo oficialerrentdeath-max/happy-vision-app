@@ -1,5 +1,8 @@
 import os
 import tempfile
+import unicodedata
+import re
+import shutil
 from typing import Optional
 
 # Import the initialized Supabase client from the database module
@@ -9,11 +12,27 @@ except ImportError:
     supabase = None
 
 # Bucket name from environment variables (as defined in .env)
-SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "happy-vision")
+SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "happy-vision-imagenes")
 
 def _ensure_client() -> bool:
     """Check that Supabase client and bucket are configured."""
     return supabase is not None and SUPABASE_BUCKET is not None
+
+
+def sanitizar_nombre_sucursal(nombre: str) -> str:
+    """Convierte cualquier nombre de sucursal a un identificador seguro para Supabase Storage / S3.
+    Elimina acentos, tildes, virgulilla de la ñ y caracteres especiales, retornando solo
+    caracteres ASCII alfanuméricos y guiones bajos en minúsculas.
+    Ejemplo: 'Cruz Roja Rumiñahui' -> 'cruz_roja_ruminahui'
+    """
+    if not nombre:
+        return "matriz"
+    n = unicodedata.normalize('NFKD', str(nombre))
+    n = ''.join(c for c in n if not unicodedata.combining(c))
+    n = n.lower().strip()
+    n = re.sub(r'[^a-z0-9_-]', '_', n)
+    n = re.sub(r'_+', '_', n).strip('_')
+    return n or "sucursal"
 
 
 def upload_image(local_path: str, remote_path: str) -> bool:
@@ -71,90 +90,115 @@ def upload_image(local_path: str, remote_path: str) -> bool:
 
 def upload_logo_sucursal(local_path: str, sucursal_nombre: str) -> Optional[str]:
     """Sube el logo de una sucursal a Supabase Storage y retorna la ruta remota.
-
-    Parameters
-    ----------
-    local_path: str
-        Ruta local del archivo de imagen.
-    sucursal_nombre: str
-        Nombre de la sucursal (se usa para nombrar el archivo en storage).
-
-    Returns
-    -------
-    Optional[str]
-        La ruta remota dentro del bucket si fue exitoso, None si falló.
+    Guarda copia en la caché local '_logos_cache/{nombre_limpio}.ext'.
+    Si es Matriz, también actualiza 'logo.png' local.
     """
     if not _ensure_client():
         return None
 
-    # Normalizar nombre: quitar espacios, minúsculas
-    nombre_limpio = sucursal_nombre.lower().replace(" ", "_").replace("/", "-")
+    nombre_limpio = sanitizar_nombre_sucursal(sucursal_nombre)
     ext = os.path.splitext(local_path)[1].lower() or ".png"
     remote_path = f"logos/{nombre_limpio}{ext}"
 
     success = upload_image(local_path, remote_path)
     if success:
+        try:
+            tmp_dir = os.path.join(os.getcwd(), "_logos_cache")
+            os.makedirs(tmp_dir, exist_ok=True)
+            local_cache = os.path.join(tmp_dir, f"{nombre_limpio}{ext}")
+            shutil.copy2(local_path, local_cache)
+
+            # Si es Matriz o logo principal, guardar también en la raíz del proyecto
+            if nombre_limpio == "matriz":
+                shutil.copy2(local_path, os.path.join(os.getcwd(), f"logo{ext}"))
+        except Exception as e:
+            print(f"[Supabase] Error copiando a caché local: {e}")
+
         return remote_path
     return None
 
 
 def download_logo_sucursal(sucursal_nombre: str) -> Optional[str]:
-    """Descarga el logo de una sucursal de Supabase Storage a un archivo temporal.
-
-    Parameters
-    ----------
-    sucursal_nombre: str
-        Nombre de la sucursal.
-
-    Returns
-    -------
-    Optional[str]
-        Ruta local del archivo descargado, o None si no existe / hubo error.
-    """
+    """Descarga el logo de una sucursal de Supabase Storage a la caché local."""
     if not _ensure_client():
         return None
 
-    nombre_limpio = sucursal_nombre.lower().replace(" ", "_").replace("/", "-")
+    nombre_limpio = sanitizar_nombre_sucursal(sucursal_nombre)
+    variantes = [nombre_limpio]
+    raw_clean = str(sucursal_nombre).lower().replace(" ", "_").replace("/", "-")
+    if raw_clean not in variantes:
+        variantes.append(raw_clean)
 
-    for ext in [".png", ".jpg", ".jpeg"]:
-        remote_path = f"logos/{nombre_limpio}{ext}"
-        try:
-            data = supabase.storage.from_(SUPABASE_BUCKET).download(remote_path)
-            if data:
-                # Guardar en directorio temporal del proyecto
-                tmp_dir = os.path.join(os.getcwd(), "_logos_cache")
-                os.makedirs(tmp_dir, exist_ok=True)
-                local_path = os.path.join(tmp_dir, f"{nombre_limpio}{ext}")
-                with open(local_path, "wb") as f:
-                    f.write(data)
-                return local_path
-        except Exception:
-            continue  # Probar siguiente extensión
+    tmp_dir = os.path.join(os.getcwd(), "_logos_cache")
+    os.makedirs(tmp_dir, exist_ok=True)
+
+    for var in variantes:
+        for ext in [".png", ".jpg", ".jpeg"]:
+            remote_path = f"logos/{var}{ext}"
+            try:
+                data = supabase.storage.from_(SUPABASE_BUCKET).download(remote_path)
+                if data:
+                    local_path = os.path.join(tmp_dir, f"{nombre_limpio}{ext}")
+                    with open(local_path, "wb") as f:
+                        f.write(data)
+                    return local_path
+            except Exception:
+                continue
 
     return None
 
 
-def get_logo_sucursal_path(sucursal_nombre: str) -> Optional[str]:
+def get_logo_matriz_path() -> Optional[str]:
+    """Obtiene la ruta local del logo de Matriz (o primera sucursal registrada).
+    Se usa en el login y como fallback predeterminado para sucursales que no tienen logo propio.
+    """
+    tmp_dir = os.path.join(os.getcwd(), "_logos_cache")
+
+    # 1. Verificar si existe matriz en _logos_cache
+    for ext in [".png", ".jpg", ".jpeg"]:
+        matriz_cached = os.path.join(tmp_dir, f"matriz{ext}")
+        if os.path.exists(matriz_cached):
+            return matriz_cached
+
+    # 2. Intentar descargar desde Supabase Storage
+    downloaded = download_logo_sucursal("Matriz")
+    if downloaded:
+        return downloaded
+
+    # 3. Revisar si hay logo local en la raíz
+    for cand in ["logo.png", "logo.jpg", "logo.jpeg"]:
+        if os.path.exists(cand):
+            return cand
+
+    # 4. Si aún no hay, buscar la primera sucursal registrada en BD que tenga logo
+    try:
+        from database import cargar_sucursales
+        df_suc = cargar_sucursales()
+        if not df_suc.empty:
+            for _, r in df_suc.iterrows():
+                cand_nombre = r.get("nombre")
+                if cand_nombre and sanitizar_nombre_sucursal(cand_nombre) != "matriz":
+                    cand_logo = get_logo_sucursal_path(cand_nombre, fallback_a_matriz=False)
+                    if cand_logo and os.path.exists(cand_logo):
+                        return cand_logo
+    except Exception:
+        pass
+
+    return None
+
+
+def get_logo_sucursal_path(sucursal_nombre: str = None, fallback_a_matriz: bool = True) -> Optional[str]:
     """Obtiene la ruta local del logo de una sucursal.
     
-    Primero verifica caché local, si no existe lo descarga de Supabase.
-    Fallback a logo.png local si no hay logo de sucursal.
-
-    Parameters
-    ----------
-    sucursal_nombre: str
-        Nombre de la sucursal.
-
-    Returns
-    -------
-    Optional[str]
-        Ruta al archivo de logo a usar, o None si no hay ninguno.
+    1. Si la sucursal tiene logo personalizado (en caché o Supabase Storage), lo retorna.
+    2. Si NO tiene logo propio y fallback_a_matriz es True, retorna automáticamente el logo de 'Matriz'.
+    3. Si tampoco existe, retorna el logo.png local del repositorio.
     """
     if sucursal_nombre:
-        nombre_limpio = sucursal_nombre.lower().replace(" ", "_").replace("/", "-")
+        nombre_limpio = sanitizar_nombre_sucursal(sucursal_nombre)
         tmp_dir = os.path.join(os.getcwd(), "_logos_cache")
 
-        # 1. Verificar caché local
+        # 1. Verificar caché local para esta sucursal específica
         for ext in [".png", ".jpg", ".jpeg"]:
             cached = os.path.join(tmp_dir, f"{nombre_limpio}{ext}")
             if os.path.exists(cached):
@@ -165,12 +209,30 @@ def get_logo_sucursal_path(sucursal_nombre: str) -> Optional[str]:
         if downloaded:
             return downloaded
 
-    # 3. Fallback al logo local del repositorio
+    # Si no se permite fallback a Matriz, no buscar fallbacks generales
+    if not fallback_a_matriz:
+        return None
+
+    # 3. Fallback inteligente: Usar automáticamente el logo de Matriz
+    if not sucursal_nombre or sanitizar_nombre_sucursal(sucursal_nombre) != "matriz":
+        matriz_logo = get_logo_matriz_path()
+        if matriz_logo and os.path.exists(matriz_logo):
+            return matriz_logo
+
+    # 4. Fallback al logo local del repositorio
     for cand in ["logo.png", "logo.jpg", "logo.jpeg"]:
         if os.path.exists(cand):
             return cand
 
     return None
+
+
+def tiene_logo_personalizado(sucursal_nombre: str) -> bool:
+    """Verifica si una sucursal tiene un archivo de logo exclusivo o si está usando el de Matriz."""
+    if not sucursal_nombre or sanitizar_nombre_sucursal(sucursal_nombre) == "matriz":
+        return True
+    path = get_logo_sucursal_path(sucursal_nombre, fallback_a_matriz=False)
+    return bool(path and os.path.exists(path))
 
 
 def public_url(path: str, expires_in: int = 3600) -> Optional[str]:
@@ -215,7 +277,7 @@ def delete_logo_sucursal(sucursal_nombre: str) -> bool:
     if not _ensure_client():
         return False
 
-    nombre_limpio = sucursal_nombre.lower().replace(" ", "_").replace("/", "-")
+    nombre_limpio = sanitizar_nombre_sucursal(sucursal_nombre)
     eliminado = False
 
     for ext in [".png", ".jpg", ".jpeg"]:
@@ -224,9 +286,8 @@ def delete_logo_sucursal(sucursal_nombre: str) -> bool:
             supabase.storage.from_(SUPABASE_BUCKET).remove([remote_path])
             eliminado = True
         except Exception:
-            pass  # No existía, ok
+            pass
 
-        # Limpiar caché local también
         tmp_dir = os.path.join(os.getcwd(), "_logos_cache")
         cached = os.path.join(tmp_dir, f"{nombre_limpio}{ext}")
         if os.path.exists(cached):
