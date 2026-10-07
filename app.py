@@ -799,9 +799,14 @@ with st.sidebar:
     _logo_cache_key = f"logo_url_{_suc_activa}"
 
     def _es_imagen_valida(path: str) -> bool:
-        """Verifica que el archivo exista y tenga tamaño suficiente para ser imagen real."""
+        """Verifica que el archivo exista, tenga contenido y sea legible como imagen."""
         try:
-            return os.path.isfile(path) and os.path.getsize(path) > 500
+            if not path or not os.path.isfile(path) or os.path.getsize(path) <= 0:
+                return False
+            from PIL import Image
+            with Image.open(path) as img:
+                img.verify()
+            return True
         except Exception:
             return False
 
@@ -811,13 +816,7 @@ with st.sidebar:
     # Validar que el archivo en caché siga siendo válido
     if logo_to_show and isinstance(logo_to_show, str) and not logo_to_show.startswith("http"):
         if not _es_imagen_valida(logo_to_show):
-            # Archivo inválido o corrupto: limpiar caché y volver a buscar
             st.session_state.pop(_logo_cache_key, None)
-            try:
-                if os.path.exists(logo_to_show):
-                    os.remove(logo_to_show)
-            except Exception:
-                pass
             logo_to_show = None
 
     if not logo_to_show:
